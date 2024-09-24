@@ -1,54 +1,49 @@
 import torch
-import torch.nn as nn
-import torch.optim as optim
-from train import train, validate, test, load_data
+from torch.utils.data import DataLoader
+from sklearn.model_selection import train_test_split
+from torchvision import transforms
+import os
+
+from dataset import SegmentationDataset
 from model import UNet
-
-'''
-Please provide a complete ready-to-run Python implementation for a U-Net architecture using PyTorch for binary segmentation of grayscale images. The dataset should consist of grayscale images and binary masks. The code should be structured into importable scripts with the following:
-
-Required library imports.
-A custom Dataset class for loading the grayscale images and corresponding binary masks.
-A UNet model class definition using PyTorch, optimized for binary segmentation.
-Functions for the training procedure, validation procedure, and testing procedure.
-A function to split the dataset into 80% training, 10% validation, and 10% testing sets using train_test_split.
-DataLoader setup for training, validation, and testing sets.
-A function to visualize the predicted masks, the input image, and the ground truth during testing.
-All the above functionalities should be implemented in a modular way so that they can be imported as scripts or classes.
-Ensure that everything can be executed in an if __name__ == "__main__": block with instructions for loading the dataset, configuring hyperparameters, and saving the trained model.. the directory structure should be: unet_segmentation/
-├── dataset.py
-├── model.py
-├── train.py
-├── main.py
-
-'''
+from train import train_model, test_model
 
 if __name__ == "__main__":
+    # Hyperparameters
+    batch_size = 8
+    num_epochs = 3
+    learning_rate = 1e-4
+    image_dir = 'D:\qy44lyfe\LLM segmentation\Data sets\BAGLS\subset'  # Update this path
+    save_path = 'D:\qy44lyfe\LLM segmentation\Results\GPT 4o'  # Path to save results, ensure this directory exists
+
+    if not os.path.exists(save_path):
+        os.makedirs(save_path)
+
+    # Data preparation
+    transform = transforms.Compose([
+        transforms.ToTensor()
+    ])
+
+    dataset = SegmentationDataset(image_dir, target_size=(256, 256))  # Adjust target_size if needed
+    train_data, val_test_data = train_test_split(dataset, test_size=0.2, random_state=42)
+    val_data, test_data = train_test_split(val_test_data, test_size=0.5, random_state=42)
+
+    train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True)
+    val_loader = DataLoader(val_data, batch_size=batch_size, shuffle=False)
+    test_loader = DataLoader(test_data, batch_size=batch_size, shuffle=False)
+
+    # Model, loss function, optimizer
+    model = UNet()
+    criterion = torch.nn.BCELoss()  # Since it's a binary segmentation problem
+    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    # Hyperparameters
-    img_dir = 'path_to_images'
-    mask_dir = 'path_to_masks'
-    learning_rate = 0.001
-    num_epochs = 20
-    batch_size = 16
-
-    # Load data
-    train_loader, val_loader, test_loader = load_data(img_dir, mask_dir, batch_size)
-
-    # Initialize model, loss function, and optimizer
-    model = UNet().to(device)
-    criterion = nn.BCELoss()
-    optimizer = optim.Adam(model.parameters(), lr=learning_rate)
-
-    # Training and validation loop
-    for epoch in range(num_epochs):
-        train_loss = train(model, train_loader, criterion, optimizer, device)
-        val_loss = validate(model, val_loader, criterion, device)
-        print(f'Epoch {epoch+1}/{num_epochs}, Train Loss: {train_loss}, Val Loss: {val_loss}')
+    # Train the model
+    train_model(model, criterion, optimizer, train_loader, val_loader, num_epochs, device, save_path)
 
     # Test the model
-    test_predictions = test(model, test_loader, device)
+    test_model(model, test_loader, device, save_path)
 
-    # Save the model
-    torch.save(model.state_dict(), 'unet_model.pth')
+    # Save the trained model
+    torch.save(model.state_dict(), os.path.join(save_path, "unet_model.pth"))
