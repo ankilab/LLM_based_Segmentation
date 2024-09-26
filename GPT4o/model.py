@@ -2,53 +2,60 @@ import torch
 import torch.nn as nn
 
 class UNet(nn.Module):
-    def __init__(self):
+    def __init__(self, in_channels=1, out_channels=1):
         super(UNet, self).__init__()
 
-        def block(in_channels, out_channels, kernel_size=3, padding=1):
+        def conv_block(in_channels, out_channels):
             return nn.Sequential(
-                nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, padding=padding),
-                nn.ReLU(inplace=True),
-                nn.Conv2d(out_channels, out_channels, kernel_size=kernel_size, padding=padding),
-                nn.ReLU(inplace=True),
-                nn.MaxPool2d(kernel_size=2, stride=2)
-            )
-
-        def up_block(in_channels, out_channels):
-            return nn.Sequential(
-                nn.ConvTranspose2d(in_channels, out_channels, kernel_size=2, stride=2),
+                nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1),
                 nn.ReLU(inplace=True),
                 nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1),
-                nn.ReLU(inplace=True)
+                nn.ReLU(inplace=True),
             )
 
-        self.encoder1 = block(1, 64)
-        self.encoder2 = block(64, 128)
-        self.encoder3 = block(128, 256)
+        def up_conv(in_channels, out_channels):
+            return nn.ConvTranspose2d(in_channels, out_channels, kernel_size=2, stride=2)
 
-        self.middle = nn.Sequential(
-            nn.Conv2d(256, 512, kernel_size=3, padding=1),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(512, 512, kernel_size=3, padding=1),
-            nn.ReLU(inplace=True)
-        )
+        self.encoder = nn.ModuleList([
+            conv_block(in_channels, 64),
+            conv_block(64, 128),
+            conv_block(128, 256),
+            conv_block(256, 512),
+        ])
 
-        self.up3 = up_block(512, 256)
-        self.up2 = up_block(256, 128)
-        self.up1 = up_block(128, 64)
+        self.pool = nn.MaxPool2d(kernel_size=2, stride=2)
 
-        self.final = nn.Conv2d(64, 1, kernel_size=1)
+        self.bottleneck = conv_block(512, 1024)
+
+        self.up_convs = nn.ModuleList([
+            up_conv(1024, 512),
+            up_conv(512, 256),
+            up_conv(256, 128),
+            up_conv(128, 64),
+        ])
+
+        self.decoder = nn.ModuleList([
+            conv_block(1024, 512),
+            conv_block(512, 256),
+            conv_block(256, 128),
+            conv_block(128, 64),
+        ])
+
+        self.final_conv = nn.Conv2d(64, out_channels, kernel_size=1)
 
     def forward(self, x):
-        e1 = self.encoder1(x)
-        e2 = self.encoder2(e1)
-        e3 = self.encoder3(e2)
+        encoder_outputs = []
 
-        m = self.middle(e3)
+        for encoder in self.encoder:
+            x = encoder(x)
+            encoder_outputs.append(x)
+            x = self.pool(x)
 
-        d3 = self.up3(m)
-        d2 = self.up2(d3)
-        d1 = self.up1(d2)
+        x = self.bottleneck(x)
 
-        out = torch.sigmoid(self.final(d1))
-        return out
+        for i in range(len(self.up_convs)):
+            x = self.up_convs[i](x)
+            x = torch.cat([x, encoder_outputs[-(i + 1)]], dim=1)
+            x = self.decoder[i](x)
+
+        return torch.sigmoid(self.final_conv(x))
