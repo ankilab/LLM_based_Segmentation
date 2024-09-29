@@ -1,74 +1,86 @@
+import os
 import torch
 from torch.utils.data import DataLoader
 from sklearn.model_selection import train_test_split
-from torchvision import transforms
-import time
 from dataset import SegmentationDataset
 from model import UNet
-from train import train_fn, validate_fn, test_fn, save_losses, plot_losses, save_model, save_dice_scores, \
-    visualize_predictions
+from train import train, validate, test, save_losses, save_dice_scores, plot_losses, visualize_predictions
+import torch.optim as optim
+import torch.nn as nn
+import torchvision.transforms as T  # Ensure torchvision.transforms is imported
+import time
 
-
-def main():
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-    # Configs and Hyperparameters
-    image_dir = r"D:\qy44lyfe\LLM segmentation\Data sets\BAGLS\subset"
-    save_path = r"D:\qy44lyfe\LLM segmentation\Results\GPT 4o"
+if __name__ == "__main__":
+    # Hyperparameters
     batch_size = 8
-    learning_rate = 1e-5
-    num_epochs = 20
+    num_epochs = 25
+    learning_rate = 1e-4
+    image_size = (256, 256)  # Define a consistent image size for all inputs
+    data_dir = 'D:\qy44lyfe\LLM segmentation\Data sets\BAGLS\subset'
+    save_path = 'D:\qy44lyfe\LLM segmentation\Results\GPT 4o'
+    os.makedirs(save_path, exist_ok=True)
 
-    # Data transformations
-    transform = transforms.Compose([
-        transforms.Resize((128, 128)),
-        transforms.ToTensor()
-    ])
+    # Device configuration
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-    # Loading Dataset
-    dataset = SegmentationDataset(image_dir, transform=transform)
-    train_data, val_test_data = train_test_split(dataset, test_size=0.2, random_state=42)
-    val_data, test_data = train_test_split(val_test_data, test_size=0.5, random_state=42)
+    # Transform to convert images to tensors
+    transform = T.Compose([T.ToTensor()])
+
+    # Load dataset
+    dataset = SegmentationDataset(image_dir=data_dir, transform=transform, image_size=image_size)
+    train_data, test_data = train_test_split(dataset, test_size=0.2, random_state=42)
+    val_data, test_data = train_test_split(test_data, test_size=0.5, random_state=42)
+
+    print(f'Training size: {len(train_data)}, Validation size: {len(val_data)}, Test size: {len(test_data)}')
 
     train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True)
     val_loader = DataLoader(val_data, batch_size=batch_size, shuffle=False)
     test_loader = DataLoader(test_data, batch_size=batch_size, shuffle=False)
 
-    print(f"Training size: {len(train_data)}, Validation size: {len(val_data)}, Test size: {len(test_data)}")
-
-    # Model, Optimizer, Loss Function
+    # Model
     model = UNet().to(device)
-    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
-    loss_fn = torch.nn.BCELoss()
 
-    # Training Loop
-    train_losses, val_losses = [], []
+    # Loss and optimizer
+    criterion = nn.BCELoss()
+    optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+
+    # Training and validation
+    train_losses = []
+    val_losses = []
+    dice_scores_val = []
+
     start_time = time.time()
 
     for epoch in range(num_epochs):
-        print(f"Epoch {epoch + 1}/{num_epochs}")
-        train_loss = train_fn(train_loader, model, optimizer, loss_fn, device, epoch)
-        val_loss, dice_scores = validate_fn(val_loader, model, loss_fn, device, epoch)
+        print(f'Epoch {epoch + 1}/{num_epochs}')
+        train_loss = train(model, train_loader, criterion, optimizer, device)
+        val_loss, val_dice = validate(model, val_loader, criterion, device)
 
         train_losses.append(train_loss)
         val_losses.append(val_loss)
+        dice_scores_val.append(val_dice)
 
-        save_dice_scores(dice_scores, save_path, "validation_dice_scores")
+        print(f"Training Loss: {train_loss:.4f}, Validation Loss: {val_loss:.4f}, Validation Dice: {val_dice:.4f}")
 
-    # Save training progress
+    # Save model
+    torch.save(model, os.path.join(save_path, 'unet_model.pth'))
+    torch.save(model.state_dict(), os.path.join(save_path, 'unet_model_state_dict.pth'))
+
+    # Save training losses and validation losses
     save_losses(train_losses, val_losses, save_path)
+    save_dice_scores(dice_scores_val, save_path, 'validation_dice_scores')
+
+    # Plot losses
     plot_losses(train_losses, val_losses, save_path)
-    save_model(model, save_path)
 
     # Calculate total training time
     total_time = time.time() - start_time
     print(f"Total training time: {total_time:.2f} seconds")
 
-    # Testing the model
-    test_dice_scores, visual_data = test_fn(test_loader, model, device)
-    save_dice_scores(test_dice_scores, save_path, "test_dice_scores")
-    visualize_predictions(visual_data, save_path)
+    # Testing
+    dice_score_test = test(model, test_loader, device)
+    print(f"Test Dice Score: {dice_score_test:.4f}")
+    save_dice_scores([dice_score_test], save_path, 'test_dice_scores')
 
-
-if __name__ == "__main__":
-    main()
+    # Visualize predictions
+    visualize_predictions(model, test_loader, device, save_path)

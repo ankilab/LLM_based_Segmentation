@@ -1,34 +1,37 @@
 import os
 from torch.utils.data import Dataset
 from PIL import Image
-import torchvision.transforms as transforms
+import torch
+import torchvision.transforms as T
+
 
 class SegmentationDataset(Dataset):
-    def __init__(self, image_dir, transform=None):
+    def __init__(self, image_dir, transform=None, image_size=(256, 256)):
         self.image_dir = image_dir
+        self.image_paths = [f for f in os.listdir(image_dir) if f.endswith(".png") and not f.endswith("_seg.png")]
         self.transform = transform
-        # Ensure we only load PNG files
-        self.images = [img for img in os.listdir(image_dir) if img.endswith('.png') and '_seg' not in img]
+        self.image_size = image_size
 
     def __len__(self):
-        return len(self.images)
+        return len(self.image_paths)
 
     def __getitem__(self, idx):
-        img_name = self.images[idx]
-        mask_name = img_name.replace('.png', '_seg.png')
-
+        img_name = self.image_paths[idx]
         img_path = os.path.join(self.image_dir, img_name)
-        mask_path = os.path.join(self.image_dir, mask_name)
+        mask_path = os.path.join(self.image_dir, img_name.replace('.png', '_seg.png'))
 
-        # Load image and mask, and ensure they are PNG files
-        try:
-            image = Image.open(img_path).convert("L")  # Ensure grayscale conversion
-            mask = Image.open(mask_path).convert("L")  # Ensure mask is grayscale
-        except Image.UnidentifiedImageError:
-            raise ValueError(f"File {img_path} or {mask_path} is not a valid PNG image.")
+        image = Image.open(img_path).convert('L')  # Grayscale
+        mask = Image.open(mask_path).convert('L')  # Binary mask
+
+        # Resize images and masks to the specified size
+        resize_transform = T.Resize(self.image_size)
+        image = resize_transform(image)
+        mask = resize_transform(mask)
 
         if self.transform:
             image = self.transform(image)
             mask = self.transform(mask)
+
+        mask = torch.where(mask > 0.5, 1.0, 0.0)  # Binarize mask
 
         return image, mask
