@@ -1,55 +1,109 @@
+# train.py
 import torch
-import torch.optim as optim
-from torch.utils.data import DataLoader, random_split
-from dataset import SegmentationDataset
-from model import UNet
-from torchvision import transforms
+import torch.nn as nn
+from torch.utils.data import DataLoader
+from torch.optim import Adam
+from tqdm import tqdm
+import pandas as pd
+import time
+import matplotlib.pyplot as plt
 
-def train_loop(dataloader, model, loss_fn, optimizer, device):
-    size = len(dataloader.dataset)
+
+def dice_score(pred, target):
+    smooth = 1e-6
+    pred = (pred > 0.5).float()
+    intersection = (pred * target).sum()
+    return (2. * intersection + smooth) / (pred.sum() + target.sum() + smooth)
+
+
+def train_one_epoch(model, dataloader, loss_fn, optimizer, device):
     model.train()
-    for batch, (X, y) in enumerate(dataloader):
-        X, y = X.to(device), y.to(device)
-        pred = model(X)
-        loss = loss_fn(pred, y)
-
+    running_loss = 0.0
+    for images, masks in tqdm(dataloader, desc="Training"):
+        images, masks = images.to(device), masks.to(device)
         optimizer.zero_grad()
+        outputs = model(images)
+        loss = loss_fn(outputs, masks)
         loss.backward()
         optimizer.step()
+        running_loss += loss.item() * images.size(0)
+    epoch_loss = running_loss / len(dataloader.dataset)
+    return epoch_loss
 
-        if batch % 100 == 0:
-            loss, current = loss.item(), batch * len(X)
-            print(f"loss: {loss:>7f}  [{current:>5d}/{size:>5d}]")
 
-def test_loop(dataloader, model, loss_fn, device):
-    size = len(dataloader.dataset)
-    num_batches = len(dataloader)
+def validate(model, dataloader, loss_fn, device):
     model.eval()
-    test_loss, correct = 0, 0
+    running_loss = 0.0
+    dice_scores = []
     with torch.no_grad():
-        for X, y in dataloader:
-            X, y = X.to(device), y.to(device)
-            pred = model(X)
-            test_loss += loss_fn(pred, y).item()
-            correct += (pred.argmax(1) == y).type(torch.float).sum().item()
-    test_loss /= num_batches
-    correct /= size
-    print(f"Test Error: \n Accuracy: {(100*correct):>0.1f}%, Avg loss: {test_loss:>8f} \n")
+        for images, masks in tqdm(dataloader, desc="Validating"):
+            images, masks = images.to(device), masks.to(device)
+            outputs = model(images)
+            loss = loss_fn(outputs, masks)
+            running_loss += loss.item() * images.size(0)
+            dice = dice_score(outputs, masks)
+            dice_scores.append(dice.item())
+    epoch_loss = running_loss / len(dataloader.dataset)
+    return epoch_loss, dice_scores
 
-def split_dataset(dataset, split_train=0.8, split_val=0.1):
-    train_size = int(split_train * len(dataset))
-    val_size = int(split_val * len(dataset))
-    test_size = len(dataset) - train_size - val_size
-    return random_split(dataset, [train_size, val_size, test_size])
 
-def get_dataloaders(image_dir, mask_dir, batch_size):
-    transform = transforms.Compose([
-        transforms.ToTensor(),
-        transforms.Normalize(mean=[0.5], std=[0.5])
-    ])
-    dataset = SegmentationDataset(image_dir, mask_dir, transform=transform)
-    train_set, val_set, test_set = split_dataset(dataset)
-    train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True)
-    val_loader = DataLoader(val_set, batch_size=batch_size, shuffle=False)
-    test_loader = DataLoader(test_set, batch_size=batch_size, shuffle=False)
-    return train_loader, val_loader, test_loader
+def test(model, dataloader, loss_fn, device):
+    model.eval()
+    running_loss = 0.0
+    dice_scores = []
+    with torch.no_grad():
+        for images, masks in tqdm(dataloader, desc="Testing"):
+            images, masks = images.to(device), masks.to(device)
+            outputs = model(images)
+            loss = loss_fn(outputs, masks)
+            running_loss += loss.item() * images.size(0)
+            dice = dice_score(outputs, masks)
+            dice_scores.append(dice.item())
+    epoch_loss = running_loss / len(dataloader.dataset)
+    return epoch_loss, dice_scores
+
+
+def save_losses(train_losses, val_losses, save_path):
+    pd.DataFrame(train_losses).to_excel(f"{save_path}/train_losses.xlsx", index=False)
+    pd.DataFrame(val_losses).to_excel(f"{save_path}/val_losses.xlsx", index=False)
+
+
+def plot_losses(train_losses, val_losses, save_path):
+    plt.figure(figsize=(10, 5))
+    plt.plot(train_losses, label='Training Loss')
+    plt.plot(val_losses, label='Validation Loss')
+    plt.title('Training and Validation Losses Over Epochs')
+    plt.xlabel('Epochs')
+    plt.ylabel('Loss')
+    plt.legend()
+    plt.savefig(f"{save_path}/loss_plot.png")
+    plt.close()
+
+
+def save_dice_scores(dice_scores, filename, save_path):
+    pd.DataFrame(dice_scores).to_excel(f"{save_path}/{filename}.xlsx", index=False)
+
+
+def save_model(model, save_path):
+    torch.save(model.state_dict(), f"{save_path}/model_state.pth")
+    torch.save(model, f"{save_path}/model.pth")
+
+
+def visualize_predictions(model, dataloader, device, save_path):
+    model.eval()
+    fig, axs = plt.subplots(5, 3, figsize=(12, 15))
+    axs = axs.ravel()
+
+    with torch.no_grad():
+        for i, (images, masks) in enumerate(dataloader):
+            if i == 5:
+                break
+            images, masks = images.to(device), masks.to(device)
+            outputs = model(images)
+            outputs = (outputs > 0.5).float()
+            axs[i * 3].imshow(images[0].cpu().numpy().squeeze(), cmap='gray')
+            axs[i * 3 + 1].imshow(masks[0].cpu().numpy().squeeze(), cmap='gray')
+            axs[i * 3 + 2].imshow(outputs[0].cpu().numpy().squeeze(), cmap='gray')
+
+    plt.savefig(f'{save_path}/predictions.png')
+    plt.close()
