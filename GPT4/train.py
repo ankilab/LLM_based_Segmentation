@@ -7,6 +7,7 @@ from tqdm import tqdm
 import pandas as pd
 import time
 import matplotlib.pyplot as plt
+import numpy as np
 
 
 def dice_score(pred, target):
@@ -60,7 +61,7 @@ def test(model, dataloader, loss_fn, device):
             dice = dice_score(outputs, masks)
             dice_scores.append(dice.item())
     epoch_loss = running_loss / len(dataloader.dataset)
-    return epoch_loss, dice_scores
+    return np.mean(dice_scores)
 
 
 def save_losses(train_losses, val_losses, save_path):
@@ -80,8 +81,9 @@ def plot_losses(train_losses, val_losses, save_path):
     plt.close()
 
 
-def save_dice_scores(dice_scores, filename, save_path):
-    pd.DataFrame(dice_scores).to_excel(f"{save_path}/{filename}.xlsx", index=False)
+def save_dice_scores(dice_scores, save_path, file_name):
+    df_dice = pd.DataFrame(dice_scores)
+    df_dice.to_excel(f'{save_path}/{file_name}.xlsx', index=False)
 
 
 def save_model(model, save_path):

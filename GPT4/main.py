@@ -4,9 +4,11 @@ from torch import nn  # Add this import to include the neural network module
 from torch.utils.data import DataLoader
 from dataset import CustomDataset, get_transform
 from model import UNet
-from train import train_one_epoch, validate, save_losses, save_model
+from train import train_one_epoch, validate, save_losses, save_model, \
+    save_dice_scores, plot_losses, visualize_predictions, test
 from torch.optim import Adam
 from sklearn.model_selection import train_test_split
+import time
 import os
 
 if __name__ == "__main__":
@@ -34,13 +36,33 @@ if __name__ == "__main__":
 
     num_epochs = 25
     train_losses, val_losses = [], []
+    dice_scores_val = []
+    start_time = time.time()
 
     for epoch in range(num_epochs):
         train_loss = train_one_epoch(model, train_loader, loss_fn, optimizer, device)
-        val_loss = validate(model, val_loader, loss_fn, device)
+        val_loss, val_dice = validate(model, val_loader, loss_fn, device)
         train_losses.append(train_loss)
         val_losses.append(val_loss)
+        dice_scores_val.append(val_dice)
         print(f"Epoch {epoch+1}, Train Loss: {train_loss}, Val Loss: {val_loss}")
 
     save_losses(train_losses, val_losses, save_path)
     save_model(model, save_path)
+
+    save_dice_scores(dice_scores_val, save_path, 'validation_dice_scores')
+
+    # Plot losses
+    plot_losses(train_losses, val_losses, save_path)
+
+    # Calculate total training time
+    total_time = time.time() - start_time
+    print(f"Total training time: {total_time:.2f} seconds")
+
+    # Testing
+    dice_score_test = test(model, test_loader, loss_fn, device)
+    print(f"Test Dice Score: {dice_score_test:.4f}")
+    save_dice_scores([dice_score_test], save_path, 'test_dice_scores')
+
+    # Visualize predictions
+    visualize_predictions(model, test_loader, device, save_path)
