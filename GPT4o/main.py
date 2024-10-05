@@ -9,6 +9,7 @@ import torch.optim as optim
 import torch.nn as nn
 import torchvision.transforms as T  # Ensure torchvision.transforms is imported
 import time
+from torchinfo import summary  # Import torchinfo
 
 if __name__ == "__main__":
     # Hyperparameters
@@ -16,8 +17,8 @@ if __name__ == "__main__":
     num_epochs = 25
     learning_rate = 1e-4
     image_size = (256, 256)  # Define a consistent image size for all inputs
-    data_dir = 'D:\qy44lyfe\LLM segmentation\Data sets\BAGLS\subset'
-    save_path = 'D:\qy44lyfe\LLM segmentation\Results\GPT 4o'
+    data_dir = "D:\\qy44lyfe\\LLM segmentation\\Data sets\\BAGLS\\subset"
+    save_path = "D:\\qy44lyfe\\LLM segmentation\\Results\\GPT 4o\\test"
     os.makedirs(save_path, exist_ok=True)
 
     # Device configuration
@@ -39,6 +40,8 @@ if __name__ == "__main__":
 
     # Model
     model = UNet().to(device)
+    # Print model summary using torchinfo
+    summary(model, input_size=(batch_size, 1, image_size[0], image_size[1])) # 1 channel for grayscale
 
     # Loss and optimizer
     criterion = nn.BCELoss()

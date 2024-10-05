@@ -10,6 +10,7 @@ from torch.optim import Adam
 from sklearn.model_selection import train_test_split
 import time
 import os
+from torchinfo import summary
 
 if __name__ == "__main__":
     data_folder = "D:\qy44lyfe\LLM segmentation\Data sets\BAGLS\subset"
@@ -31,6 +32,8 @@ if __name__ == "__main__":
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = UNet().to(device)
+    summary(model, input_size=(16, 1, 256, 256))  # 1 channel for grayscale
+
     optimizer = Adam(model.parameters(), lr=0.001)
     loss_fn = nn.BCEWithLogitsLoss()
 
