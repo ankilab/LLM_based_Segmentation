@@ -1,52 +1,79 @@
 import torch
-from torch import optim
+import torch.nn as nn
+import torch.optim as optim
 from torch.utils.data import DataLoader
-from torch.nn import BCEWithLogitsLoss
-from torchvision.transforms import ToTensor, Normalize
-
-from Dataset import SegmentationDataset
+from tqdm import tqdm
+import pandas as pd
+import matplotlib.pyplot as plt
+import os
+import time
+from dataset import SegmentationDataset
 from model import Unet
 
-
-def train(model, train_loader, val_loader, learning_rate, num_epochs, device):
-    criterion = BCEWithLogitsLoss()
+def train(model, train_loader, val_loader, num_epochs, learning_rate, save_path):
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+    criterion = nn.BCEWithLogitsLoss()
+
+    train_losses = []
+    val_losses = []
+    val_dice_scores = []
+    test_dice_scores = []
+
+    start_time = time.time()
 
     for epoch in range(num_epochs):
         model.train()
-        running_loss = 0.0
-        for images, masks in train_loader:
-            images = images.to(device)
-            masks = masks.to(device)
-
+        epoch_train_loss = 0
+        for images, masks in tqdm(train_loader, desc=f"Epoch {epoch + 1}/{num_epochs} (Training)", leave=False):
             optimizer.zero_grad()
             outputs = model(images)
             loss = criterion(outputs, masks)
             loss.backward()
             optimizer.step()
+            epoch_train_loss += loss.item()
+        epoch_train_loss /= len(train_loader)
+        train_losses.append(epoch_train_loss)
 
-            running_loss += loss.item() * images.size(0)
+        model.eval()
+        with torch.no_grad():
+            epoch_val_loss = 0
+            epoch_val_dice = 0
+            for images, masks in tqdm(val_loader, desc=f"Epoch {epoch + 1}/{num_epochs} (Validation)", leave=False):
+                outputs = model(images)
+                val_loss = criterion(outputs, masks)
+                epoch_val_loss += val_loss.item()
+                epoch_val_dice += dice_coeff(outputs, masks)
+            epoch_val_loss /= len(val_loader)
+            epoch_val_dice /= len(val_loader)
+            val_losses.append(epoch_val_loss)
+            val_dice_scores.append(epoch_val_dice)
 
-        epoch_loss = running_loss / len(train_loader)
-        print(f"Epoch {epoch+1}/{num_epochs}: Training Loss: {epoch_loss:.4f}")
+        print(f"Epoch {epoch + 1}/{num_epochs}: Train Loss: {epoch_train_loss:.4f}, Val Loss: {epoch_val_loss:.4f}, Val Dice: {epoch_val_dice:.4f}")
 
-        validate(model, val_loader, device)
+    # Save losses and dice scores
+    pd.DataFrame(train_losses).to_excel(os.path.join(save_path, "train_losses.xlsx"))
+    pd.DataFrame(val_losses).to_excel(os.path.join(save_path, "val_losses.xlsx"))
+    pd.DataFrame(val_dice_scores).to_excel(os.path.join(save_path, "validation_dice_scores.xlsx"))
 
-    torch.save(model.state_dict(), "unet_model.pth")
+    # Save the model
+    torch.save(model.state_dict(), os.path.join(save_path, "unet_model.pth"))
+
+    # Calculate and print training time
+    total_time = time.time() - start_time
+    print(f"Total training time: {total_time:.2f} seconds")
+
+    # Visualize losses
+    plt.plot(train_losses, label="Training Loss")
+    plt.plot(val_losses, label="Validation Loss")
+    plt.xlabel("Epoch")
+    plt.ylabel("Loss")
+    plt.legend()
+    plt.savefig(os.path.join(save_path, "loss_plot.png"))
 
 
-def validate(model, val_loader, device):
-    model.eval()
-    with torch.no_grad():
-        running_loss = 0.0
-        for images, masks in val_loader:
-            images = images.to(device)
-            masks = masks.to(device)
-
-            outputs = model(images)
-            loss = criterion(outputs, masks)
-
-            running_loss += loss.item() * images.size(0)
-
-        epoch_loss = running_loss / len(val_loader)
-        print(f"Validation Loss: {epoch_loss:.4f}")
+def dice_coeff(pred, target):
+    smooth = 1.0
+    intersection = (pred * target).sum()
+    union = (pred + target).sum()
+    score = (2 * intersection + smooth) / (union + smooth)
+    return score.item()

@@ -1,37 +1,38 @@
 import torch
+from torch.utils.data import DataLoader
 from torchvision import transforms
-
-from Dataset import SegmentationDataset
 from train import train
+from dataset import SegmentationDataset
+from model import Unet
 
+if __name__ == "__main__":
+    data_dir = "D:\qy44lyfe\LLM segmentation\Data sets\BAGLS\subset"
+    save_path = "D:\qy44lyfe\LLM segmentation\Results\Gemini"
 
-def main():
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-    # Dataset paths
-    image_dir = "path/to/your/images"
-    mask_dir = "path/to/your/masks"
-
-    # Transformations
+    # Data transformations
     transform = transforms.Compose([
-        ToTensor(),
-        Normalize(mean=[0.5], std=[0.5])
+        transforms.Resize((256, 256)),  # Adjust image size if needed
+        transforms.ToTensor(),
     ])
 
     # Create datasets
-    train_dataset = SegmentationDataset(image_dir, mask_dir, transform=transform)
-    val_dataset = SegmentationDataset(image_dir, mask_dir, transform=transform)
+    dataset = SegmentationDataset(data_dir, transform=transform)
+    train_size = int(0.8 * len(dataset))
+    val_size = int(0.1 * len(dataset))
+    test_size = len(dataset) - train_size - val_size
+    train_dataset, val_dataset, test_dataset = torch.utils.data.random_split(dataset, [train_size, val_size, test_size])
 
     # Create data loaders
-    train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
-    val_loader = DataLoader(val_dataset, batch_size=32, shuffle=False)
+    train_loader = DataLoader(train_dataset, batch_size=16, shuffle=True)
+    val_loader = DataLoader(val_dataset, batch_size=16)
+    test_loader = DataLoader(test_dataset, batch_size=16)
 
-    # Create model
-    model = Unet().to(device)
+    # Create U-Net model
+    model = Unet(in_channels=1, out_channels=1)
+
+    # Print model summary and number of parameters
+    print(model)
+    print("Number of parameters:", sum(p.numel() for p in model.parameters()))
 
     # Train the model
-    train(model, train_loader, val_loader, learning_rate=0.001, num_epochs=10, device=device)
-
-
-if __name__ == "__main__":
-    main()
+    train(model, train_loader, val_loader, num_epochs=10, learning_rate=0.001, save_path=save_path)
