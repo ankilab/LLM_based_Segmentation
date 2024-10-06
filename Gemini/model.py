@@ -46,7 +46,7 @@ class Unet(nn.Module):
             nn.BatchNorm2d(out_channels),
             nn.ReLU(inplace=True),
         )
-        return
+        return block
 
     def forward(self, x):
         # Encode the input image
