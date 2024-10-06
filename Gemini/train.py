@@ -9,6 +9,7 @@ import os
 import time
 from dataset import SegmentationDataset
 from model import Unet
+import torch.nn.functional as F
 
 def train(model, train_loader, val_loader, num_epochs, learning_rate, save_path):
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
@@ -27,7 +28,9 @@ def train(model, train_loader, val_loader, num_epochs, learning_rate, save_path)
         for images, masks in tqdm(train_loader, desc=f"Epoch {epoch + 1}/{num_epochs} (Training)", leave=False):
             optimizer.zero_grad()
             outputs = model(images)
-            loss = criterion(outputs, masks)
+            # Resize the target masks to match the output size
+            masks_resized = F.interpolate(masks, size=outputs.shape[2:], mode='bilinear', align_corners=False)
+            loss = criterion(outputs, masks_resized)
             loss.backward()
             optimizer.step()
             epoch_train_loss += loss.item()
@@ -40,9 +43,13 @@ def train(model, train_loader, val_loader, num_epochs, learning_rate, save_path)
             epoch_val_dice = 0
             for images, masks in tqdm(val_loader, desc=f"Epoch {epoch + 1}/{num_epochs} (Validation)", leave=False):
                 outputs = model(images)
-                val_loss = criterion(outputs, masks)
+
+                # Resize the target masks for validation as well
+                masks_resized = F.interpolate(masks, size=outputs.shape[2:], mode='bilinear', align_corners=False)
+
+                val_loss = criterion(outputs, masks_resized)
                 epoch_val_loss += val_loss.item()
-                epoch_val_dice += dice_coeff(outputs, masks)
+                epoch_val_dice += dice_coeff(outputs, masks_resized)
             epoch_val_loss /= len(val_loader)
             epoch_val_dice /= len(val_loader)
             val_losses.append(epoch_val_loss)
