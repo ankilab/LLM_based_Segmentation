@@ -35,4 +35,4 @@ if __name__ == "__main__":
     print("Number of parameters:", sum(p.numel() for p in model.parameters()))
 
     # Train the model
-    train(model, train_loader, val_loader, num_epochs=3, learning_rate=0.001, save_path=save_path)
+    train(model, train_loader, val_loader, num_epochs=2, learning_rate=0.001, save_path=save_path)
