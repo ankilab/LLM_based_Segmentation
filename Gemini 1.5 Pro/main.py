@@ -73,6 +73,8 @@ if __name__ == "__main__":
     # 2. Model, Optimizer, Loss, Device
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = UNet().to(device)
+    if torch.cuda.is_available():
+        model.cuda()
 
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
     criterion = nn.BCELoss() #binary cross entropy loss for binary segmentation
