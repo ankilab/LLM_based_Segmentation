@@ -121,27 +121,55 @@ def test(model, test_loader, device, save_path):
     return dice_scores
 
 
-def visualize_predictions(model, test_dataset, device, save_path, num_samples=5):
+# def visualize_predictions(model, test_dataset, device, save_path, num_samples=5):
+#     model.eval()
+#     fig, axes = plt.subplots(num_samples, 3, figsize=(15, 5 * num_samples))
+#
+#     for i in range(num_samples):
+#         idx = np.random.randint(len(test_dataset))
+#         image, mask = test_dataset[idx]
+#         image_name = test_dataset.images[idx]
+#
+#         with torch.no_grad():
+#             input_tensor = image.unsqueeze(0).to(device)
+#             output = model(input_tensor)
+#             prediction = output.squeeze().cpu().numpy()
+#
+#         axes[i, 0].imshow(image.squeeze(), cmap='gray')
+#         axes[i, 0].set_title(f'Input Image\n{image_name}')
+#         axes[i, 1].imshow(mask.squeeze(), cmap='gray')
+#         axes[i, 1].set_title('Ground Truth')
+#         axes[i, 2].imshow(prediction, cmap='gray')
+#         axes[i, 2].set_title('Prediction')
+#
+#     plt.tight_layout()
+#     plt.savefig(f'{save_path}/predictions_visualization.png')
+#     plt.close()
+
+def visualize_predictions(model, dataloader, device, save_path):
     model.eval()
-    fig, axes = plt.subplots(num_samples, 3, figsize=(15, 5 * num_samples))
+    fig, axs = plt.subplots(5, 3, figsize=(12, 15))
+    axs = axs.ravel()
 
-    for i in range(num_samples):
-        idx = np.random.randint(len(test_dataset))
-        image, mask = test_dataset[idx]
-        image_name = test_dataset.images[idx]
+    with torch.no_grad():
+        for i, (images, masks) in enumerate(dataloader):
+            if i == 5:
+                break
+            # Ensure images are 4D
+            images = images.to(device)
+            masks = masks.to(device)
 
-        with torch.no_grad():
-            input_tensor = image.unsqueeze(0).to(device)
-            output = model(input_tensor)
-            prediction = output.squeeze().cpu().numpy()
+            # Ensure images have the batch dimension (if not already)
+            if images.dim() == 3:
+                images = images.unsqueeze(0)
 
-        axes[i, 0].imshow(image.squeeze(), cmap='gray')
-        axes[i, 0].set_title(f'Input Image\n{image_name}')
-        axes[i, 1].imshow(mask.squeeze(), cmap='gray')
-        axes[i, 1].set_title('Ground Truth')
-        axes[i, 2].imshow(prediction, cmap='gray')
-        axes[i, 2].set_title('Prediction')
+            outputs = model(images)
+            outputs = (outputs > 0.5).float()
 
-    plt.tight_layout()
-    plt.savefig(f'{save_path}/predictions_visualization.png')
+            # Plot input image, ground truth, and prediction
+            axs[i * 3].imshow(images[0].cpu().numpy().squeeze(), cmap='gray')
+            axs[i * 3 + 1].imshow(masks[0].cpu().numpy().squeeze(), cmap='gray')
+            axs[i * 3 + 2].imshow(outputs[0].cpu().numpy().squeeze(), cmap='gray')
+
+    plt.savefig(f'{save_path}/predictions.png')
     plt.close()

@@ -63,8 +63,8 @@ def main():
     optimizer = optim.Adam(model.parameters(), lr=0.001)
 
     # Train the model
-    # num_epochs = 50
-    num_epochs = 3
+    num_epochs = 50
+    # num_epochs = 2
     train(model, train_loader, val_loader, criterion, optimizer, num_epochs, device, save_path)
 
     # Test the model
