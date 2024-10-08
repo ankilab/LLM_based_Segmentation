@@ -5,7 +5,7 @@ from sklearn.model_selection import train_test_split
 from dataset import SegmentationDataset
 from model import UNet
 from torchvision import transforms
-from train import train_model
+from train import train_model, visualize_predictions
 import torch.nn as nn
 import torch.optim as optim
 
@@ -49,8 +49,11 @@ if __name__ == "__main__":
     criterion = nn.BCELoss()
     optimizer = optim.Adam(model.parameters(), lr=1e-4)
 
-    # num_epochs = 25
-    num_epochs = 3
+    num_epochs = 25
+
     train_model(model, train_loader, val_loader, criterion, optimizer, num_epochs, save_path)
 
     print(f"Training completed. Model and results saved to {save_path}")
+
+    # Visualize predictions
+    visualize_predictions(model, test_loader, device, save_path)

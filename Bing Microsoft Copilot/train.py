@@ -84,3 +84,51 @@ def plot_losses(train_losses, val_losses, save_path):
     plt.legend()
     plt.savefig(f"{save_path}/loss_plot.png")
     plt.close()
+
+
+def test(model, test_loader, device, save_path):
+    model.eval()
+    dice_scores = []
+
+    with torch.no_grad():
+        with tqdm(total=len(test_loader), desc='Testing') as pbar:
+            for images, masks in test_loader:
+                images, masks = images.to(device), masks.to(device)
+                outputs = model(images)
+                dice = dice_coefficient(outputs, masks)
+                dice_scores.extend(dice.tolist())
+                pbar.update(1)
+                pbar.set_postfix({'Dice': f'{dice.mean().item():.4f}'})
+
+    pd.DataFrame(dice_scores).to_excel(f'{save_path}/test_dice_scores.xlsx', index=False)
+
+    return dice_scores
+
+
+def visualize_predictions(model, dataloader, device, save_path):
+    model.eval()
+    fig, axs = plt.subplots(5, 3, figsize=(12, 15))
+    axs = axs.ravel()
+
+    with torch.no_grad():
+        for i, (images, masks) in enumerate(dataloader):
+            if i == 5:
+                break
+            # Ensure images are 4D
+            images = images.to(device)
+            masks = masks.to(device)
+
+            # Ensure images have the batch dimension (if not already)
+            if images.dim() == 3:
+                images = images.unsqueeze(0)
+
+            outputs = model(images)
+            outputs = (outputs > 0.5).float()
+
+            # Plot input image, ground truth, and prediction
+            axs[i * 3].imshow(images[0].cpu().numpy().squeeze(), cmap='gray')
+            axs[i * 3 + 1].imshow(masks[0].cpu().numpy().squeeze(), cmap='gray')
+            axs[i * 3 + 2].imshow(outputs[0].cpu().numpy().squeeze(), cmap='gray')
+
+    plt.savefig(f'{save_path}/predictions.png')
+    plt.close()
