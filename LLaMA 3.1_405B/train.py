@@ -1,10 +1,14 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
+import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 import pandas as pd
 import matplotlib.pyplot as plt
+import os
+import numpy as np
+
 
 def train(model, device, loader, optimizer, criterion, epoch):
     model.train()
@@ -14,6 +18,8 @@ def train(model, device, loader, optimizer, criterion, epoch):
             images, masks = images.to(device), masks.to(device)
             optimizer.zero_grad()
             outputs = model(images)
+            # Resize masks to match output size
+            masks = F.interpolate(masks, size=outputs.shape[2:], mode='nearest')
             loss = criterion(outputs, masks)
             loss.backward()
             optimizer.step()
@@ -25,30 +31,36 @@ def validate(model, device, loader, criterion, epoch):
     model.eval()
     total_loss = 0
     dice_scores = []
-    with torch.no_grad():
-        with tqdm(loader, desc=f'Validation Epoch {epoch+1}') as pbar:
-            for batch_idx, (images, masks) in enumerate(pbar):
-                images, masks = images.to(device), masks.to(device)
+    with tqdm(loader, desc=f'Validation Epoch {epoch+1}') as pbar:
+        for batch_idx, (images, masks) in enumerate(pbar):
+            images, masks = images.to(device), masks.to(device)
+            with torch.no_grad():
                 outputs = model(images)
+                # Resize masks to match output size
+                masks = F.interpolate(masks, size=outputs.shape[2:], mode='nearest')
                 loss = criterion(outputs, masks)
                 total_loss += loss.item()
-                dice_score = calculate_dice_score(outputs, masks)
-                dice_scores.append(dice_score)
-                pbar.set_postfix({'loss': f'{loss.item():.4f}', 'dice_score': f'{dice_score:.4f}'})
-    return total_loss / len(loader), dice_scores
+                pbar.set_postfix({'loss': f'{loss.item():.4f}'})
+                # Calculate Dice score
+                outputs = (outputs > 0.5).float()
+                dice_score = 2 * (outputs * masks).sum() / (outputs.sum() + masks.sum())
+                dice_scores.append(dice_score.item())
+    return total_loss / len(loader), np.mean(dice_scores)
 
 def test(model, device, loader):
     model.eval()
     dice_scores = []
-    with torch.no_grad():
-        with tqdm(loader, desc='Testing') as pbar:
-            for batch_idx, (images, masks) in enumerate(pbar):
-                images, masks = images.to(device), masks.to(device)
+    with tqdm(loader, desc='Testing') as pbar:
+        for batch_idx, (images, masks) in enumerate(pbar):
+            images, masks = images.to(device), masks.to(device)
+            with torch.no_grad():
                 outputs = model(images)
+                # Resize masks to match output size
+                masks = F.interpolate(masks, size=outputs.shape[2:], mode='nearest')
+                outputs = (outputs > 0.5).float()
                 dice_score = calculate_dice_score(outputs, masks)
-                dice_scores.append(dice_score)
-                pbar.set_postfix({'dice_score': f'{dice_score:.4f}'})
-    return dice_scores
+                dice_scores.append(dice_score.item())
+    return np.mean(dice_scores)
 
 def calculate_dice_score(outputs, masks):
     outputs = (outputs > 0.5).float()
@@ -71,14 +83,26 @@ def visualize_losses(train_losses, val_losses, save_path):
 def visualize_predictions(model, device, loader, save_path):
     model.eval()
     with torch.no_grad():
-        images, masks, outputs = next(iter(loader))
-        images, masks, outputs = images.to(device), masks.to(device), model(images)
-        fig, ax = plt.subplots(5, 3, figsize=(15, 15))
-        for i in range(5):
-            ax[i, 0].imshow(images[i].cpu().numpy(), cmap='gray')
-            ax[i, 0].set_title('Input Image')
-            ax[i, 1].imshow(masks[i].cpu().numpy(), cmap='gray')
-            ax[i, 1].set_title('Ground Truth')
-            ax[i, 2].imshow(outputs[i].cpu().numpy(), cmap='gray')
-            ax[i, 2].set_title('Prediction')
-        plt.savefig(os.path.join(save_path, 'predictions.png'))
+        images, masks = next(iter(loader))
+        images, masks = images.to(device), masks.to(device)
+        outputs = model(images)
+        # Resize masks to match output size
+        masks = F.interpolate(masks, size=outputs.shape[2:], mode='nearest')
+        outputs = (outputs > 0.5).float()
+        # Save predictions as images
+        for i in range(images.shape[0]):
+            image = images[i].cpu().numpy().squeeze()
+            mask = masks[i].cpu().numpy().squeeze()
+            output = outputs[i].cpu().numpy().squeeze()
+            plt.figure(figsize=(12, 4))
+            plt.subplot(1, 3, 1)
+            plt.imshow(image, cmap='gray')
+            plt.title('Image')
+            plt.subplot(1, 3, 2)
+            plt.imshow(mask, cmap='gray')
+            plt.title('Mask')
+            plt.subplot(1, 3, 3)
+            plt.imshow(output, cmap='gray')
+            plt.title('Prediction')
+            plt.savefig(os.path.join(save_path, f'prediction_{i}.png'))
+            plt.close()

@@ -10,7 +10,8 @@ from train import train, validate, test, save_losses, visualize_losses, visualiz
 def main():
     # Set hyperparameters
     batch_size = 32
-    epochs = 10
+    # epochs = 10
+    epochs = 3
     learning_rate = 0.001
     save_path = 'D:\qy44lyfe\LLM segmentation\Results\LLAMA 3.1 405B'
 
@@ -19,7 +20,11 @@ def main():
 
     # Load dataset
     dataset = BinarySegmentationDataset('D:\qy44lyfe\LLM segmentation\Data sets\BAGLS\subset')
-    train_dataset, val_dataset, test_dataset = torch.utils.data.random_split(dataset, [int(0.8 * len(dataset)), int(0.1 * len(dataset)), int(0.1 * len(dataset))])
+    train_size = int(0.8 * len(dataset))
+    val_size = int(0.1 * len(dataset))
+    test_size = len(dataset) - train_size - val_size
+
+    train_dataset, val_dataset, test_dataset = torch.utils.data.random_split(dataset, [train_size, val_size, test_size])
 
     # Create data loaders
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
@@ -30,6 +35,7 @@ def main():
     model = UNet()
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
     criterion = nn.BCELoss()
+    model.to(device)
 
     # Train model
     train_losses = []
