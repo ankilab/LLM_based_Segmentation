@@ -103,39 +103,67 @@ def test(model, test_loader, device):
     return avg_dice.cpu().item() # Move to CPU before returning
 
 
-def visualize_predictions(model, test_loader, device, save_path, num_samples=5):
+# def visualize_predictions(model, test_loader, device, save_path, num_samples=5):
+#     model.eval()
+#     indices = np.random.choice(len(test_loader.dataset), num_samples, replace=False)
+#     fig, axes = plt.subplots(num_samples, 3, figsize=(15, num_samples * 5))
+#
+#     with torch.no_grad():
+#         for i, idx in enumerate(indices):
+#             image, mask = test_loader.dataset[idx]
+#             image_tensor = image.unsqueeze(0).to(device)
+#             prediction = model(image_tensor)
+#             prediction = (prediction > 0.5).float() #binary
+#
+#             image = image.cpu().numpy().squeeze()
+#             mask = mask.cpu().numpy().squeeze()
+#             prediction = prediction.cpu().numpy().squeeze()
+#
+#             file_id = test_loader.dataset.image_files[idx].split('.')[0]
+#
+#             axes[i, 0].imshow(image, cmap='gray')
+#             axes[i, 0].set_title(f"{file_id}\nInput Image")
+#             axes[i, 0].axis('off')
+#
+#             axes[i, 1].imshow(mask, cmap='gray')
+#             axes[i, 1].set_title(f"{file_id}\nGround Truth")
+#             axes[i, 1].axis('off')
+#
+#             axes[i, 2].imshow(prediction, cmap='gray')
+#             axes[i, 2].set_title(f"{file_id}\nPrediction")
+#             axes[i, 2].axis('off')
+#
+#     plt.tight_layout()
+#     plt.savefig(os.path.join(save_path, "predictions_visualization.png"))
+
+
+def visualize_predictions(model, dataloader, device, save_path):
     model.eval()
-    indices = np.random.choice(len(test_loader.dataset), num_samples, replace=False)
-    fig, axes = plt.subplots(num_samples, 3, figsize=(15, num_samples * 5))
+    fig, axs = plt.subplots(5, 3, figsize=(12, 15))
+    axs = axs.ravel()
 
     with torch.no_grad():
-        for i, idx in enumerate(indices):
-            image, mask = test_loader.dataset[idx]
-            image_tensor = image.unsqueeze(0).to(device)
-            prediction = model(image_tensor)
-            prediction = (prediction > 0.5).float() #binary
+        for i, (images, masks) in enumerate(dataloader):
+            if i == 5:
+                break
+            # Ensure images are 4D
+            images = images.to(device)
+            masks = masks.to(device)
 
-            image = image.cpu().numpy().squeeze()
-            mask = mask.cpu().numpy().squeeze()
-            prediction = prediction.cpu().numpy().squeeze()
+            # Ensure images have the batch dimension (if not already)
+            if images.dim() == 3:
+                images = images.unsqueeze(0)
 
-            file_id = test_loader.dataset.image_files[idx].split('.')[0]
+            outputs = model(images)
+            outputs = (outputs > 0.5).float()
 
-            axes[i, 0].imshow(image, cmap='gray')
-            axes[i, 0].set_title(f"{file_id}\nInput Image")
-            axes[i, 0].axis('off')
+            # Plot input image, ground truth, and prediction
+            axs[i * 3].imshow(images[0].cpu().numpy().squeeze(), cmap='gray')
+            axs[i * 3 + 1].imshow(masks[0].cpu().numpy().squeeze(), cmap='gray')
+            axs[i * 3 + 2].imshow(outputs[0].cpu().numpy().squeeze(), cmap='gray')
 
-            axes[i, 1].imshow(mask, cmap='gray')
-            axes[i, 1].set_title(f"{file_id}\nGround Truth")
-            axes[i, 1].axis('off')
-
-            axes[i, 2].imshow(prediction, cmap='gray')
-            axes[i, 2].set_title(f"{file_id}\nPrediction")
-            axes[i, 2].axis('off')
-
-    plt.tight_layout()
-    plt.savefig(os.path.join(save_path, "predictions_visualization.png"))
-
+    plt.savefig(f'{save_path}/predictions.png')
+    plt.close()
 
 
 def plot_losses(train_losses, val_losses, save_path):
