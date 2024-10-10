@@ -23,7 +23,8 @@ if __name__ == "__main__":
     img_size = (256, 256) #resize images to this size
     batch_size = 8  # Adjust based on your GPU memory
     learning_rate = 1e-4
-    num_epochs = 20  # Adjust as needed
+    # num_epochs = 20  # Adjust as needed
+    num_epochs = 2
 
 
     # 1. Create Dataset and DataLoaders
@@ -100,8 +101,10 @@ if __name__ == "__main__":
         train_losses.append(train_loss)
 
         val_loss, val_dice = validate(model, val_loader, criterion, device, epoch + 1)
+        val_dice_all.append(val_dice.cpu().item())
+        # val_losses.append(val_loss.cpu().item())
         val_losses.append(val_loss)
-        val_dice_all.append(val_dice)
+        #val_dice_all.append(val_dice)
 
         # Save losses to Excel
         df_train = pd.DataFrame({'Epoch': range(1, epoch + 2), 'Train Loss': train_losses})

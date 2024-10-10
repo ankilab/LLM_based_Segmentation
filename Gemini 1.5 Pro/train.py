@@ -5,15 +5,26 @@ import torch.optim as optim
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 import pandas as pd
+import torch.nn.functional as F
 import numpy as np
 import os
 import time
 
-def dice_coef(preds, targets, smooth=1.):
-    preds = (preds > 0.5).float()  # Convert probabilities to binary predictions
-    intersection = (preds * targets).sum()
-    dice = (2. * intersection + smooth) / (preds.sum() + targets.sum() + smooth)
-    return dice.item()
+# def dice_coef(preds, targets, smooth=1.):
+#     preds = (preds > 0.5).float()  # Convert probabilities to binary predictions
+#     intersection = (preds * targets).sum()
+#     dice = (2. * intersection + smooth) / (preds.sum() + targets.sum() + smooth)
+#     return dice.item()
+
+def dice_coeff(pred, target):
+    smooth = 1.
+    num = pred.size(0)
+    m1 = pred.view(num, -1)  # Flatten
+    m2 = target.view(num, -1)  # Flatten
+    intersection = (m1 * m2).sum()
+
+    return (2. * intersection + smooth) / (m1.sum() + m2.sum() + smooth)
+
 
 def train_one_epoch(model, train_loader, optimizer, criterion, device):
     model.train()
@@ -26,7 +37,8 @@ def train_one_epoch(model, train_loader, optimizer, criterion, device):
 
         optimizer.zero_grad()
         outputs = model(images)
-        loss = criterion(outputs, masks)
+        resized_masks = F.interpolate(masks, size=outputs.shape[2:], mode='nearest')  # Resize masks
+        loss = criterion(outputs, resized_masks)
         loss.backward()
         optimizer.step()
 
@@ -39,42 +51,56 @@ def train_one_epoch(model, train_loader, optimizer, criterion, device):
 
 def validate(model, val_loader, criterion, device, epoch):
     model.eval()
-    running_loss = 0.0
-    dice_scores = []
-    pbar = tqdm(enumerate(val_loader), total=len(val_loader), desc="Validation")
-
+    total_loss = 0
+    total_dice = 0
     with torch.no_grad():
-        for i, (images, masks) in pbar:
-            images = images.to(device)
-            masks = masks.to(device)
-
+        loop = tqdm(enumerate(val_loader), total=len(val_loader))
+        for batch_idx, (images, masks) in loop:
+            images, masks = images.to(device), masks.to(device)
             outputs = model(images)
-            loss = criterion(outputs, masks)
-            running_loss += loss.item()
+            resized_masks = F.interpolate(masks, size=outputs.shape[2:], mode='nearest')
+            loss = criterion(outputs, resized_masks)
+            total_loss += loss.item()
 
-            dice = dice_coef(outputs, masks)
-            dice_scores.append(dice)
+            outputs = (outputs > 0.5).float()
+            dice = dice_coeff(outputs, resized_masks)
+            total_dice += dice  # Directly accumulate the Dice score. No need for .item()
 
-            pbar.set_postfix({'loss': loss.item(), 'dice': dice})
+            loop.set_postfix(loss=loss.item(), dice=dice) # No .item() here either
 
-    epoch_loss = running_loss / len(val_loader)
-    return epoch_loss, dice_scores
+        loop.set_description(f"Validation Epoch {epoch}")
+
+    val_loss = total_loss / len(val_loader)
+    val_dice = total_dice / len(val_loader)
+    return val_loss, val_dice
+
+
+import torch.nn.functional as F  # Import F for interpolation
 
 
 def test(model, test_loader, device):
     model.eval()
-    dice_scores = []
-    pbar = tqdm(enumerate(test_loader), total=len(test_loader), desc="Testing")
-
+    total_dice = 0
     with torch.no_grad():
-        for i, (images, masks) in pbar:
-            images = images.to(device)
-            masks = masks.to(device)
+        loop = tqdm(enumerate(test_loader), total=len(test_loader))
+        for batch_idx, (images, masks) in loop:
+            images, masks = images.to(device), masks.to(device)
             outputs = model(images)
-            dice = dice_coef(outputs, masks)
-            dice_scores.append(dice)
-            pbar.set_postfix({'dice': dice})
-    return dice_scores
+
+            # Resize outputs to match masks' dimensions using interpolation:
+            outputs = F.interpolate(outputs, size=masks.shape[2:], mode='bilinear', align_corners=False)
+
+
+            outputs = (outputs > 0.5).float()  # Apply thresholding *after* resizing
+            dice = dice_coeff(outputs, masks)
+            total_dice += dice
+
+            loop.set_postfix(dice=dice.cpu().item()) # Move to CPU before getting item
+
+        loop.set_description(f"Testing")
+
+    avg_dice = total_dice / len(test_loader)
+    return avg_dice.cpu().item() # Move to CPU before returning
 
 
 def visualize_predictions(model, test_loader, device, save_path, num_samples=5):
