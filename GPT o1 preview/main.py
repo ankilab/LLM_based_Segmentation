@@ -7,7 +7,8 @@ from sklearn.model_selection import train_test_split
 from dataset import CustomSegmentationDataset
 from model import UNet
 from train import train_model, validate_model, test_model, save_losses_to_excel, plot_losses, visualize_predictions
-from torchsummary import summary
+# from torchsummary import summary
+from torchinfo import summary
 import time
 import shutil
 from tqdm import tqdm
@@ -99,7 +100,8 @@ if __name__ == "__main__":
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
     # Print model summary and total parameters
-    summary(model, input_size=(1, image_size[0], image_size[1]))
+    # summary(model, input_size=(1, image_size[0], image_size[1]))
+    summary(model, input_size=(batch_size, 1, image_size[0], image_size[1]))  # 1 channel for grayscale
     total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     print(f"Total number of trainable parameters: {total_params}")
 

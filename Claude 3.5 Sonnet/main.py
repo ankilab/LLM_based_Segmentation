@@ -7,7 +7,7 @@ from sklearn.model_selection import train_test_split
 import numpy as np
 import shutil
 from tqdm import tqdm
-
+from torchinfo import summary
 from dataset import SegmentationDataset, get_transform
 from model import UNet
 from train import train, test, visualize_predictions
@@ -61,6 +61,9 @@ def main():
     # Set up loss function and optimizer
     criterion = nn.BCELoss()
     optimizer = optim.Adam(model.parameters(), lr=0.001)
+
+    # Print model summary using torchinfo
+    summary(model, input_size=(batch_size, 1, 256, 256))  # 1 channel for grayscale
 
     # Train the model
     num_epochs = 50

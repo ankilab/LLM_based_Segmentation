@@ -7,6 +7,7 @@ import torchvision.transforms as transforms
 import pandas as pd
 import shutil #for copying files
 import time
+from torchinfo import summary
 import torch.optim as optim
 
 
@@ -81,8 +82,9 @@ if __name__ == "__main__":
     criterion = nn.BCELoss() #binary cross entropy loss for binary segmentation
 
     #print model summary
-    from torchsummary import summary
-    summary(model, input_size=(1, img_size[0], img_size[1]))
+    # summary(model, input_size=(1, img_size[0], img_size[1]))
+    # Print model summary using torchinfo
+    summary(model, input_size=(batch_size, 1, img_size[0], img_size[1]))  # 1 channel for grayscale
     total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     print(f"Total number of learnable parameters: {total_params}")
 

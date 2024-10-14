@@ -8,6 +8,7 @@ from model import UNet
 import torch.nn as nn
 import torch.optim as optim
 from train import train_model, test_model
+from torchinfo import summary
 
 if __name__ == "__main__":
     image_dir = 'D:\qy44lyfe\LLM segmentation\Data sets\BAGLS\subset'
@@ -31,6 +32,8 @@ if __name__ == "__main__":
     model = UNet().to(device)
     criterion = nn.BCELoss()
     optimizer = optim.Adam(model.parameters(), lr=1e-4)
+    # Print model summary using torchinfo
+    summary(model, input_size=(16, 1, 128, 128))  # 1 channel for grayscale
 
     num_epochs = 25
     train_model(model, train_loader, val_loader, num_epochs, criterion, optimizer, device, save_path)

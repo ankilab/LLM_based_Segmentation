@@ -2,6 +2,7 @@ import os
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from torchinfo import summary
 from torch.utils.data import DataLoader
 from dataset import BinarySegmentationDataset
 from model import UNet
@@ -36,6 +37,8 @@ def main():
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
     criterion = nn.BCELoss()
     model.to(device)
+    # Print model summary using torchinfo
+    summary(model, input_size=(batch_size, 1, 256, 256))  # 1 channel for grayscale
 
     # Train model
     train_losses = []
@@ -47,7 +50,9 @@ def main():
         val_losses.append(val_loss)
 
     # Save model and losses
-    torch.save(model.state_dict(), os.path.join(save_path, 'model.pth'))
+    # torch.save(model.state_dict(), os.path.join(save_path, 'model.pth'))
+    torch.save(model, os.path.join(save_path, 'unet_model.pth'))
+    torch.save(model.state_dict(), os.path.join(save_path, 'unet_model_state_dict.pth'))
     save_losses(train_losses, val_losses, save_path)
 
     # Visualize losses
