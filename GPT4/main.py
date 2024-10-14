@@ -50,6 +50,10 @@ if __name__ == "__main__":
         dice_scores_val.append(val_dice)
         print(f"Epoch {epoch+1}, Train Loss: {train_loss}, Val Loss: {val_loss}")
 
+    # Calculate total training time
+    total_time = time.time() - start_time
+    print(f"Total training time: {total_time:.2f} seconds")
+
     save_losses(train_losses, val_losses, save_path)
     save_model(model, save_path)
 
@@ -57,10 +61,6 @@ if __name__ == "__main__":
 
     # Plot losses
     plot_losses(train_losses, val_losses, save_path)
-
-    # Calculate total training time
-    total_time = time.time() - start_time
-    print(f"Total training time: {total_time:.2f} seconds")
 
     # Testing
     dice_score_test = test(model, test_loader, loss_fn, device)

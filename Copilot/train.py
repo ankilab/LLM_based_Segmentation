@@ -19,6 +19,7 @@ def train_model(model, train_loader, val_loader, num_epochs, criterion, optimize
     val_losses = []
     val_dice_scores = []
 
+    start_time = time.time()
     for epoch in range(num_epochs):
         model.train()
         running_loss = 0.0
@@ -48,6 +49,9 @@ def train_model(model, train_loader, val_loader, num_epochs, criterion, optimize
         val_dice_scores.append(dice_scores)
 
         print(f"Epoch {epoch+1}/{num_epochs}, Train Loss: {epoch_loss:.4f}, Val Loss: {val_loss:.4f}")
+
+    total_time = time.time() - start_time
+    print(f"Total training time: {total_time:.2f} seconds")
 
     pd.DataFrame({'Epoch': list(range(1, num_epochs+1)), 'Train Loss': train_losses}).to_excel(f"{save_path}/train_losses.xlsx", index=False)
     pd.DataFrame({'Epoch': list(range(1, num_epochs+1)), 'Val Loss': val_losses}).to_excel(f"{save_path}/val_losses.xlsx", index=False)

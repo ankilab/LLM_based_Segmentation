@@ -7,6 +7,7 @@ from torch.utils.data import DataLoader
 from dataset import BinarySegmentationDataset
 from model import UNet
 from train import train, validate, test, save_losses, visualize_losses, visualize_predictions
+import time
 
 def main():
     # Set hyperparameters
@@ -43,11 +44,15 @@ def main():
     # Train model
     train_losses = []
     val_losses = []
+    start_time = time.time()
     for epoch in range(epochs):
         train_loss = train(model, device, train_loader, optimizer, criterion, epoch)
         val_loss, dice_scores = validate(model, device, val_loader, criterion, epoch)
         train_losses.append(train_loss)
         val_losses.append(val_loss)
+
+    total_time = time.time() - start_time
+    print(f"Total training time: {total_time:.2f} seconds")
 
     # Save model and losses
     # torch.save(model.state_dict(), os.path.join(save_path, 'model.pth'))

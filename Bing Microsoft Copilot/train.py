@@ -14,6 +14,7 @@ def train_model(model, train_loader, val_loader, criterion, optimizer, num_epoch
     train_losses = []
     val_losses = []
     val_dice_scores = []
+    start_time = time.time()
 
     for epoch in range(num_epochs):
         model.train()
@@ -47,6 +48,10 @@ def train_model(model, train_loader, val_loader, criterion, optimizer, num_epoch
         val_dice_scores.append(dice_scores)
 
         print(f"Epoch {epoch + 1}/{num_epochs}, Training Loss: {epoch_loss:.4f}, Validation Loss: {val_loss:.4f}")
+
+    # Calculate total training time
+    total_time = time.time() - start_time
+    print(f"Total training time: {total_time:.2f} seconds")
 
     save_losses(train_losses, val_losses, save_path)
     save_dice_scores(val_dice_scores, save_path, "validation_dice_scores.xlsx")

@@ -65,6 +65,10 @@ if __name__ == "__main__":
 
         print(f"Training Loss: {train_loss:.4f}, Validation Loss: {val_loss:.4f}, Validation Dice: {val_dice:.4f}")
 
+    # Calculate total training time
+    total_time = time.time() - start_time
+    print(f"Total training time: {total_time:.2f} seconds")
+
     # Save model
     torch.save(model, os.path.join(save_path, 'unet_model.pth'))
     torch.save(model.state_dict(), os.path.join(save_path, 'unet_model_state_dict.pth'))
@@ -75,10 +79,6 @@ if __name__ == "__main__":
 
     # Plot losses
     plot_losses(train_losses, val_losses, save_path)
-
-    # Calculate total training time
-    total_time = time.time() - start_time
-    print(f"Total training time: {total_time:.2f} seconds")
 
     # Testing
     dice_score_test = test(model, test_loader, device)
