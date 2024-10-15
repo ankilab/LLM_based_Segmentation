@@ -24,6 +24,12 @@ if __name__ == "__main__":
     train_data, test_data = train_test_split(dataset, test_size=0.2, random_state=42)
     val_data, test_data = train_test_split(test_data, test_size=0.5, random_state=42)
 
+    # Print sizes
+    print(f"Total images: {len(dataset)}")
+    print(f"Training images: {len(train_data)}")
+    print(f"Validation images: {len(val_data)}")
+    print(f"Test images: {len(test_data)}")
+
     train_loader = DataLoader(train_data, batch_size=16, shuffle=True)
     val_loader = DataLoader(val_data, batch_size=16, shuffle=False)
     test_loader = DataLoader(test_data, batch_size=16, shuffle=False)

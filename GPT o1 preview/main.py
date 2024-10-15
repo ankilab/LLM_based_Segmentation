@@ -15,14 +15,14 @@ from tqdm import tqdm
 
 if __name__ == "__main__":
     # Paths
-    # dataset_path = 'D:\qy44lyfe\LLM segmentation\Data sets\BAGLS\subset'
-    dataset_path = 'D:\qy44lyfe\LLM segmentation\Data sets\Swallowing\images'
+    dataset_path = 'D:\qy44lyfe\LLM segmentation\Data sets\BAGLS\subset'
+    # dataset_path = 'D:\qy44lyfe\LLM segmentation\Data sets\Swallowing\images'
     image_dir = dataset_path
-    # mask_dir = dataset_path
-    mask_dir = 'D:\qy44lyfe\LLM segmentation\Data sets\Swallowing\masks'
+    mask_dir = dataset_path
+    # mask_dir = 'D:\qy44lyfe\LLM segmentation\Data sets\Swallowing\masks'
 
     # Save path for outputs
-    save_path = 'D:\qy44lyfe\LLM segmentation\Results\GPT o1 preview\out of the box\Bolus output'
+    save_path = 'D:\qy44lyfe\LLM segmentation\Results\GPT o1 preview\out of the box\BAGLS output'
     if not os.path.exists(save_path):
         os.makedirs(save_path)
 
@@ -53,8 +53,8 @@ if __name__ == "__main__":
         img_dest = os.path.join(save_path, split, 'images')
         mask_dest = os.path.join(save_path, split, 'masks')
         for img_name in tqdm(file_list, desc=f"Copying {split} data"):
-            # mask_name = img_name.replace('.png', '_seg.png')
-            mask_name = img_name
+            mask_name = img_name.replace('.png', '_seg.png')
+            # mask_name = img_name
             shutil.copy(os.path.join(image_dir, img_name), os.path.join(img_dest, img_name))
             shutil.copy(os.path.join(mask_dir, mask_name), os.path.join(mask_dest, mask_name))
 

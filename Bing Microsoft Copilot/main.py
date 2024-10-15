@@ -45,6 +45,12 @@ if __name__ == "__main__":
     val_loader = DataLoader(val_data, batch_size=16, shuffle=False)
     test_loader = DataLoader(test_data, batch_size=16, shuffle=False)
 
+    # Print sizes
+    print(f"Total images: {len(dataset)}")
+    print(f"Training images: {len(train_data)}")
+    print(f"Validation images: {len(val_data)}")
+    print(f"Test images: {len(test_data)}")
+
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = UNet().to(device)
     criterion = nn.BCELoss()

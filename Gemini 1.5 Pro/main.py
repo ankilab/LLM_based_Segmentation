@@ -57,11 +57,10 @@ if __name__ == "__main__":
             shutil.copy(os.path.join(image_dir, original_image_name), split_dir)
             shutil.copy(os.path.join(image_dir, original_mask_name), split_dir)
 
+    print(f"Total images: {len(dataset)}")
     print("Train dataset size:", len(train_dataset))
     print("Validation dataset size:", len(val_dataset))
     print("Test dataset size:", len(test_dataset))
-
-
 
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)

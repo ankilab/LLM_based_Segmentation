@@ -20,8 +20,8 @@ class CustomSegmentationDataset(Dataset):
 
     def __getitem__(self, idx):
         img_name = self.images[idx]
-        # mask_name = img_name.replace('.png', '_seg.png')
-        mask_name = img_name
+        mask_name = img_name.replace('.png', '_seg.png')
+        # mask_name = img_name
 
         img_path = os.path.join(self.image_dir, img_name)
         mask_path = os.path.join(self.mask_dir, mask_name)

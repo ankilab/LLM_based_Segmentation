@@ -39,6 +39,7 @@ def main():
     val_size = train_val_size - train_size
     train_dataset, val_dataset = random_split(train_val_dataset, [train_size, val_size])
 
+    print(f"Total images: {len(dataset)}")
     print(f"Train set size: {len(train_dataset)}")
     print(f"Validation set size: {len(val_dataset)}")
     print(f"Test set size: {len(test_dataset)}")
