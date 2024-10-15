@@ -63,7 +63,8 @@ def train(model, train_loader, val_loader, criterion, optimizer, num_epochs, dev
                     loss = criterion(outputs, masks)
                     val_loss += loss.item()
                     dice = dice_coeff(outputs, masks)
-                    dice_scores.extend(dice.tolist())
+                    # dice_scores.extend(dice.tolist())
+                    dice_scores.append(dice_coeff(outputs, masks).item())
                     pbar.update(1)
                     pbar.set_postfix({'Loss': f'{loss.item():.4f}', 'Dice': f'{dice.mean().item():.4f}'})
 
@@ -89,7 +90,8 @@ def train(model, train_loader, val_loader, criterion, optimizer, num_epochs, dev
                                                                     header=['Epoch', 'Loss'])
 
     # Save validation dice scores
-    pd.DataFrame(val_dice_scores).to_excel(f'{save_path}/validation_dice_scores.xlsx', index=False)
+    # pd.DataFrame(val_dice_scores).to_excel(f'{save_path}/validation_dice_scores.xlsx', index=False)
+    pd.DataFrame(val_dice_scores).to_excel(f"{save_path}/validation_dice_scores.xlsx", index=False)
 
     # Plot losses
     epochs = list(range(1, len(train_losses) + 1))
@@ -113,11 +115,13 @@ def test(model, test_loader, device, save_path):
                 images, masks = images.to(device), masks.to(device)
                 outputs = model(images)
                 dice = dice_coeff(outputs, masks)
-                dice_scores.extend(dice.tolist())
+                # dice_scores.extend(dice.tolist())
+                dice_scores.append(dice_coeff(outputs, masks).item())
                 pbar.update(1)
                 pbar.set_postfix({'Dice': f'{dice.mean().item():.4f}'})
 
-    pd.DataFrame(dice_scores).to_excel(f'{save_path}/test_dice_scores.xlsx', index=False)
+    # pd.DataFrame(dice_scores).to_excel(f'{save_path}/test_dice_scores.xlsx', index=False)
+    pd.DataFrame(dice_scores).to_excel(f"{save_path}/test_dice_scores.xlsx", index=False)
 
     return dice_scores
 

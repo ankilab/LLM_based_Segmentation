@@ -42,7 +42,8 @@ def train_model(model, train_loader, val_loader, criterion, optimizer, num_epoch
                 loss = criterion(outputs, masks)
                 val_loss += loss.item() * images.size(0)
                 dice_score = dice_coefficient(outputs, masks)
-                dice_scores.append(dice_score)
+                # dice_scores.append(dice_score)
+                dice_scores.append(dice_score.item())
 
         val_loss /= len(val_loader.dataset)
         val_losses.append(val_loss)
@@ -55,7 +56,8 @@ def train_model(model, train_loader, val_loader, criterion, optimizer, num_epoch
     print(f"Total training time: {total_time:.2f} seconds")
 
     save_losses(train_losses, val_losses, save_path)
-    save_dice_scores(val_dice_scores, save_path, "validation_dice_scores.xlsx")
+    # save_dice_scores(val_dice_scores, save_path, "validation_dice_scores.xlsx")
+    pd.DataFrame(val_dice_scores).to_excel(f"{save_path}/validation_dice_scores.xlsx", index=False)
     plot_losses(train_losses, val_losses, save_path)
     torch.save(model.state_dict(), f"{save_path}/unet_model.pth")
     torch.save(model, f"{save_path}/unet_model_full.pth")
@@ -113,11 +115,13 @@ def test(model, test_loader, device, save_path):
                 images, masks = images.to(device), masks.to(device)
                 outputs = model(images)
                 dice = dice_coefficient(outputs, masks)
-                dice_scores.extend(dice.tolist())
+                # dice_scores.extend(dice.tolist())
+                dice_scores.append(dice_coefficient(outputs, masks).item())
                 pbar.update(1)
                 pbar.set_postfix({'Dice': f'{dice.mean().item():.4f}'})
 
-    pd.DataFrame(dice_scores).to_excel(f'{save_path}/test_dice_scores.xlsx', index=False)
+    # pd.DataFrame(dice_scores).to_excel(f'{save_path}/test_dice_scores.xlsx', index=False)
+    pd.DataFrame(dice_scores).to_excel(f"{save_path}/test_dice_scores.xlsx", index=False)
 
     return dice_scores
 

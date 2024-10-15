@@ -56,6 +56,7 @@ def train_model(model, train_loader, val_loader, num_epochs, criterion, optimize
 
     pd.DataFrame({'Epoch': list(range(1, num_epochs+1)), 'Train Loss': train_losses}).to_excel(f"{save_path}/train_losses.xlsx", index=False)
     pd.DataFrame({'Epoch': list(range(1, num_epochs+1)), 'Val Loss': val_losses}).to_excel(f"{save_path}/val_losses.xlsx", index=False)
+
     pd.DataFrame(val_dice_scores).to_excel(f"{save_path}/validation_dice_scores.xlsx", index=False)
 
     torch.save(model.state_dict(), f"{save_path}/unet_model.pth")

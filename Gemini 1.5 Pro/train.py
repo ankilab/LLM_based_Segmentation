@@ -49,10 +49,11 @@ def train_one_epoch(model, train_loader, optimizer, criterion, device):
     return epoch_loss
 
 
-def validate(model, val_loader, criterion, device, epoch):
+def validate(model, val_loader, criterion, device, epoch, save_path):
     model.eval()
     total_loss = 0
     total_dice = 0
+    dice_scores = []
     with torch.no_grad():
         loop = tqdm(enumerate(val_loader), total=len(val_loader))
         for batch_idx, (images, masks) in loop:
@@ -64,6 +65,7 @@ def validate(model, val_loader, criterion, device, epoch):
 
             outputs = (outputs > 0.5).float()
             dice = dice_coeff(outputs, resized_masks)
+            dice_scores.append(dice.cpu().item())
             total_dice += dice  # Directly accumulate the Dice score. No need for .item()
 
             loop.set_postfix(loss=loss.item(), dice=dice) # No .item() here either
@@ -72,12 +74,26 @@ def validate(model, val_loader, criterion, device, epoch):
 
     val_loss = total_loss / len(val_loader)
     val_dice = total_dice / len(val_loader)
+    # Save dice scores to Excel
+    df_new = pd.DataFrame([dice_scores])
+    excel_path = os.path.join(save_path, 'validation_dice_scores.xlsx')
+    if not os.path.exists(excel_path):
+        df_new.to_excel(excel_path, index=False, header=False)
+    else:
+        # Read existing data
+        df_existing = pd.read_excel(excel_path, header=None)
+        # Append new data
+        df_combined = pd.concat([df_existing, df_new], ignore_index=True)
+        # Write back to Excel
+        df_combined.to_excel(excel_path, index=False, header=False)
+
     return val_loss, val_dice
 
 
-def test(model, test_loader, device):
+def test(model, test_loader, device, save_path):
     model.eval()
     total_dice = 0
+    dice_scores = []
     with torch.no_grad():
         loop = tqdm(enumerate(test_loader), total=len(test_loader))
         for batch_idx, (images, masks) in loop:
@@ -91,12 +107,18 @@ def test(model, test_loader, device):
             outputs = (outputs > 0.5).float()  # Apply thresholding *after* resizing
             dice = dice_coeff(outputs, masks)
             total_dice += dice
+            dice_scores.append(dice.cpu().item())
 
             loop.set_postfix(dice=dice.cpu().item()) # Move to CPU before getting item
 
         loop.set_description(f"Testing")
 
     avg_dice = total_dice / len(test_loader)
+    # Save dice scores to Excel
+    df_new = pd.DataFrame([dice_scores])
+    excel_path = os.path.join(save_path, 'test_dice_scores.xlsx')
+    df_new.to_excel(excel_path, index=False, header=False)
+
     return avg_dice.cpu().item() # Move to CPU before returning
 
 

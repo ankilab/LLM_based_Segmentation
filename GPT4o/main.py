@@ -57,7 +57,7 @@ if __name__ == "__main__":
     for epoch in range(num_epochs):
         print(f'Epoch {epoch + 1}/{num_epochs}')
         train_loss = train(model, train_loader, criterion, optimizer, device)
-        val_loss, val_dice = validate(model, val_loader, criterion, device)
+        val_loss, val_dice = validate(model, val_loader, criterion, device, save_path)
 
         train_losses.append(train_loss)
         val_losses.append(val_loss)
@@ -75,15 +75,15 @@ if __name__ == "__main__":
 
     # Save training losses and validation losses
     save_losses(train_losses, val_losses, save_path)
-    save_dice_scores(dice_scores_val, save_path, 'validation_dice_scores')
+    # save_dice_scores(dice_scores_val, save_path, 'validation_dice_scores')
 
     # Plot losses
     plot_losses(train_losses, val_losses, save_path)
 
     # Testing
-    dice_score_test = test(model, test_loader, device)
+    dice_score_test = test(model, test_loader, device, save_path)
     print(f"Test Dice Score: {dice_score_test:.4f}")
-    save_dice_scores([dice_score_test], save_path, 'test_dice_scores')
+    # save_dice_scores([dice_score_test], save_path, 'test_dice_scores')
 
     # Visualize predictions
     visualize_predictions(model, test_loader, device, save_path)

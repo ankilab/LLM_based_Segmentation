@@ -102,8 +102,8 @@ if __name__ == "__main__":
         train_loss = train_one_epoch(model, train_loader, optimizer, criterion, device)
         train_losses.append(train_loss)
 
-        val_loss, val_dice = validate(model, val_loader, criterion, device, epoch + 1)
-        val_dice_all.append(val_dice.cpu().item())
+        val_loss, val_dice = validate(model, val_loader, criterion, device, epoch + 1, save_path)
+        # val_dice_all.append(val_dice.cpu().item())
         # val_losses.append(val_loss.cpu().item())
         val_losses.append(val_loss)
         #val_dice_all.append(val_dice)
@@ -130,17 +130,17 @@ if __name__ == "__main__":
     plot_losses(train_losses, val_losses, save_path)
 
     # 6. Save validation Dice scores to Excel
-    df_dice = pd.DataFrame(val_dice_all)
-    df_dice.to_excel(os.path.join(save_path, "validation_dice_scores.xlsx"), index=False)
+    #df_dice = pd.DataFrame(val_dice_all)
+    #df_dice.to_excel(os.path.join(save_path, "validation_dice_scores.xlsx"), index=False)
 
 
     # 7. Testing
-    test_dice = test(model, test_loader, device)
+    test_dice = test(model, test_loader, device, save_path)
     test_dice_all.append(test_dice)
 
     # 8. Save Test Dice scores to Excel
-    df_test_dice = pd.DataFrame(test_dice_all)
-    df_test_dice.to_excel(os.path.join(save_path, "test_dice_scores.xlsx"), index=False)
+    #df_test_dice = pd.DataFrame(test_dice_all)
+    #df_test_dice.to_excel(os.path.join(save_path, "test_dice_scores.xlsx"), index=False)
 
 
     # 9. Visualize Predictions

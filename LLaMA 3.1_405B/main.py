@@ -47,7 +47,7 @@ def main():
     start_time = time.time()
     for epoch in range(epochs):
         train_loss = train(model, device, train_loader, optimizer, criterion, epoch)
-        val_loss, dice_scores = validate(model, device, val_loader, criterion, epoch)
+        val_loss, dice_scores = validate(model, device, val_loader, criterion, epoch, save_path)
         train_losses.append(train_loss)
         val_losses.append(val_loss)
 
@@ -64,7 +64,7 @@ def main():
     visualize_losses(train_losses, val_losses, save_path)
 
     # Test model
-    test_dice_scores = test(model, device, test_loader)
+    test_dice_scores = test(model, device, test_loader, save_path)
 
     # Visualize predictions
     visualize_predictions(model, device, test_loader, save_path)

@@ -5,7 +5,7 @@ from sklearn.model_selection import train_test_split
 from dataset import SegmentationDataset
 from model import UNet
 from torchvision import transforms
-from train import train_model, visualize_predictions
+from train import train_model, visualize_predictions, test
 import torch.nn as nn
 import torch.optim as optim
 from torchinfo import summary
@@ -58,5 +58,6 @@ if __name__ == "__main__":
 
     print(f"Training completed. Model and results saved to {save_path}")
 
+    test(model, test_loader, device, save_path)
     # Visualize predictions
     visualize_predictions(model, test_loader, device, save_path)

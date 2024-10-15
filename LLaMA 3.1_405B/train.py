@@ -32,7 +32,7 @@ def train(model, device, loader, optimizer, criterion, epoch):
             pbar.set_postfix({'loss': f'{loss.item():.4f}'})
     return total_loss / len(loader)
 
-def validate(model, device, loader, criterion, epoch):
+def validate(model, device, loader, criterion, epoch, save_path):
     model.eval()
     total_loss = 0
     dice_scores = []
@@ -50,9 +50,22 @@ def validate(model, device, loader, criterion, epoch):
                 outputs = (outputs > 0.5).float()
                 dice_score = 2 * (outputs * masks).sum() / (outputs.sum() + masks.sum())
                 dice_scores.append(dice_score.item())
+        # Save dice scores to Excel
+        df_new = pd.DataFrame([dice_scores])
+        excel_path = os.path.join(save_path, 'validation_dice_scores.xlsx')
+        if not os.path.exists(excel_path):
+            df_new.to_excel(excel_path, index=False, header=False)
+        else:
+            # Read existing data
+            df_existing = pd.read_excel(excel_path, header=None)
+            # Append new data
+            df_combined = pd.concat([df_existing, df_new], ignore_index=True)
+            # Write back to Excel
+            df_combined.to_excel(excel_path, index=False, header=False)
+
     return total_loss / len(loader), np.mean(dice_scores)
 
-def test(model, device, loader):
+def test(model, device, loader, save_path):
     model.eval()
     dice_scores = []
     with tqdm(loader, desc='Testing') as pbar:
@@ -65,6 +78,10 @@ def test(model, device, loader):
                 outputs = (outputs > 0.5).float()
                 dice_score = calculate_dice_score(outputs, masks)
                 dice_scores.append(dice_score.item())
+    # Save dice scores to Excel
+    df_new = pd.DataFrame([dice_scores])
+    excel_path = os.path.join(save_path, 'test_dice_scores.xlsx')
+    df_new.to_excel(excel_path, index=False, header=False)
     return np.mean(dice_scores)
 
 def save_losses(train_losses, val_losses, save_path):

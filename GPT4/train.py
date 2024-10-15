@@ -33,7 +33,7 @@ def train_one_epoch(model, dataloader, loss_fn, optimizer, device):
     return epoch_loss
 
 
-def validate(model, dataloader, loss_fn, device):
+def validate(model, dataloader, loss_fn, device, save_path):
     model.eval()
     running_loss = 0.0
     dice_scores = []
@@ -46,10 +46,24 @@ def validate(model, dataloader, loss_fn, device):
             dice = dice_score(outputs, masks)
             dice_scores.append(dice.item())
     epoch_loss = running_loss / len(dataloader.dataset)
+
+    # Save dice scores to Excel
+    df_new = pd.DataFrame([dice_scores])
+    excel_path = os.path.join(save_path, 'validation_dice_scores.xlsx')
+    if not os.path.exists(excel_path):
+        df_new.to_excel(excel_path, index=False, header=False)
+    else:
+        # Read existing data
+        df_existing = pd.read_excel(excel_path, header=None)
+        # Append new data
+        df_combined = pd.concat([df_existing, df_new], ignore_index=True)
+        # Write back to Excel
+        df_combined.to_excel(excel_path, index=False, header=False)
+
     return epoch_loss, dice_scores
 
 
-def test(model, dataloader, loss_fn, device):
+def test(model, dataloader, loss_fn, device, save_path):
     model.eval()
     running_loss = 0.0
     dice_scores = []
@@ -62,6 +76,12 @@ def test(model, dataloader, loss_fn, device):
             dice = dice_score(outputs, masks)
             dice_scores.append(dice.item())
     epoch_loss = running_loss / len(dataloader.dataset)
+
+    # Save dice scores to Excel
+    df_new = pd.DataFrame([dice_scores])
+    excel_path = os.path.join(save_path, 'test_dice_scores.xlsx')
+    df_new.to_excel(excel_path, index=False, header=False)
+
     return np.mean(dice_scores)
 
 
