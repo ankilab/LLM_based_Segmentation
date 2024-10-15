@@ -6,6 +6,7 @@ from tqdm import tqdm
 import pandas as pd
 import matplotlib.pyplot as plt
 import time
+import os
 
 # Define the device
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -80,16 +81,27 @@ def save_dice_scores(dice_scores, save_path, filename):
     dice_df.to_excel(f"{save_path}/{filename}", index=False)
 
 
+# def plot_losses(train_losses, val_losses, save_path):
+#     plt.figure()
+#     plt.plot(train_losses, label='Training Loss')
+#     plt.plot(val_losses, label='Validation Loss')
+#     plt.xlabel('Epoch')
+#     plt.ylabel('Loss')
+#     plt.legend()
+#     plt.savefig(f"{save_path}/loss_plot.png")
+#     plt.close()
+
 def plot_losses(train_losses, val_losses, save_path):
-    plt.figure()
-    plt.plot(train_losses, label='Training Loss')
-    plt.plot(val_losses, label='Validation Loss')
-    plt.xlabel('Epoch')
+    epochs = list(range(1, len(train_losses) + 1))
+    plt.figure(figsize=(6, 5))
+    plt.plot(epochs, train_losses, 'b', label='Training loss')
+    plt.plot(epochs, val_losses, 'orange', label='Validation loss')
+    plt.title('Training and Validation losses')
+    plt.xlabel('Epochs')
     plt.ylabel('Loss')
     plt.legend()
-    plt.savefig(f"{save_path}/loss_plot.png")
+    plt.savefig(os.path.join(save_path, 'losses.png'))
     plt.close()
-
 
 def test(model, test_loader, device, save_path):
     model.eval()

@@ -5,10 +5,10 @@ import torch.optim as optim
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 import pandas as pd
-import torch.nn.functional as F
 import numpy as np
 import os
 import time
+import torch.nn.functional as F  # Import F for interpolation
 
 # def dice_coef(preds, targets, smooth=1.):
 #     preds = (preds > 0.5).float()  # Convert probabilities to binary predictions
@@ -73,9 +73,6 @@ def validate(model, val_loader, criterion, device, epoch):
     val_loss = total_loss / len(val_loader)
     val_dice = total_dice / len(val_loader)
     return val_loss, val_dice
-
-
-import torch.nn.functional as F  # Import F for interpolation
 
 
 def test(model, test_loader, device):
@@ -165,13 +162,25 @@ def visualize_predictions(model, dataloader, device, save_path):
     plt.savefig(f'{save_path}/predictions.png')
     plt.close()
 
+#
+# def plot_losses(train_losses, val_losses, save_path):
+#     plt.figure(figsize=(10, 5))
+#     plt.plot(train_losses, label='Training Loss')
+#     plt.plot(val_losses, label='Validation Loss')
+#     plt.xlabel('Epoch')
+#     plt.ylabel('Loss')
+#     plt.title('Training and Validation Losses')
+#     plt.legend()
+#     plt.savefig(os.path.join(save_path, "loss_plot.png"))
 
 def plot_losses(train_losses, val_losses, save_path):
-    plt.figure(figsize=(10, 5))
-    plt.plot(train_losses, label='Training Loss')
-    plt.plot(val_losses, label='Validation Loss')
-    plt.xlabel('Epoch')
+    epochs = list(range(1, len(train_losses) + 1))
+    plt.figure(figsize=(6, 5))
+    plt.plot(epochs, train_losses, 'b', label='Training loss')
+    plt.plot(epochs, val_losses, 'orange', label='Validation loss')
+    plt.title('Training and Validation losses')
+    plt.xlabel('Epochs')
     plt.ylabel('Loss')
-    plt.title('Training and Validation Losses')
     plt.legend()
-    plt.savefig(os.path.join(save_path, "loss_plot.png"))
+    plt.savefig(os.path.join(save_path, 'losses.png'))
+    plt.close()

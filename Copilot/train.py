@@ -6,6 +6,7 @@ from tqdm import tqdm
 import pandas as pd
 import time
 import matplotlib.pyplot as plt
+import os
 
 def dice_coefficient(pred, target):
     smooth = 1.
@@ -60,13 +61,24 @@ def train_model(model, train_loader, val_loader, num_epochs, criterion, optimize
     torch.save(model.state_dict(), f"{save_path}/unet_model.pth")
     torch.save(model, f"{save_path}/unet_model_full.pth")
 
-    plt.figure()
-    plt.plot(range(1, num_epochs+1), train_losses, label='Train Loss')
-    plt.plot(range(1, num_epochs+1), val_losses, label='Val Loss')
-    plt.xlabel('Epoch')
+    epochs = list(range(1, len(train_losses) + 1))
+    plt.figure(figsize=(6, 5))
+    plt.plot(epochs, train_losses, 'b', label='Training loss')
+    plt.plot(epochs, val_losses, 'orange', label='Validation loss')
+    plt.title('Training and Validation losses')
+    plt.xlabel('Epochs')
     plt.ylabel('Loss')
     plt.legend()
-    plt.savefig(f"{save_path}/loss_plot.png")
+    plt.savefig(os.path.join(save_path, 'losses.png'))
+    plt.close()
+
+    # plt.figure()
+    # plt.plot(range(1, num_epochs+1), train_losses, label='Train Loss')
+    # plt.plot(range(1, num_epochs+1), val_losses, label='Val Loss')
+    # plt.xlabel('Epoch')
+    # plt.ylabel('Loss')
+    # plt.legend()
+    # plt.savefig(f"{save_path}/loss_plot.png")
 
 def test_model(model, test_loader, device, save_path):
     model.eval()
@@ -92,3 +104,15 @@ def test_model(model, test_loader, device, save_path):
         axes[i, 2].imshow(outputs[0].cpu().detach().numpy().squeeze(), cmap='gray')  # Select the first output in the batch
         axes[i, 2].set_title('Prediction')
     plt.savefig(f"{save_path}/predictions.png")
+
+def plot_losses(train_losses, val_losses, save_path):
+    epochs = list(range(1, len(train_losses) + 1))
+    plt.figure(figsize=(8, 6))
+    plt.plot(epochs, train_losses, 'b', label='Training loss')
+    plt.plot(epochs, val_losses, 'orange', label='Validation loss')
+    plt.title('Training and Validation losses')
+    plt.xlabel('Epochs')
+    plt.ylabel('Loss')
+    plt.legend()
+    plt.savefig(os.path.join(save_path, 'losses.png'))
+    plt.close()

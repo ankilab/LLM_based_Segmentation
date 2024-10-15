@@ -9,6 +9,11 @@ import matplotlib.pyplot as plt
 import os
 import numpy as np
 
+def calculate_dice_score(outputs, masks):
+    outputs = (outputs > 0.5).float()
+    intersection = (outputs * masks).sum()
+    union = outputs.sum() + masks.sum()
+    return 2 * intersection / union
 
 def train(model, device, loader, optimizer, criterion, epoch):
     model.train()
@@ -62,23 +67,29 @@ def test(model, device, loader):
                 dice_scores.append(dice_score.item())
     return np.mean(dice_scores)
 
-def calculate_dice_score(outputs, masks):
-    outputs = (outputs > 0.5).float()
-    intersection = (outputs * masks).sum()
-    union = outputs.sum() + masks.sum()
-    return 2 * intersection / union
-
 def save_losses(train_losses, val_losses, save_path):
     train_df = pd.DataFrame(train_losses)
     val_df = pd.DataFrame(val_losses)
     train_df.to_excel(os.path.join(save_path, 'train_losses.xlsx'), index=False)
     val_df.to_excel(os.path.join(save_path, 'val_losses.xlsx'), index=False)
 
+# def visualize_losses(train_losses, val_losses, save_path):
+#     plt.plot(train_losses, label='Training Loss')
+#     plt.plot(val_losses, label='Validation Loss')
+#     plt.legend()
+#     plt.savefig(os.path.join(save_path, 'losses.png'))
+
 def visualize_losses(train_losses, val_losses, save_path):
-    plt.plot(train_losses, label='Training Loss')
-    plt.plot(val_losses, label='Validation Loss')
+    epochs = list(range(1, len(train_losses) + 1))
+    plt.figure(figsize=(6, 5))
+    plt.plot(epochs, train_losses, 'b', label='Training loss')
+    plt.plot(epochs, val_losses, 'orange', label='Validation loss')
+    plt.title('Training and Validation losses')
+    plt.xlabel('Epochs')
+    plt.ylabel('Loss')
     plt.legend()
     plt.savefig(os.path.join(save_path, 'losses.png'))
+    plt.close()
 
 def visualize_predictions(model, device, loader, save_path):
     model.eval()

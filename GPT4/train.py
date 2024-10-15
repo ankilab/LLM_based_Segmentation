@@ -6,6 +6,7 @@ from torch.optim import Adam
 from tqdm import tqdm
 import pandas as pd
 import time
+import os
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -68,18 +69,29 @@ def save_losses(train_losses, val_losses, save_path):
     pd.DataFrame(train_losses).to_excel(f"{save_path}/train_losses.xlsx", index=False)
     pd.DataFrame(val_losses).to_excel(f"{save_path}/val_losses.xlsx", index=False)
 
+#
+# def plot_losses(train_losses, val_losses, save_path):
+#     plt.figure(figsize=(10, 5))
+#     plt.plot(train_losses, label='Training Loss')
+#     plt.plot(val_losses, label='Validation Loss')
+#     plt.title('Training and Validation Losses Over Epochs')
+#     plt.xlabel('Epochs')
+#     plt.ylabel('Loss')
+#     plt.legend()
+#     plt.savefig(f"{save_path}/loss_plot.png")
+#     plt.close()
 
 def plot_losses(train_losses, val_losses, save_path):
-    plt.figure(figsize=(10, 5))
-    plt.plot(train_losses, label='Training Loss')
-    plt.plot(val_losses, label='Validation Loss')
-    plt.title('Training and Validation Losses Over Epochs')
+    epochs = list(range(1, len(train_losses) + 1))
+    plt.figure(figsize=(6, 5))
+    plt.plot(epochs, train_losses, 'b', label='Training loss')
+    plt.plot(epochs, val_losses, 'orange', label='Validation loss')
+    plt.title('Training and Validation losses')
     plt.xlabel('Epochs')
     plt.ylabel('Loss')
     plt.legend()
-    plt.savefig(f"{save_path}/loss_plot.png")
+    plt.savefig(os.path.join(save_path, 'losses.png'))
     plt.close()
-
 
 def save_dice_scores(dice_scores, save_path, file_name):
     df_dice = pd.DataFrame(dice_scores)

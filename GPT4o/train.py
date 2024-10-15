@@ -5,6 +5,7 @@ from tqdm import tqdm
 import numpy as np
 import time
 import pandas as pd
+import os
 import matplotlib.pyplot as plt
 import torch.nn.functional as F  # Import functional module for resizing
 
@@ -82,16 +83,27 @@ def save_dice_scores(dice_scores, save_path, file_name):
     df_dice.to_excel(f'{save_path}/{file_name}.xlsx', index=False)
 
 
+# def plot_losses(train_losses, val_losses, save_path):
+#     plt.figure()
+#     plt.plot(train_losses, label='Training Loss')
+#     plt.plot(val_losses, label='Validation Loss')
+#     plt.xlabel('Epochs')
+#     plt.ylabel('Loss')
+#     plt.legend()
+#     plt.savefig(f'{save_path}/losses_plot.png')
+#     plt.close()
+
 def plot_losses(train_losses, val_losses, save_path):
-    plt.figure()
-    plt.plot(train_losses, label='Training Loss')
-    plt.plot(val_losses, label='Validation Loss')
+    epochs = list(range(1, len(train_losses) + 1))
+    plt.figure(figsize=(6, 5))
+    plt.plot(epochs, train_losses, 'b', label='Training loss')
+    plt.plot(epochs, val_losses, 'orange', label='Validation loss')
+    plt.title('Training and Validation losses')
     plt.xlabel('Epochs')
     plt.ylabel('Loss')
     plt.legend()
-    plt.savefig(f'{save_path}/losses_plot.png')
+    plt.savefig(os.path.join(save_path, 'losses.png'))
     plt.close()
-
 
 def visualize_predictions(model, dataloader, device, save_path):
     model.eval()
