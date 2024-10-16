@@ -14,7 +14,7 @@ from torchinfo import summary
 
 if __name__ == "__main__":
     data_folder = "D:\qy44lyfe\LLM segmentation\Data sets\BAGLS\subset"
-    save_path = "D:\qy44lyfe\LLM segmentation\Results\GPT 4"
+    save_path = "D:\qy44lyfe\LLM segmentation\Results\GPT 4\out of the box\BAGLS output"
     os.makedirs(save_path, exist_ok=True)
 
     transform = get_transform()

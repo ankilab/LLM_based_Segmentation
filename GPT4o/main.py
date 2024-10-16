@@ -18,7 +18,7 @@ if __name__ == "__main__":
     learning_rate = 1e-4
     image_size = (256, 256)  # Define a consistent image size for all inputs
     data_dir = "D:\\qy44lyfe\\LLM segmentation\\Data sets\\BAGLS\\subset"
-    save_path = "D:\\qy44lyfe\\LLM segmentation\\Results\\GPT 4o\\test"
+    save_path = "D:\qy44lyfe\LLM segmentation\Results\GPT 4o\out of the box\BAGLS output"
     os.makedirs(save_path, exist_ok=True)
 
     # Device configuration

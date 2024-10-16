@@ -12,10 +12,9 @@ import time
 def main():
     # Set hyperparameters
     batch_size = 32
-    # epochs = 10
-    epochs = 3
+    epochs = 10
     learning_rate = 0.001
-    save_path = 'D:\qy44lyfe\LLM segmentation\Results\LLAMA 3.1 405B'
+    save_path = 'D:\qy44lyfe\LLM segmentation\Results\LLAMA 3.1 405B\out of the box\BAGLS output'
 
     # Set device
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -73,7 +72,7 @@ def main():
     test_dice_scores = test(model, device, test_loader, save_path)
 
     # Visualize predictions
-    visualize_predictions(model, device, test_loader, save_path)
+    visualize_predictions(model, test_loader, device, save_path)
 
 if __name__ == '__main__':
     main()

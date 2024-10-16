@@ -18,14 +18,13 @@ from train import train_one_epoch, validate, test, visualize_predictions, plot_l
 if __name__ == "__main__":
     # 0. Set Hyperparameters, paths, etc
     image_dir = "D:\qy44lyfe\LLM segmentation\Data sets\BAGLS\subset" # Replace with the actual path to your dataset
-    save_path = "D:\qy44lyfe\LLM segmentation\Results\Gemini 1.5 pro" #path to save model, logs, etc
+    save_path = "D:\qy44lyfe\LLM segmentation\Results\Gemini 1.5 pro\out of the box\BAGLS output" #path to save model, logs, etc
     os.makedirs(save_path, exist_ok=True)
 
     img_size = (256, 256) #resize images to this size
     batch_size = 8  # Adjust based on your GPU memory
     learning_rate = 1e-4
-    num_epochs = 20  # Adjust as needed
-    # num_epochs = 2
+    num_epochs = 20
 
 
     # 1. Create Dataset and DataLoaders

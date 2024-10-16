@@ -32,6 +32,39 @@ def train(model, device, loader, optimizer, criterion, epoch):
             pbar.set_postfix({'loss': f'{loss.item():.4f}'})
     return total_loss / len(loader)
 
+# def validate(model, device, loader, criterion, epoch, save_path):
+#     model.eval()
+#     total_loss = 0
+#     dice_scores = []
+#     with tqdm(loader, desc=f'Validation Epoch {epoch+1}') as pbar:
+#         for batch_idx, (images, masks) in enumerate(pbar):
+#             images, masks = images.to(device), masks.to(device)
+#             with torch.no_grad():
+#                 outputs = model(images)
+#                 # Resize masks to match output size
+#                 masks = F.interpolate(masks, size=outputs.shape[2:], mode='nearest')
+#                 loss = criterion(outputs, masks)
+#                 total_loss += loss.item()
+#                 pbar.set_postfix({'loss': f'{loss.item():.4f}'})
+#                 # Calculate Dice score
+#                 outputs = (outputs > 0.5).float()
+#                 dice_score = 2 * (outputs * masks).sum() / (outputs.sum() + masks.sum())
+#                 dice_scores.append(dice_score.item())
+#         # Save dice scores to Excel
+#         df_new = pd.DataFrame([dice_scores])
+#         excel_path = os.path.join(save_path, 'validation_dice_scores.xlsx')
+#         if not os.path.exists(excel_path):
+#             df_new.to_excel(excel_path, index=False, header=False)
+#         else:
+#             # Read existing data
+#             df_existing = pd.read_excel(excel_path, header=None)
+#             # Append new data
+#             df_combined = pd.concat([df_existing, df_new], ignore_index=True)
+#             # Write back to Excel
+#             df_combined.to_excel(excel_path, index=False, header=False)
+#
+#     return total_loss / len(loader), np.mean(dice_scores)
+
 def validate(model, device, loader, criterion, epoch, save_path):
     model.eval()
     total_loss = 0
@@ -43,13 +76,24 @@ def validate(model, device, loader, criterion, epoch, save_path):
                 outputs = model(images)
                 # Resize masks to match output size
                 masks = F.interpolate(masks, size=outputs.shape[2:], mode='nearest')
+
+                # Ensure masks are binary after interpolation
+                masks = (masks > 0.5).float()
+
                 loss = criterion(outputs, masks)
                 total_loss += loss.item()
                 pbar.set_postfix({'loss': f'{loss.item():.4f}'})
-                # Calculate Dice score
+
+                # Threshold outputs for Dice calculation
                 outputs = (outputs > 0.5).float()
-                dice_score = 2 * (outputs * masks).sum() / (outputs.sum() + masks.sum())
+
+                # Check if both mask and output are empty
+                if masks.sum() == 0 and outputs.sum() == 0:
+                    dice_score = 1  # Perfect match when both mask and output are empty
+                else:
+                    dice_score = 2 * (outputs * masks).sum() / (outputs.sum() + masks.sum())
                 dice_scores.append(dice_score.item())
+
         # Save dice scores to Excel
         df_new = pd.DataFrame([dice_scores])
         excel_path = os.path.join(save_path, 'validation_dice_scores.xlsx')
@@ -65,6 +109,26 @@ def validate(model, device, loader, criterion, epoch, save_path):
 
     return total_loss / len(loader), np.mean(dice_scores)
 
+
+# def test(model, device, loader, save_path):
+#     model.eval()
+#     dice_scores = []
+#     with tqdm(loader, desc='Testing') as pbar:
+#         for batch_idx, (images, masks) in enumerate(pbar):
+#             images, masks = images.to(device), masks.to(device)
+#             with torch.no_grad():
+#                 outputs = model(images)
+#                 # Resize masks to match output size
+#                 masks = F.interpolate(masks, size=outputs.shape[2:], mode='nearest')
+#                 outputs = (outputs > 0.5).float()
+#                 dice_score = calculate_dice_score(outputs, masks)
+#                 dice_scores.append(dice_score.item())
+#     # Save dice scores to Excel
+#     df_new = pd.DataFrame([dice_scores])
+#     excel_path = os.path.join(save_path, 'test_dice_scores.xlsx')
+#     df_new.to_excel(excel_path, index=False, header=False)
+#     return np.mean(dice_scores)
+
 def test(model, device, loader, save_path):
     model.eval()
     dice_scores = []
@@ -75,14 +139,27 @@ def test(model, device, loader, save_path):
                 outputs = model(images)
                 # Resize masks to match output size
                 masks = F.interpolate(masks, size=outputs.shape[2:], mode='nearest')
+
+                # Ensure masks are binary after interpolation
+                masks = (masks > 0.5).float()
+
+                # Threshold outputs for Dice calculation
                 outputs = (outputs > 0.5).float()
-                dice_score = calculate_dice_score(outputs, masks)
+
+                # Check if both mask and output are empty
+                if masks.sum() == 0 and outputs.sum() == 0:
+                    dice_score = 1  # Perfect match when both mask and output are empty
+                else:
+                    dice_score = 2 * (outputs * masks).sum() / (outputs.sum() + masks.sum())
+
                 dice_scores.append(dice_score.item())
+
     # Save dice scores to Excel
     df_new = pd.DataFrame([dice_scores])
     excel_path = os.path.join(save_path, 'test_dice_scores.xlsx')
     df_new.to_excel(excel_path, index=False, header=False)
     return np.mean(dice_scores)
+
 
 def save_losses(train_losses, val_losses, save_path):
     train_df = pd.DataFrame(train_losses)

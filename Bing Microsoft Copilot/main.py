@@ -12,7 +12,7 @@ from torchinfo import summary
 
 if __name__ == "__main__":
     image_dir = "D:\qy44lyfe\LLM segmentation\Data sets\BAGLS\subset"
-    save_path = "D:\qy44lyfe\LLM segmentation\Results\Bing Microsoft Copilot"
+    save_path = "D:\qy44lyfe\LLM segmentation\Results\Bing Microsoft Copilot\out of the box\BAGLS output"
     os.makedirs(save_path, exist_ok=True)
 
     # dataset = SegmentationDataset(image_dir, transform=transforms.ToTensor())

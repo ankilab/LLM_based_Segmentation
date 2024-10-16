@@ -24,7 +24,7 @@ def main():
 
     # Set paths
     data_path = 'D:\qy44lyfe\LLM segmentation\Data sets\BAGLS\subset'
-    save_path = 'D:\qy44lyfe\LLM segmentation\Results\Claude 3.5 Sonnet'
+    save_path = 'D:\qy44lyfe\LLM segmentation\Results\Claude 3.5 Sonnet\out of the box\BAGLS output'
     os.makedirs(save_path, exist_ok=True)
 
     # Create dataset
@@ -68,7 +68,6 @@ def main():
 
     # Train the model
     num_epochs = 50
-    # num_epochs = 2
     train(model, train_loader, val_loader, criterion, optimizer, num_epochs, device, save_path)
 
     # Test the model

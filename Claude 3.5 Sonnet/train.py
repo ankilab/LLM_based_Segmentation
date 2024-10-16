@@ -64,7 +64,9 @@ def train(model, train_loader, val_loader, criterion, optimizer, num_epochs, dev
                     val_loss += loss.item()
                     dice = dice_coeff(outputs, masks)
                     # dice_scores.extend(dice.tolist())
-                    dice_scores.append(dice_coeff(outputs, masks).item())
+                    dice_mean = dice.mean().item()
+                    # dice_scores.append(dice_coeff(outputs, masks).item())
+                    dice_scores.append(dice_mean)
                     pbar.update(1)
                     pbar.set_postfix({'Loss': f'{loss.item():.4f}', 'Dice': f'{dice.mean().item():.4f}'})
 
@@ -116,7 +118,9 @@ def test(model, test_loader, device, save_path):
                 outputs = model(images)
                 dice = dice_coeff(outputs, masks)
                 # dice_scores.extend(dice.tolist())
-                dice_scores.append(dice_coeff(outputs, masks).item())
+                dice_mean = dice.mean().item()
+                # dice_scores.append(dice_coeff(outputs, masks).item())
+                dice_scores.append(dice_mean)
                 pbar.update(1)
                 pbar.set_postfix({'Dice': f'{dice.mean().item():.4f}'})
 

@@ -7,12 +7,12 @@ from dataset import SegmentationDataset
 from model import UNet
 import torch.nn as nn
 import torch.optim as optim
-from train import train_model, test_model
 from torchinfo import summary
+from train import train_model, test_model
 
 if __name__ == "__main__":
     image_dir = 'D:\qy44lyfe\LLM segmentation\Data sets\BAGLS\subset'
-    save_path = 'D:\qy44lyfe\LLM segmentation\Results\Copilot'
+    save_path = 'D:\qy44lyfe\LLM segmentation\Results\Copilot\out of the box\BAGLS output'
     os.makedirs(save_path, exist_ok=True)
 
     transform = transforms.Compose([
