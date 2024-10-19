@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 # Load training and validation losses
 train_loss_path = "D:\\qy44lyfe\\LLM segmentation\\Results\\Models Comparison\\all_train_losses_BAGLS.xlsx"
 val_loss_path = "D:\\qy44lyfe\\LLM segmentation\\Results\\Models Comparison\\all_validation_losses_BAGLS.xlsx"
+save_path = "D:\\qy44lyfe\\LLM segmentation\\Results\\Models Comparison\\"
 
 # Read both Excel files
 train_loss_data = pd.read_excel(train_loss_path, sheet_name='Tabelle1')
@@ -19,16 +20,26 @@ def prepare_loss_data(loss_data):
 train_models, train_losses = prepare_loss_data(train_loss_data)
 val_models, val_losses = prepare_loss_data(val_loss_data)
 
-# Colors for each model (can be adjusted if more models are added)
-colors = ['#FF9999', '#66B2FF', '#99FF99', '#FFCC99', '#FFB6C1', '#778899', '#FFFF66', '#9ACD32']
+# Map colors to each model for consistency
+color_map = {
+    'Bing Microsoft Copilot': '#66c2a5',
+    'Claude 3.5 Sonnet': '#fc8d62',
+    'Copilot': '#8da0cb',
+    'Gemini 1.5 Pro': '#e78ac3',
+    'GPT4': '#a6d854',
+    'GPT 4o': '#ffd92f',
+    'GPT o1 Preview': '#e5c494',
+    'LLAMA 3.1 405B': '#b3b3b3'
+}
 
+### Normal Scale Plot ### ==============================================================================
 # Create a figure with 1 row and 2 columns for the subplots
-fig, axes = plt.subplots(1, 2, figsize=(12, 6))
+fig, axes = plt.subplots(1, 2, figsize=(12, 5))
 
 # Plotting Training Losses on the first subplot (axes[0])
 for i, model in enumerate(train_models):
     epochs = range(1, len(train_losses.iloc[i].dropna()) + 1)  # Handle varying epoch lengths
-    axes[0].plot(epochs, train_losses.iloc[i].dropna(), label=model, color=colors[i % len(colors)])
+    axes[0].plot(epochs, train_losses.iloc[i].dropna(), label=model, color=color_map[model])
 axes[0].set_title('Training Loss per Epoch')
 axes[0].set_xlabel('Epoch')
 axes[0].set_ylabel('Training Loss')
@@ -38,7 +49,7 @@ axes[0].grid(True)
 # Plotting Validation Losses on the second subplot (axes[1])
 for i, model in enumerate(val_models):
     epochs = range(1, len(val_losses.iloc[i].dropna()) + 1)  # Handle varying epoch lengths
-    axes[1].plot(epochs, val_losses.iloc[i].dropna(), label=model, color=colors[i % len(colors)])
+    axes[1].plot(epochs, val_losses.iloc[i].dropna(), label=model, color=color_map[model])
 axes[1].set_title('Validation Loss per Epoch')
 axes[1].set_xlabel('Epoch')
 axes[1].set_ylabel('Validation Loss')
@@ -46,8 +57,48 @@ axes[1].legend()
 axes[1].grid(True)
 
 # Set the overall title for the figure
-fig.suptitle('Loss Comparison', fontsize=16)
+fig.suptitle('Loss Comparison (BAGLS dataset)', fontsize=16)
 
 # Adjust layout to ensure there's no overlap
 plt.tight_layout(rect=[0, 0, 1, 0.95])  # Leave space for the suptitle
-plt.show()
+#plt.show()
+# Save the combined plot
+plt.savefig(f"{save_path}all_model_losses_BAGLS.png", dpi=600)
+
+### Logarithmic Scale Plot ### ===========================================================================
+# Create a figure with 1 row and 2 columns for the subplots
+fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+# Define more detailed custom y-ticks for the logarithmic scale
+yticks_custom = [0.001, 0.01, 0.1, 1]
+
+# Plotting Training Losses on the first subplot (axes[0])
+for i, model in enumerate(train_models):
+    epochs = range(1, len(train_losses.iloc[i].dropna()) + 1)  # Handle varying epoch lengths
+    axes[0].plot(epochs, train_losses.iloc[i].dropna(), label=model, color=color_map[model])
+axes[0].set_title('Training Loss per Epoch')
+axes[0].set_xlabel('Epoch')
+axes[0].set_ylabel('Training Loss (log scale)')
+axes[0].set_yscale('log')  # Set y-axis to logarithmic scale
+axes[0].set_yticks(yticks_custom)  # Apply more y-ticks to fill in the gaps
+axes[0].legend()
+axes[0].grid(True)
+
+# Plotting Validation Losses on the second subplot (axes[1])
+for i, model in enumerate(val_models):
+    epochs = range(1, len(val_losses.iloc[i].dropna()) + 1)  # Handle varying epoch lengths
+    axes[1].plot(epochs, val_losses.iloc[i].dropna(), label=model, color=color_map[model])
+axes[1].set_title('Validation Loss per Epoch')
+axes[1].set_xlabel('Epoch')
+axes[1].set_ylabel('Validation Loss (log scale)')
+axes[1].set_yscale('log')  # Set y-axis to logarithmic scale
+axes[1].set_yticks(yticks_custom)  # Apply more y-ticks to fill in the gaps
+axes[1].legend()
+axes[1].grid(True)
+
+# Set the overall title for the figure
+fig.suptitle('Loss Comparison (BAGLS Dataset)', fontsize=16)
+
+# Adjust layout to ensure there's no overlap and more space between subplots
+plt.tight_layout(rect=[0, 0, 1, 0.95])
+plt.savefig(f"{save_path}all_model_losses_logarithmic_BAGLS.png", dpi=600)
+#plt.show()

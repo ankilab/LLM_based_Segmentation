@@ -50,7 +50,6 @@ def load_dice_scores(model_paths):
 
         # Load test data without headers
         test_data = pd.read_excel(paths['test'], sheet_name='Sheet1', header=None)
-        print(f"{model} test data: {test_data}")
 
         # Convert all data to numeric, coercing errors to NaN
         test_data = test_data.apply(pd.to_numeric, errors='coerce')
@@ -79,56 +78,57 @@ validation_scores, test_scores = load_dice_scores(model_paths)
 # Define the save path
 save_path = "D:\\qy44lyfe\\LLM segmentation\\Results\\Models Comparison\\"
 
-# Colors for each model
-colors = ['#FF9999', '#66B2FF', '#99FF99', '#FFCC99', '#FFB6C1', '#778899', '#FFFF66', '#9ACD32']
+# Map colors to each model for consistency
+color_map = {
+    'Bing Microsoft Copilot': '#66c2a5',
+    'Claude 3.5 Sonnet': '#fc8d62',
+    'Copilot': '#8da0cb',
+    'Gemini 1.5 Pro': '#e78ac3',
+    'GPT 4': '#a6d854',
+    'GPT 4o': '#ffd92f',
+    'GPT o1 Preview': '#e5c494',
+    'LLAMA 3.1 405B': '#b3b3b3'
+}
 
-# Plotting Validation Dice Scores (Horizontal Box Plot)
-plt.figure(figsize=(8, 4))  # Smaller size for a paper
+# Create a figure with 1 row and 2 columns for the subplots
+fig, axes = plt.subplots(1, 2, figsize=(15, 5))
 
-# Prepare the data for boxplots
+# Plotting Validation Dice Scores on the first subplot (axes[0])
 val_data_list = [validation_scores[model] for model in model_paths.keys()]
+boxplots = axes[0].boxplot(val_data_list, patch_artist=True, vert=False, labels=model_paths.keys(), showfliers=False)
 
-# Create horizontal boxplots with custom colors and remove outliers
-boxplots = plt.boxplot(val_data_list, patch_artist=True, vert=False, labels=model_paths.keys(), showfliers=False)
+# Apply colors based on the model-color map
+for patch, model in zip(boxplots['boxes'], model_paths.keys()):
+    patch.set_facecolor(color_map[model])
 
-# Apply different colors to each box
-for patch, color in zip(boxplots['boxes'], colors):
-    patch.set_facecolor(color)
+# Add titles and labels to the validation plot
+axes[0].set_title('Validation Dice Scores Comparison (Mean over Epochs)', fontsize=14)
+axes[0].set_xlabel('Validation Dice Scores', fontsize=12)
+axes[0].set_ylabel('Models', fontsize=12)
+axes[0].grid(True)
 
-# Add titles, labels, and grid for better readability
-plt.title('Validation Dice Scores Comparison (Mean over Epochs)', fontsize=14)
-plt.xlabel('Validation Dice Scores', fontsize=12)
-plt.ylabel('Models', fontsize=12)
-plt.grid(True)
-
-# Display the plot
-plt.tight_layout()
-# Save the test plot
-plt.savefig(f"{save_path}model_comparison_validation dice_BAGLS.png", dpi=600)
-#plt.show()
-
-
-# Plotting Test Dice Scores (Horizontal Box Plot)
-plt.figure(figsize=(8, 4))  # Smaller size for a paper
-
-# Prepare the data for boxplots
+# Plotting Test Dice Scores on the second subplot (axes[1])
 test_data_list = [test_scores[model] for model in model_paths.keys()]
+boxplots = axes[1].boxplot(test_data_list, patch_artist=True, vert=False, labels=model_paths.keys(), showfliers=False)
 
-# Create horizontal boxplots with custom colors and remove outliers
-boxplots = plt.boxplot(test_data_list, patch_artist=True, vert=False, labels=model_paths.keys(), showfliers=False)
+# Apply colors based on the model-color map
+for patch, model in zip(boxplots['boxes'], model_paths.keys()):
+    patch.set_facecolor(color_map[model])
 
-# Apply different colors to each box
-for patch, color in zip(boxplots['boxes'], colors):
-    patch.set_facecolor(color)
+# Add titles and labels to the test plot
+axes[1].set_title('Test Dice Scores Comparison', fontsize=14)
+axes[1].set_xlabel('Test Dice Scores', fontsize=12)
+axes[1].grid(True)
 
-# Add titles, labels, and grid for better readability
-plt.title('Test Dice Scores Comparison', fontsize=14)
-plt.xlabel('Test Dice Scores', fontsize=12)
-plt.ylabel('Models', fontsize=12)
-plt.grid(True)
+# Set the overall title for the figure
+fig.suptitle('Model Dice Scores Comparison (BAGLS Dataset)', fontsize=16)
 
-# Display the plot
-plt.tight_layout()
-# Save the test plot
-plt.savefig(f"{save_path}model_comparison_test Dice_BAGLS.png", dpi=600)
+# Adjust layout to ensure there's no overlap
+plt.tight_layout(rect=[0, 0, 1, 0.95])
+plt.subplots_adjust(wspace=0.3)  # Increase space between the subplots
+
+# Save the combined plot
+plt.savefig(f"{save_path}all_model_dice_scores_BAGLS.png", dpi=600)
+
+# Show the plot
 #plt.show()
