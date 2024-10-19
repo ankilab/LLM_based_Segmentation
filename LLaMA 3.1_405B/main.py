@@ -12,15 +12,27 @@ import time
 def main():
     # Set hyperparameters
     batch_size = 32
-    epochs = 10
+    #epochs = 10
+    epochs = 2
     learning_rate = 0.001
-    save_path = 'D:\qy44lyfe\LLM segmentation\Results\LLAMA 3.1 405B\out of the box\BAGLS output'
+    # data_folder = "D:\qy44lyfe\LLM segmentation\Data sets\BAGLS\subset"
+    # data_folder = "D:\qy44lyfe\LLM segmentation\Data sets\Swallowing\images"
+    data_folder = "D:\qy44lyfe\LLM segmentation\Data sets\Brain Meningioma\images"
+
+    # mask_folder = "D:\\qy44lyfe\\LLM segmentation\\Data sets\\BAGLS\\subset"
+    # mask_folder = "D:\qy44lyfe\LLM segmentation\Data sets\Swallowing\masks"
+    mask_folder = "D:\qy44lyfe\LLM segmentation\Data sets\Brain Meningioma\Masks"
+
+
+    #save_path = 'D:\qy44lyfe\LLM segmentation\Results\LLAMA 3.1 405B\out of the box\BAGLS output'
+    #save_path = 'D:\qy44lyfe\LLM segmentation\Results\LLAMA 3.1 405B\out of the box\Bolus output'
+    save_path = 'D:\qy44lyfe\LLM segmentation\Results\LLAMA 3.1 405B\out of the box\Brain output'
 
     # Set device
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     # Load dataset
-    dataset = BinarySegmentationDataset('D:\qy44lyfe\LLM segmentation\Data sets\BAGLS\subset')
+    dataset = BinarySegmentationDataset(data_folder, mask_folder)
     train_size = int(0.8 * len(dataset))
     val_size = int(0.1 * len(dataset))
     test_size = len(dataset) - train_size - val_size

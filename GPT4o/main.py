@@ -14,11 +14,20 @@ from torchinfo import summary  # Import torchinfo
 if __name__ == "__main__":
     # Hyperparameters
     batch_size = 8
-    num_epochs = 25
+    # num_epochs = 25
+    num_epochs = 2
     learning_rate = 1e-4
     image_size = (256, 256)  # Define a consistent image size for all inputs
-    data_dir = "D:\\qy44lyfe\\LLM segmentation\\Data sets\\BAGLS\\subset"
-    save_path = "D:\qy44lyfe\LLM segmentation\Results\GPT 4o\out of the box\BAGLS output"
+    #data_dir = "D:\\qy44lyfe\\LLM segmentation\\Data sets\\BAGLS\\subset"
+    #data_dir = "D:\qy44lyfe\LLM segmentation\Data sets\Swallowing\images"
+    data_dir = "D:\qy44lyfe\LLM segmentation\Data sets\Brain Meningioma\images"
+
+    #mask_dir = "D:\\qy44lyfe\\LLM segmentation\\Data sets\\BAGLS\\subset"
+    #mask_dir = "D:\qy44lyfe\LLM segmentation\Data sets\Swallowing\masks"
+    mask_dir = "D:\qy44lyfe\LLM segmentation\Data sets\Brain Meningioma\Masks"
+
+    #save_path = "D:\qy44lyfe\LLM segmentation\Results\GPT 4o\out of the box\Bolus output"
+    save_path = "D:\qy44lyfe\LLM segmentation\Results\GPT 4o\out of the box\Brain output"
     os.makedirs(save_path, exist_ok=True)
 
     # Device configuration
@@ -28,7 +37,7 @@ if __name__ == "__main__":
     transform = T.Compose([T.ToTensor()])
 
     # Load dataset
-    dataset = SegmentationDataset(image_dir=data_dir, transform=transform, image_size=image_size)
+    dataset = SegmentationDataset(image_dir=data_dir, mask_dir=mask_dir, transform=transform, image_size=image_size)
     train_data, test_data = train_test_split(dataset, test_size=0.2, random_state=42)
     val_data, test_data = train_test_split(test_data, test_size=0.5, random_state=42)
 

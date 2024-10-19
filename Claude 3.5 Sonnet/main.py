@@ -23,12 +23,22 @@ def main():
     print(f"Using device: {device}")
 
     # Set paths
-    data_path = 'D:\qy44lyfe\LLM segmentation\Data sets\BAGLS\subset'
-    save_path = 'D:\qy44lyfe\LLM segmentation\Results\Claude 3.5 Sonnet\out of the box\BAGLS output'
+    #data_path = 'D:\qy44lyfe\LLM segmentation\Data sets\BAGLS\subset'
+    #data_path = "D:\qy44lyfe\LLM segmentation\Data sets\Swallowing\images"
+    data_path = "D:\qy44lyfe\LLM segmentation\Data sets\Brain Meningioma\images"
+
+    # mask_folder = "D:\\qy44lyfe\\LLM segmentation\\Data sets\\BAGLS\\subset"
+    #mask_folder = "D:\qy44lyfe\LLM segmentation\Data sets\Swallowing\masks"
+    mask_folder = "D:\qy44lyfe\LLM segmentation\Data sets\Brain Meningioma\Masks"
+
+    #save_path = 'D:\qy44lyfe\LLM segmentation\Results\Claude 3.5 Sonnet\out of the box\BAGLS output'
+    #save_path = 'D:\qy44lyfe\LLM segmentation\Results\Claude 3.5 Sonnet\out of the box\Bolus output'
+    save_path = 'D:\qy44lyfe\LLM segmentation\Results\Claude 3.5 Sonnet\out of the box\Brain output'
+
     os.makedirs(save_path, exist_ok=True)
 
     # Create dataset
-    dataset = SegmentationDataset(data_path, transform=get_transform())
+    dataset = SegmentationDataset(data_path, mask_folder, transform=get_transform())
 
     # Split dataset
     train_val_size = int(0.9 * len(dataset))
@@ -67,7 +77,8 @@ def main():
     summary(model, input_size=(batch_size, 1, 256, 256))  # 1 channel for grayscale
 
     # Train the model
-    num_epochs = 50
+    #num_epochs = 50
+    num_epochs = 2
     train(model, train_loader, val_loader, criterion, optimizer, num_epochs, device, save_path)
 
     # Test the model

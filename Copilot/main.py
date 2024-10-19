@@ -11,8 +11,18 @@ from torchinfo import summary
 from train import train_model, test_model
 
 if __name__ == "__main__":
-    image_dir = 'D:\qy44lyfe\LLM segmentation\Data sets\BAGLS\subset'
-    save_path = 'D:\qy44lyfe\LLM segmentation\Results\Copilot\out of the box\BAGLS output'
+    # image_dir = 'D:\qy44lyfe\LLM segmentation\Data sets\BAGLS\subset'
+    #image_dir = "D:\qy44lyfe\LLM segmentation\Data sets\Swallowing\images"
+    image_dir = "D:\qy44lyfe\LLM segmentation\Data sets\Brain Meningioma\images"
+
+    # mask_folder = "D:\\qy44lyfe\\LLM segmentation\\Data sets\\BAGLS\\subset"
+    #mask_folder = "D:\qy44lyfe\LLM segmentation\Data sets\Swallowing\masks"
+    mask_folder = "D:\qy44lyfe\LLM segmentation\Data sets\Brain Meningioma\Masks"
+
+    #save_path = 'D:\qy44lyfe\LLM segmentation\Results\Copilot\out of the box\BAGLS output'
+    #save_path = 'D:\qy44lyfe\LLM segmentation\Results\Copilot\out of the box\Bolus output'
+    save_path = 'D:\qy44lyfe\LLM segmentation\Results\Copilot\out of the box\Brain output'
+
     os.makedirs(save_path, exist_ok=True)
 
     transform = transforms.Compose([
@@ -20,7 +30,7 @@ if __name__ == "__main__":
         transforms.ToTensor()
     ])
 
-    dataset = SegmentationDataset(image_dir, transform=transform)
+    dataset = SegmentationDataset(image_dir, mask_folder, transform=transform)
     train_data, test_data = train_test_split(dataset, test_size=0.2, random_state=42)
     val_data, test_data = train_test_split(test_data, test_size=0.5, random_state=42)
 
@@ -41,6 +51,7 @@ if __name__ == "__main__":
     # Print model summary using torchinfo
     summary(model, input_size=(16, 1, 128, 128))  # 1 channel for grayscale
 
-    num_epochs = 25
+    # num_epochs = 25
+    num_epochs = 2
     train_model(model, train_loader, val_loader, num_epochs, criterion, optimizer, device, save_path)
     test_model(model, test_loader, device, save_path)
