@@ -61,14 +61,14 @@ validation_scores, test_scores = load_dice_scores(model_paths)
 # Colors for each model
 colors = ['#FF9999', '#66B2FF', '#99FF99', '#FFCC99', '#FFB6C1', '#778899', '#FFFF66', '#9ACD32']
 
-# Plotting Validation Dice Scores
+# Plotting Validation Dice Scores (Horizontal Box Plot)
 plt.figure(figsize=(8, 6))  # Smaller size for a paper
 
 # Prepare the data for boxplots
 val_data_list = [validation_scores[model] for model in model_paths.keys()]
 
-# Create boxplots with custom colors and remove outliers
-boxplots = plt.boxplot(val_data_list, patch_artist=True, labels=model_paths.keys(), showfliers=False)
+# Create horizontal boxplots with custom colors and remove outliers
+boxplots = plt.boxplot(val_data_list, patch_artist=True, vert=False, labels=model_paths.keys(), showfliers=False)
 
 # Apply different colors to each box
 for patch, color in zip(boxplots['boxes'], colors):
@@ -76,28 +76,22 @@ for patch, color in zip(boxplots['boxes'], colors):
 
 # Add titles, labels, and grid for better readability
 plt.title('Validation Dice Scores Comparison (Mean over Epochs)', fontsize=14)
-plt.xlabel('Models', fontsize=12)
-plt.ylabel('Validation Dice Scores', fontsize=12)
+plt.xlabel('Validation Dice Scores', fontsize=12)
+plt.ylabel('Models', fontsize=12)
 plt.grid(True)
-plt.xticks(rotation=45, fontsize=10)
-plt.yticks(fontsize=10)
-
-# Adding a legend manually with the same colors for each model (placed outside)
-plt.legend([boxplots["boxes"][i] for i in range(len(model_paths))], model_paths.keys(), loc='center left',
-           bbox_to_anchor=(1, 0.5), fontsize=9)
 
 # Display the plot
-plt.tight_layout(rect=[0, 0, 0.85, 1])  # Adjust layout to make space for legend
+plt.tight_layout()
 plt.show()
 
-# Plotting Test Dice Scores
+# Plotting Test Dice Scores (Horizontal Box Plot)
 plt.figure(figsize=(8, 6))  # Smaller size for a paper
 
 # Prepare the data for boxplots
 test_data_list = [test_scores[model] for model in model_paths.keys()]
 
-# Create boxplots with custom colors and remove outliers
-boxplots = plt.boxplot(test_data_list, patch_artist=True, labels=model_paths.keys(), showfliers=False)
+# Create horizontal boxplots with custom colors and remove outliers
+boxplots = plt.boxplot(test_data_list, patch_artist=True, vert=False, labels=model_paths.keys(), showfliers=False)
 
 # Apply different colors to each box
 for patch, color in zip(boxplots['boxes'], colors):
@@ -105,16 +99,10 @@ for patch, color in zip(boxplots['boxes'], colors):
 
 # Add titles, labels, and grid for better readability
 plt.title('Test Dice Scores Comparison', fontsize=14)
-plt.xlabel('Models', fontsize=12)
-plt.ylabel('Test Dice Scores', fontsize=12)
+plt.xlabel('Test Dice Scores', fontsize=12)
+plt.ylabel('Models', fontsize=12)
 plt.grid(True)
-plt.xticks(rotation=45, fontsize=10)
-plt.yticks(fontsize=10)
-
-# Adding a legend manually with the same colors for each model (placed outside)
-plt.legend([boxplots["boxes"][i] for i in range(len(model_paths))], model_paths.keys(), loc='center left',
-           bbox_to_anchor=(1, 0.5), fontsize=9)
 
 # Display the plot
-plt.tight_layout(rect=[0, 0, 0.85, 1])  # Adjust layout to make space for legend
+plt.tight_layout()
 plt.show()
