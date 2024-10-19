@@ -38,31 +38,52 @@ model_paths = {
     }
 }
 
-
-# Function to load validation and test data from Excel files
+# Function to load validation and test data from Excel files (handling inconsistent shapes)
 def load_dice_scores(model_paths):
     validation_scores = {}
     test_scores = {}
 
     for model, paths in model_paths.items():
-        val_data = pd.read_excel(paths['validation'], sheet_name=None)
-        test_data = pd.read_excel(paths['test'], sheet_name=None)
+        # Load validation data
+        val_data = pd.read_excel(paths['validation'], sheet_name='Sheet1')
+        validation_scores[model] = val_data.mean(axis=1)  # Mean over batches (columns)
 
-        # Assuming the data is in the first sheet for each model
-        validation_scores[model] = val_data['Sheet1'].mean(axis=1)  # Mean over batches (columns)
-        test_scores[model] = test_data['Sheet1'].values.flatten()  # Test dice scores
+        # Load test data without headers
+        test_data = pd.read_excel(paths['test'], sheet_name='Sheet1', header=None)
+        print(f"{model} test data: {test_data}")
+
+        # Convert all data to numeric, coercing errors to NaN
+        test_data = test_data.apply(pd.to_numeric, errors='coerce')
+
+        # Stack the DataFrame to get all values in a single Series
+        test_series = test_data.stack().reset_index(drop=True)
+
+        # Remove NaN values
+        test_series = test_series.dropna()
+
+        # If the first cell is "0", skip or ignore it
+        if not test_series.empty and test_series.iloc[0] == 0:
+            test_series = test_series.iloc[1:]
+
+        # Convert to numpy array
+        test_array = test_series.values
+
+        # Store the test scores
+        test_scores[model] = test_array
 
     return validation_scores, test_scores
 
-
 # Load the dice scores for all models
 validation_scores, test_scores = load_dice_scores(model_paths)
+
+# Define the save path
+save_path = "D:\\qy44lyfe\\LLM segmentation\\Results\\Models Comparison\\"
 
 # Colors for each model
 colors = ['#FF9999', '#66B2FF', '#99FF99', '#FFCC99', '#FFB6C1', '#778899', '#FFFF66', '#9ACD32']
 
 # Plotting Validation Dice Scores (Horizontal Box Plot)
-plt.figure(figsize=(8, 6))  # Smaller size for a paper
+plt.figure(figsize=(8, 4))  # Smaller size for a paper
 
 # Prepare the data for boxplots
 val_data_list = [validation_scores[model] for model in model_paths.keys()]
@@ -82,10 +103,13 @@ plt.grid(True)
 
 # Display the plot
 plt.tight_layout()
-plt.show()
+# Save the test plot
+plt.savefig(f"{save_path}model_comparison_validation dice_BAGLS.png", dpi=600)
+#plt.show()
+
 
 # Plotting Test Dice Scores (Horizontal Box Plot)
-plt.figure(figsize=(8, 6))  # Smaller size for a paper
+plt.figure(figsize=(8, 4))  # Smaller size for a paper
 
 # Prepare the data for boxplots
 test_data_list = [test_scores[model] for model in model_paths.keys()]
@@ -105,4 +129,6 @@ plt.grid(True)
 
 # Display the plot
 plt.tight_layout()
-plt.show()
+# Save the test plot
+plt.savefig(f"{save_path}model_comparison_test Dice_BAGLS.png", dpi=600)
+#plt.show()
