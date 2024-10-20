@@ -3,11 +3,11 @@ import matplotlib.pyplot as plt
 
 # Load training and validation losses
 # BAGLS ===============================================================================================================
-train_loss_path = "D:\\qy44lyfe\\LLM segmentation\\Results\\Models Comparison\\all_train_losses_BAGLS.xlsx"
-val_loss_path = "D:\\qy44lyfe\\LLM segmentation\\Results\\Models Comparison\\all_validation_losses_BAGLS.xlsx"
+# train_loss_path = "D:\\qy44lyfe\\LLM segmentation\\Results\\Models Comparison\\all_train_losses_BAGLS.xlsx"
+# val_loss_path = "D:\\qy44lyfe\\LLM segmentation\\Results\\Models Comparison\\all_validation_losses_BAGLS.xlsx"
 # BOLUS ===============================================================================================================
-train_loss_path = "D:\\qy44lyfe\\LLM segmentation\\Results\\Models Comparison\\all_train_losses_BOLUS.xlsx"
-val_loss_path = "D:\\qy44lyfe\\LLM segmentation\\Results\\Models Comparison\\all_validation_losses_BOLUS.xlsx"
+# train_loss_path = "D:\\qy44lyfe\\LLM segmentation\\Results\\Models Comparison\\all_train_losses_BOLUS.xlsx"
+# val_loss_path = "D:\\qy44lyfe\\LLM segmentation\\Results\\Models Comparison\\all_validation_losses_BOLUS.xlsx"
 # BRAIN ===============================================================================================================
 train_loss_path = "D:\\qy44lyfe\\LLM segmentation\\Results\\Models Comparison\\all_train_losses_BRAIN.xlsx"
 val_loss_path = "D:\\qy44lyfe\\LLM segmentation\\Results\\Models Comparison\\all_validation_losses_BRAIN.xlsx"
@@ -66,13 +66,13 @@ axes[1].legend()
 axes[1].grid(True)
 
 # Set the overall title for the figure
-fig.suptitle('Loss Comparison (BAGLS dataset)', fontsize=16)
+fig.suptitle('Loss Comparison (Tumor dataset)', fontsize=16)
 
 # Adjust layout to ensure there's no overlap
 plt.tight_layout(rect=[0, 0, 1, 0.95])  # Leave space for the suptitle
 #plt.show()
 # Save the combined plot
-plt.savefig(f"{save_path}all_model_losses_BAGLS.png", dpi=600)
+plt.savefig(f"{save_path}all_model_losses_BRAIN.png", dpi=600)
 
 ### Logarithmic Scale Plot ### ===========================================================================
 # Create a figure with 1 row and 2 columns for the subplots
@@ -105,9 +105,9 @@ axes[1].legend()
 axes[1].grid(True)
 
 # Set the overall title for the figure
-fig.suptitle('Loss Comparison (BAGLS Dataset)', fontsize=16)
+fig.suptitle('Loss Comparison (Tumor Dataset)', fontsize=16)
 
 # Adjust layout to ensure there's no overlap and more space between subplots
 plt.tight_layout(rect=[0, 0, 1, 0.95])
-plt.savefig(f"{save_path}all_model_losses_logarithmic_BAGLS.png", dpi=600)
+plt.savefig(f"{save_path}all_model_losses_logarithmic_BRAIN.png", dpi=600)
 #plt.show()
