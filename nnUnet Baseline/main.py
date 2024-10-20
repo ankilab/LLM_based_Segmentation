@@ -35,14 +35,15 @@ def preprocess_data(task_id):
 
 
 def train_model(task_id, fold):
-    """Train the model on a given task and fold."""
-    command = f"nnUNetv2_train.exe 3d_fullres nnUNetTrainerV2 {task_id} {fold}"
+    """Train the model on a given task and fold using the 2D configuration."""
+    command = f"nnUNetv2_train.exe {task_id} 2d {fold}"
     run_command(command)
+
 
 
 def validate_model(task_id, fold):
     """Run validation on a given task and fold."""
-    command = f"nnUNetv2_train.exe 3d_fullres nnUNetTrainerV2 {task_id} {fold} --val"
+    command = f"nnUNetv2_train.exe {task_id} 2d {fold} --val"
     run_command(command)
 
 

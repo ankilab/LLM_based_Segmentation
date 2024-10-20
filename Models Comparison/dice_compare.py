@@ -6,7 +6,7 @@ import numpy as np
 
 # BAGLS OUTPUT =========================================================================================================
 # model_paths = {
-#     'Bing Microsoft Copilot': {
+#     'Bing Copilot': {
 #         'validation': r"D:\qy44lyfe\LLM segmentation\Results\Bing Microsoft Copilot\out of the box\BAGLS output\validation_dice_scores.xlsx",
 #         'test': r"D:\qy44lyfe\LLM segmentation\Results\Bing Microsoft Copilot\out of the box\BAGLS output\test_dice_scores.xlsx"
 #     },
@@ -42,7 +42,7 @@ import numpy as np
 
 # BOLUS OUTPUT =========================================================================================================
 # model_paths = {
-#     'Bing Microsoft Copilot': {
+#     'Bing Copilot': {
 #         'validation': r"D:\qy44lyfe\LLM segmentation\Results\Bing Microsoft Copilot\out of the box\Bolus output\validation_dice_scores.xlsx",
 #         'test': r"D:\qy44lyfe\LLM segmentation\Results\Bing Microsoft Copilot\out of the box\Bolus output\test_dice_scores.xlsx"
 #     },
@@ -79,7 +79,7 @@ import numpy as np
 
 # BRAIN TUMOR OUTPUT ===================================================================================================
 model_paths = {
-    'Bing Microsoft Copilot': {
+    'Bing Copilot': {
         'validation': r"D:\qy44lyfe\LLM segmentation\Results\Bing Microsoft Copilot\out of the box\Brain output\validation_dice_scores.xlsx",
         'test': r"D:\qy44lyfe\LLM segmentation\Results\Bing Microsoft Copilot\out of the box\Brain output\test_dice_scores.xlsx"
     },
@@ -157,7 +157,7 @@ save_path = "D:\\qy44lyfe\\LLM segmentation\\Results\\Models Comparison\\"
 
 # Map colors to each model for consistency
 color_map = {
-    'Bing Microsoft Copilot': '#66c2a5',
+    'Bing Copilot': '#66c2a5',
     'Claude 3.5 Sonnet': '#fc8d62',
     'Copilot': '#8da0cb',
     'Gemini 1.5 Pro': '#e78ac3',
@@ -168,7 +168,7 @@ color_map = {
 }
 
 # Create a figure with 1 row and 2 columns for the subplots
-fig, axes = plt.subplots(1, 2, figsize=(15, 5))
+fig, axes = plt.subplots(1, 2, figsize=(8, 4))
 
 # Plotting Validation Dice Scores on the first subplot (axes[0])
 val_data_list = [validation_scores[model] for model in model_paths.keys()]
@@ -179,9 +179,9 @@ for patch, model in zip(boxplots['boxes'], model_paths.keys()):
     patch.set_facecolor(color_map[model])
 
 # Add titles and labels to the validation plot
-axes[0].set_title('Validation Dice Scores Comparison (Mean over Epochs)', fontsize=14)
+axes[0].set_title('Bolus Dataset', fontsize=14)
 axes[0].set_xlabel('Validation Dice Scores', fontsize=12)
-axes[0].set_ylabel('Models', fontsize=12)
+#axes[0].set_ylabel('Models', fontsize=12)
 axes[0].grid(True)
 
 # Plotting Test Dice Scores on the second subplot (axes[1])
@@ -193,7 +193,7 @@ for patch, model in zip(boxplots['boxes'], model_paths.keys()):
     patch.set_facecolor(color_map[model])
 
 # Add titles and labels to the test plot
-axes[1].set_title('Test Dice Scores Comparison', fontsize=14)
+axes[1].set_title('Brain Tumor Dataset', fontsize=14)
 axes[1].set_xlabel('Test Dice Scores', fontsize=12)
 axes[1].grid(True)
 
@@ -202,7 +202,7 @@ fig.suptitle('Model Dice Scores Comparison (Tumor Dataset)', fontsize=16)
 
 # Adjust layout to ensure there's no overlap
 plt.tight_layout(rect=[0, 0, 1, 0.95])
-plt.subplots_adjust(wspace=0.3)  # Increase space between the subplots
+plt.subplots_adjust(wspace=0.6)  # Increase space between the subplots
 
 # Save the combined plot
 plt.savefig(f"{save_path}all_model_dice_scores_Brain.png", dpi=600)
