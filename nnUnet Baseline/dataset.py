@@ -6,14 +6,19 @@ import SimpleITK as sitk
 from PIL import Image
 
 
-def convert_to_nifti(image_path, output_path):
-    """Convert PNG/JPG images to NIfTI format and save them."""
+def convert_to_nifti(image_path, output_path, is_mask=False):
+    """Convert PNG/JPG images to NIfTI format and save them. If is_mask is True, convert 255 in masks to 1."""
     img = Image.open(image_path).convert("L")  # Ensure grayscale
     img_array = np.array(img)
+
+    # If processing a mask, convert 255 to 1
+    if is_mask:
+        img_array[img_array == 255] = 1
 
     # Convert the numpy array to SimpleITK image and save as .nii.gz
     sitk_img = sitk.GetImageFromArray(img_array)
     sitk.WriteImage(sitk_img, output_path)
+
 
 
 def create_nnUNet_structure(base_dir, dataset_name):
@@ -50,12 +55,13 @@ def process_bagls_dataset(images_folder, output_imagesTr, output_labelsTr, prefi
                 mask_path = os.path.join(images_folder, mask_file)
 
                 if os.path.exists(mask_path):
-                    # Process the corresponding mask
+                    # Process the corresponding mask with is_mask=True to convert 255 to 1
                     mask_output_name = f"{prefix}_patient_{int(base_name):04d}.nii.gz"
                     mask_output_path = os.path.join(output_labelsTr, mask_output_name)
-                    convert_to_nifti(mask_path, mask_output_path)
+                    convert_to_nifti(mask_path, mask_output_path, is_mask=True)
                 else:
                     print(f"Warning: Missing mask for image {img_file}")
+
 
 
 
