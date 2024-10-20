@@ -34,21 +34,29 @@ def process_bagls_dataset(images_folder, output_imagesTr, output_labelsTr, prefi
     """Process BAGLS dataset to separate images and masks."""
     image_files = sorted(os.listdir(images_folder))
 
-    for i, img_file in enumerate(image_files):
+    for img_file in image_files:
         if img_file.endswith(('.png', '.jpg')):
             base_name = os.path.splitext(img_file)[0]
 
-            # Split the image and mask based on the naming convention
-            if "_seg" in img_file:
-                # It's a mask file
-                mask_output_name = f"{prefix}_patient_{i:04d}.nii.gz"
-                mask_output_path = os.path.join(output_labelsTr, mask_output_name)
-                convert_to_nifti(os.path.join(images_folder, img_file), mask_output_path)
-            else:
+            # If it's an image (no '_seg' in name), process it as an image
+            if "_seg" not in img_file:
                 # It's an image file
-                image_output_name = f"{prefix}_patient_{i:04d}_0000.nii.gz"
+                image_output_name = f"{prefix}_patient_{int(base_name):04d}_0000.nii.gz"
                 image_output_path = os.path.join(output_imagesTr, image_output_name)
                 convert_to_nifti(os.path.join(images_folder, img_file), image_output_path)
+
+                # Corresponding mask file should have "_seg" in its name
+                mask_file = f"{base_name}_seg.png"
+                mask_path = os.path.join(images_folder, mask_file)
+
+                if os.path.exists(mask_path):
+                    # Process the corresponding mask
+                    mask_output_name = f"{prefix}_patient_{int(base_name):04d}.nii.gz"
+                    mask_output_path = os.path.join(output_labelsTr, mask_output_name)
+                    convert_to_nifti(mask_path, mask_output_path)
+                else:
+                    print(f"Warning: Missing mask for image {img_file}")
+
 
 
 def process_dataset(images_folder, masks_folder, output_imagesTr, output_labelsTr, dataset_id, prefix=""):
