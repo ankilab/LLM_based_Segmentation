@@ -34,12 +34,12 @@ class SegmentationDataset(Dataset):
         self.transform = transform
         self.target_size = target_size
 
-        #self.image_files = [f for f in os.listdir(image_dir) if f.endswith('.png') and not f.endswith('_seg.png')]
-        self.image_files = [f for f in os.listdir(image_dir) if f.endswith('.jpg') and not f.endswith('_m.jpg')]
+        self.image_files = [f for f in os.listdir(image_dir) if f.endswith('.png') and not f.endswith('_seg.png')]
+        #self.image_files = [f for f in os.listdir(image_dir) if f.endswith('.jpg') and not f.endswith('_m.jpg')]
 
         #self.mask_files = [f.replace('.png', '_seg.png') for f in self.image_files]
-        #self.mask_files = [f.replace('.png', '.png') for f in self.image_files]
-        self.mask_files = [f.replace('.jpg', '_m.jpg') for f in self.image_files]
+        self.mask_files = [f.replace('.png', '.png') for f in self.image_files]
+        #self.mask_files = [f.replace('.jpg', '_m.jpg') for f in self.image_files]
 
     def __len__(self):
         return len(self.image_files)

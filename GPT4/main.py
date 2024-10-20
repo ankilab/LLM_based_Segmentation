@@ -14,16 +14,16 @@ from torchinfo import summary
 
 if __name__ == "__main__":
     #data_folder = "D:\qy44lyfe\LLM segmentation\Data sets\BAGLS\subset"
-    #data_folder = "D:\qy44lyfe\LLM segmentation\Data sets\Swallowing\images"
-    data_folder = "D:\qy44lyfe\LLM segmentation\Data sets\Brain Meningioma\images"
+    data_folder = "D:\qy44lyfe\LLM segmentation\Data sets\Swallowing\images"
+    #data_folder = "D:\qy44lyfe\LLM segmentation\Data sets\Brain Meningioma\images"
 
     #mask_folder = "D:\\qy44lyfe\\LLM segmentation\\Data sets\\BAGLS\\subset"
-    #mask_folder = "D:\qy44lyfe\LLM segmentation\Data sets\Swallowing\masks"
-    mask_folder = "D:\qy44lyfe\LLM segmentation\Data sets\Brain Meningioma\Masks"
+    mask_folder = "D:\qy44lyfe\LLM segmentation\Data sets\Swallowing\masks"
+    #mask_folder = "D:\qy44lyfe\LLM segmentation\Data sets\Brain Meningioma\Masks"
 
     #save_path = "D:\qy44lyfe\LLM segmentation\Results\GPT 4\out of the box\BAGLS output"
-    #save_path = "D:\qy44lyfe\LLM segmentation\Results\GPT 4\out of the box\Bolus output"
-    save_path = "D:\qy44lyfe\LLM segmentation\Results\GPT 4\out of the box\Brain output"
+    save_path = "D:\qy44lyfe\LLM segmentation\Results\GPT 4\out of the box\Bolus output"
+    #save_path = "D:\qy44lyfe\LLM segmentation\Results\GPT 4\out of the box\Brain output"
 
     os.makedirs(save_path, exist_ok=True)
 
@@ -53,8 +53,7 @@ if __name__ == "__main__":
     optimizer = Adam(model.parameters(), lr=0.001)
     loss_fn = nn.BCEWithLogitsLoss()
 
-    #num_epochs = 25
-    num_epochs = 2
+    num_epochs = 25
     train_losses, val_losses = [], []
     dice_scores_val = []
     start_time = time.time()

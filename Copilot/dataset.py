@@ -10,12 +10,12 @@ class SegmentationDataset(Dataset):
         self.image_dir = image_dir
         self.mask_dir = mask_folder
         self.transform = transform
-        #self.images = [f for f in os.listdir(image_dir) if f.endswith('.png') and not f.endswith('_seg.png')]
-        self.images = [f for f in os.listdir(image_dir) if f.endswith('.jpg') and not f.endswith('_m.jpg')]
+        self.images = [f for f in os.listdir(image_dir) if f.endswith('.png') and not f.endswith('_seg.png')]
+        #self.images = [f for f in os.listdir(image_dir) if f.endswith('.jpg') and not f.endswith('_m.jpg')]
 
         #self.masks = [f.replace('.png', '_seg.png') for f in self.images]
-        #self.masks = [f.replace('.png', '.png') for f in self.images]
-        self.masks = [f.replace('.jpg', '_m.jpg') for f in self.images]
+        self.masks = [f.replace('.png', '.png') for f in self.images]
+        #self.masks = [f.replace('.jpg', '_m.jpg') for f in self.images]
 
     def __len__(self):
         return len(self.images)

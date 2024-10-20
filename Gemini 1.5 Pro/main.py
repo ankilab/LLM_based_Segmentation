@@ -18,24 +18,23 @@ from train import train_one_epoch, validate, test, visualize_predictions, plot_l
 if __name__ == "__main__":
     # 0. Set Hyperparameters, paths, etc
     #image_dir = "D:\qy44lyfe\LLM segmentation\Data sets\BAGLS\subset" # Replace with the actual path to your dataset
-    #image_dir = "D:\qy44lyfe\LLM segmentation\Data sets\Swallowing\images"
-    image_dir = "D:\qy44lyfe\LLM segmentation\Data sets\Brain Meningioma\images"
+    image_dir = "D:\qy44lyfe\LLM segmentation\Data sets\Swallowing\images"
+    #image_dir = "D:\qy44lyfe\LLM segmentation\Data sets\Brain Meningioma\images"
 
     #mask_folder = "D:\\qy44lyfe\\LLM segmentation\\Data sets\\BAGLS\\subset"
-    #mask_folder = "D:\qy44lyfe\LLM segmentation\Data sets\Swallowing\masks"
-    mask_folder = "D:\qy44lyfe\LLM segmentation\Data sets\Brain Meningioma\Masks"
+    mask_folder = "D:\qy44lyfe\LLM segmentation\Data sets\Swallowing\masks"
+    #mask_folder = "D:\qy44lyfe\LLM segmentation\Data sets\Brain Meningioma\Masks"
 
     #save_path = "D:\qy44lyfe\LLM segmentation\Results\Gemini 1.5 pro\out of the box\BAGLS output" #path to save model, logs, etc
-    #save_path = "D:\qy44lyfe\LLM segmentation\Results\Gemini 1.5 pro\out of the box\Bolus output"
-    save_path = "D:\qy44lyfe\LLM segmentation\Results\Gemini 1.5 pro\out of the box\Brain output"
+    save_path = "D:\qy44lyfe\LLM segmentation\Results\Gemini 1.5 pro\out of the box\Bolus output"
+    #save_path = "D:\qy44lyfe\LLM segmentation\Results\Gemini 1.5 pro\out of the box\Brain output"
 
     os.makedirs(save_path, exist_ok=True)
 
     img_size = (256, 256) #resize images to this size
     batch_size = 8  # Adjust based on your GPU memory
     learning_rate = 1e-4
-    #num_epochs = 20
-    num_epochs = 2
+    num_epochs = 20
 
 
     # 1. Create Dataset and DataLoaders
@@ -65,8 +64,8 @@ if __name__ == "__main__":
             original_image_name = dataset.image_files[split_data.indices[idx]]
 
             #original_mask_name = original_image_name.split('.')[0] + "_seg.png"
-            #original_mask_name = original_image_name
-            original_mask_name = original_image_name.split('.')[0] + "_m.jpg"
+            original_mask_name = original_image_name
+            #original_mask_name = original_image_name.split('.')[0] + "_m.jpg"
 
             shutil.copy(os.path.join(image_dir, original_image_name), split_dir)
             shutil.copy(os.path.join(mask_folder, original_mask_name), split_dir)
