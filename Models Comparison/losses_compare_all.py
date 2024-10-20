@@ -2,8 +2,17 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 # Load training and validation losses
+# BAGLS ===============================================================================================================
 train_loss_path = "D:\\qy44lyfe\\LLM segmentation\\Results\\Models Comparison\\all_train_losses_BAGLS.xlsx"
 val_loss_path = "D:\\qy44lyfe\\LLM segmentation\\Results\\Models Comparison\\all_validation_losses_BAGLS.xlsx"
+# BOLUS ===============================================================================================================
+train_loss_path = "D:\\qy44lyfe\\LLM segmentation\\Results\\Models Comparison\\all_train_losses_BOLUS.xlsx"
+val_loss_path = "D:\\qy44lyfe\\LLM segmentation\\Results\\Models Comparison\\all_validation_losses_BOLUS.xlsx"
+# BRAIN ===============================================================================================================
+train_loss_path = "D:\\qy44lyfe\\LLM segmentation\\Results\\Models Comparison\\all_train_losses_BRAIN.xlsx"
+val_loss_path = "D:\\qy44lyfe\\LLM segmentation\\Results\\Models Comparison\\all_validation_losses_BRAIN.xlsx"
+# =====================================================================================================================
+
 save_path = "D:\\qy44lyfe\\LLM segmentation\\Results\\Models Comparison\\"
 
 # Read both Excel files

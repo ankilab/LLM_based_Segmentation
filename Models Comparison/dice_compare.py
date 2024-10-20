@@ -3,40 +3,117 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 # Paths for each model's validation and test dice scores
+
+# BAGLS OUTPUT =========================================================================================================
+# model_paths = {
+#     'Bing Microsoft Copilot': {
+#         'validation': r"D:\qy44lyfe\LLM segmentation\Results\Bing Microsoft Copilot\out of the box\BAGLS output\validation_dice_scores.xlsx",
+#         'test': r"D:\qy44lyfe\LLM segmentation\Results\Bing Microsoft Copilot\out of the box\BAGLS output\test_dice_scores.xlsx"
+#     },
+#     'Claude 3.5 Sonnet': {
+#         'validation': r"D:\qy44lyfe\LLM segmentation\Results\Claude 3.5 Sonnet\out of the box\BAGLS output\validation_dice_scores.xlsx",
+#         'test': r"D:\qy44lyfe\LLM segmentation\Results\Claude 3.5 Sonnet\out of the box\BAGLS output\test_dice_scores.xlsx"
+#     },
+#     'Copilot': {
+#         'validation': r"D:\qy44lyfe\LLM segmentation\Results\Copilot\out of the box\BAGLS output\validation_dice_scores.xlsx",
+#         'test': r"D:\qy44lyfe\LLM segmentation\Results\Copilot\out of the box\BAGLS output\test_dice_scores.xlsx"
+#     },
+#     'Gemini 1.5 Pro': {
+#         'validation': r"D:\qy44lyfe\LLM segmentation\Results\Gemini 1.5 pro\out of the box\BAGLS output\validation_dice_scores.xlsx",
+#         'test': r"D:\qy44lyfe\LLM segmentation\Results\Gemini 1.5 pro\out of the box\BAGLS output\test_dice_scores.xlsx"
+#     },
+#     'GPT 4': {
+#         'validation': r"D:\qy44lyfe\LLM segmentation\Results\GPT 4\out of the box\BAGLS output\validation_dice_scores.xlsx",
+#         'test': r"D:\qy44lyfe\LLM segmentation\Results\GPT 4\out of the box\BAGLS output\test_dice_scores.xlsx"
+#     },
+#     'GPT 4o': {
+#         'validation': r"D:\qy44lyfe\LLM segmentation\Results\GPT 4o\out of the box\BAGLS output\validation_dice_scores.xlsx",
+#         'test': r"D:\qy44lyfe\LLM segmentation\Results\GPT 4o\out of the box\BAGLS output\test_dice_scores.xlsx"
+#     },
+#     'GPT o1 Preview': {
+#         'validation': r"D:\qy44lyfe\LLM segmentation\Results\GPT o1 preview\out of the box\BAGLS output\validation_dice_scores.xlsx",
+#         'test': r"D:\qy44lyfe\LLM segmentation\Results\GPT o1 preview\out of the box\BAGLS output\test_dice_scores.xlsx"
+#     },
+#     'LLAMA 3.1 405B': {
+#         'validation': r"D:\qy44lyfe\LLM segmentation\Results\LLAMA 3.1 405B\out of the box\BAGLS output\validation_dice_scores.xlsx",
+#         'test': r"D:\qy44lyfe\LLM segmentation\Results\LLAMA 3.1 405B\out of the box\BAGLS output\test_dice_scores.xlsx"
+#     }
+# }
+
+# BOLUS OUTPUT =========================================================================================================
+# model_paths = {
+#     'Bing Microsoft Copilot': {
+#         'validation': r"D:\qy44lyfe\LLM segmentation\Results\Bing Microsoft Copilot\out of the box\Bolus output\validation_dice_scores.xlsx",
+#         'test': r"D:\qy44lyfe\LLM segmentation\Results\Bing Microsoft Copilot\out of the box\Bolus output\test_dice_scores.xlsx"
+#     },
+#     'Claude 3.5 Sonnet': {
+#         'validation': r"D:\qy44lyfe\LLM segmentation\Results\Claude 3.5 Sonnet\out of the box\Bolus output\validation_dice_scores.xlsx",
+#         'test': r"D:\qy44lyfe\LLM segmentation\Results\Claude 3.5 Sonnet\out of the box\Bolus output\test_dice_scores.xlsx"
+#     },
+#     'Copilot': {
+#         'validation': r"D:\qy44lyfe\LLM segmentation\Results\Copilot\out of the box\Bolus output\validation_dice_scores.xlsx",
+#         'test': r"D:\qy44lyfe\LLM segmentation\Results\Copilot\out of the box\Bolus output\test_dice_scores.xlsx"
+#     },
+#     'Gemini 1.5 Pro': {
+#         'validation': r"D:\qy44lyfe\LLM segmentation\Results\Gemini 1.5 pro\out of the box\Bolus output\validation_dice_scores.xlsx",
+#         'test': r"D:\qy44lyfe\LLM segmentation\Results\Gemini 1.5 pro\out of the box\Bolus output\test_dice_scores.xlsx"
+#     },
+#     'GPT 4': {
+#         'validation': r"D:\qy44lyfe\LLM segmentation\Results\GPT 4\out of the box\Bolus output\validation_dice_scores.xlsx",
+#         'test': r"D:\qy44lyfe\LLM segmentation\Results\GPT 4\out of the box\Bolus output\test_dice_scores.xlsx"
+#     },
+#     'GPT 4o': {
+#         'validation': r"D:\qy44lyfe\LLM segmentation\Results\GPT 4o\out of the box\Bolus output\validation_dice_scores.xlsx",
+#         'test': r"D:\qy44lyfe\LLM segmentation\Results\GPT 4o\out of the box\Bolus output\test_dice_scores.xlsx"
+#     },
+#     'GPT o1 Preview': {
+#         'validation': r"D:\qy44lyfe\LLM segmentation\Results\GPT o1 preview\out of the box\Bolus output\validation_dice_scores.xlsx",
+#         'test': r"D:\qy44lyfe\LLM segmentation\Results\GPT o1 preview\out of the box\Bolus output\test_dice_scores.xlsx"
+#     },
+#     'LLAMA 3.1 405B': {
+#         'validation': r"D:\qy44lyfe\LLM segmentation\Results\LLAMA 3.1 405B\out of the box\Bolus output\validation_dice_scores.xlsx",
+#         'test': r"D:\qy44lyfe\LLM segmentation\Results\LLAMA 3.1 405B\out of the box\Bolus output\test_dice_scores.xlsx"
+#     }
+# }
+
+
+# BRAIN TUMOR OUTPUT ===================================================================================================
 model_paths = {
     'Bing Microsoft Copilot': {
-        'validation': r"D:\qy44lyfe\LLM segmentation\Results\Bing Microsoft Copilot\out of the box\BAGLS output\validation_dice_scores.xlsx",
-        'test': r"D:\qy44lyfe\LLM segmentation\Results\Bing Microsoft Copilot\out of the box\BAGLS output\test_dice_scores.xlsx"
+        'validation': r"D:\qy44lyfe\LLM segmentation\Results\Bing Microsoft Copilot\out of the box\Brain output\validation_dice_scores.xlsx",
+        'test': r"D:\qy44lyfe\LLM segmentation\Results\Bing Microsoft Copilot\out of the box\Brain output\test_dice_scores.xlsx"
     },
     'Claude 3.5 Sonnet': {
-        'validation': r"D:\qy44lyfe\LLM segmentation\Results\Claude 3.5 Sonnet\out of the box\BAGLS output\validation_dice_scores.xlsx",
-        'test': r"D:\qy44lyfe\LLM segmentation\Results\Claude 3.5 Sonnet\out of the box\BAGLS output\test_dice_scores.xlsx"
+        'validation': r"D:\qy44lyfe\LLM segmentation\Results\Claude 3.5 Sonnet\out of the box\Brain output\validation_dice_scores.xlsx",
+        'test': r"D:\qy44lyfe\LLM segmentation\Results\Claude 3.5 Sonnet\out of the box\Brain output\test_dice_scores.xlsx"
     },
     'Copilot': {
-        'validation': r"D:\qy44lyfe\LLM segmentation\Results\Copilot\out of the box\BAGLS output\validation_dice_scores.xlsx",
-        'test': r"D:\qy44lyfe\LLM segmentation\Results\Copilot\out of the box\BAGLS output\test_dice_scores.xlsx"
+        'validation': r"D:\qy44lyfe\LLM segmentation\Results\Copilot\out of the box\Brain output\validation_dice_scores.xlsx",
+        'test': r"D:\qy44lyfe\LLM segmentation\Results\Copilot\out of the box\Brain output\test_dice_scores.xlsx"
     },
     'Gemini 1.5 Pro': {
-        'validation': r"D:\qy44lyfe\LLM segmentation\Results\Gemini 1.5 pro\out of the box\BAGLS output\validation_dice_scores.xlsx",
-        'test': r"D:\qy44lyfe\LLM segmentation\Results\Gemini 1.5 pro\out of the box\BAGLS output\test_dice_scores.xlsx"
+        'validation': r"D:\qy44lyfe\LLM segmentation\Results\Gemini 1.5 pro\out of the box\Brain output\validation_dice_scores.xlsx",
+        'test': r"D:\qy44lyfe\LLM segmentation\Results\Gemini 1.5 pro\out of the box\Brain output\test_dice_scores.xlsx"
     },
     'GPT 4': {
-        'validation': r"D:\qy44lyfe\LLM segmentation\Results\GPT 4\out of the box\BAGLS output\validation_dice_scores.xlsx",
-        'test': r"D:\qy44lyfe\LLM segmentation\Results\GPT 4\out of the box\BAGLS output\test_dice_scores.xlsx"
+        'validation': r"D:\qy44lyfe\LLM segmentation\Results\GPT 4\out of the box\Brain output\validation_dice_scores.xlsx",
+        'test': r"D:\qy44lyfe\LLM segmentation\Results\GPT 4\out of the box\Brain output\test_dice_scores.xlsx"
     },
     'GPT 4o': {
-        'validation': r"D:\qy44lyfe\LLM segmentation\Results\GPT 4o\out of the box\BAGLS output\validation_dice_scores.xlsx",
-        'test': r"D:\qy44lyfe\LLM segmentation\Results\GPT 4o\out of the box\BAGLS output\test_dice_scores.xlsx"
+        'validation': r"D:\qy44lyfe\LLM segmentation\Results\GPT 4o\out of the box\Brain output\validation_dice_scores.xlsx",
+        'test': r"D:\qy44lyfe\LLM segmentation\Results\GPT 4o\out of the box\Brain output\test_dice_scores.xlsx"
     },
     'GPT o1 Preview': {
-        'validation': r"D:\qy44lyfe\LLM segmentation\Results\GPT o1 preview\out of the box\BAGLS output\validation_dice_scores.xlsx",
-        'test': r"D:\qy44lyfe\LLM segmentation\Results\GPT o1 preview\out of the box\BAGLS output\test_dice_scores.xlsx"
+        'validation': r"D:\qy44lyfe\LLM segmentation\Results\GPT o1 preview\out of the box\Brain output\validation_dice_scores.xlsx",
+        'test': r"D:\qy44lyfe\LLM segmentation\Results\GPT o1 preview\out of the box\Brain output\test_dice_scores.xlsx"
     },
     'LLAMA 3.1 405B': {
-        'validation': r"D:\qy44lyfe\LLM segmentation\Results\LLAMA 3.1 405B\out of the box\BAGLS output\validation_dice_scores.xlsx",
-        'test': r"D:\qy44lyfe\LLM segmentation\Results\LLAMA 3.1 405B\out of the box\BAGLS output\test_dice_scores.xlsx"
+        'validation': r"D:\qy44lyfe\LLM segmentation\Results\LLAMA 3.1 405B\out of the box\Brain output\validation_dice_scores.xlsx",
+        'test': r"D:\qy44lyfe\LLM segmentation\Results\LLAMA 3.1 405B\out of the box\Brain output\test_dice_scores.xlsx"
     }
 }
+# ======================================================================================================================
+
 
 # Function to load validation and test data from Excel files (handling inconsistent shapes)
 def load_dice_scores(model_paths):
@@ -121,14 +198,14 @@ axes[1].set_xlabel('Test Dice Scores', fontsize=12)
 axes[1].grid(True)
 
 # Set the overall title for the figure
-fig.suptitle('Model Dice Scores Comparison (BAGLS Dataset)', fontsize=16)
+fig.suptitle('Model Dice Scores Comparison (Tumor Dataset)', fontsize=16)
 
 # Adjust layout to ensure there's no overlap
 plt.tight_layout(rect=[0, 0, 1, 0.95])
 plt.subplots_adjust(wspace=0.3)  # Increase space between the subplots
 
 # Save the combined plot
-plt.savefig(f"{save_path}all_model_dice_scores_BAGLS.png", dpi=600)
+plt.savefig(f"{save_path}all_model_dice_scores_Brain.png", dpi=600)
 
 # Show the plot
 #plt.show()

@@ -9,7 +9,14 @@ import torch.nn.functional as F
 from torchvision.transforms import functional as TF
 
 # Dynamically adding the path to 'model.py'
-model_dir = "D:\qy44lyfe\LLM segmentation\github repo\LLM_based_Segmentation\LLaMA 3.1_405B"  # The folder the model.py is located
+#model_dir = "D:\qy44lyfe\LLM segmentation\github repo\LLM_based_Segmentation\Bing Microsoft Copilot" # The folder the model.py is located
+#model_dir = "D:\qy44lyfe\LLM segmentation\github repo\LLM_based_Segmentation\Claude 3.5 Sonnet"
+#model_dir = "D:\qy44lyfe\LLM segmentation\github repo\LLM_based_Segmentation\Copilot"
+#model_dir = "D:\qy44lyfe\LLM segmentation\github repo\LLM_based_Segmentation\Gemini 1.5 Pro"
+#model_dir = "D:\qy44lyfe\LLM segmentation\github repo\LLM_based_Segmentation\GPT o1 preview"
+#model_dir = "D:\qy44lyfe\LLM segmentation\github repo\LLM_based_Segmentation\GPT4"
+#model_dir = "D:\qy44lyfe\LLM segmentation\github repo\LLM_based_Segmentation\GPT4o"
+model_dir = "D:\qy44lyfe\LLM segmentation\github repo\LLM_based_Segmentation\LLaMA 3.1_405B"
 sys.path.append(model_dir)
 
 # Dynamically importing 'model.py'
@@ -27,7 +34,10 @@ def dice_coefficient(preds, targets, smooth=1e-6):
 # Function to load a single image and mask, resize and return tensors
 def load_image_and_mask(image_path, mask_dir, image_size=(256, 256)):
     img_name = os.path.basename(image_path)  # Get the image filename (e.g., '11.png')
-    mask_name = img_name.replace('.png', '_seg.png')  # Replace '.png' with '_seg.png' for the mask
+
+    # mask_name = img_name.replace('.png', '_seg.png')  # BAGLS dataset
+    mask_name = img_name                               # bolus dataset
+    #mask_name = img_name.replace('.jpg', '_m.jpg')   # Brain tumor dataset
 
     mask_path = os.path.join(mask_dir, mask_name)  # Full path to the mask
 
@@ -45,27 +55,6 @@ def load_image_and_mask(image_path, mask_dir, image_size=(256, 256)):
     mask = TF.to_tensor(mask)
     mask = (mask > 0.5).float()  # Binarize the mask
     return image, mask
-
-# Function to visualize the input, ground truth mask, and predicted mask
-# def visualize_prediction(input_img, ground_truth, prediction, img_name, dice_score, save_path):
-#     fig, axs = plt.subplots(1, 3, figsize=(12, 5))
-#
-#     # Squeeze the first dimension to convert (1, 256, 256) -> (256, 256)
-#     axs[0].imshow(input_img[0].squeeze(), cmap='gray')  # Remove the first dimension for display
-#     axs[0].set_title(f"Input Image: {img_name}")
-#     axs[0].axis('off')
-#
-#     axs[1].imshow(ground_truth[0].squeeze(), cmap='gray')  # Remove the first dimension for display
-#     axs[1].set_title("Ground Truth")
-#     axs[1].axis('off')
-#
-#     axs[2].imshow(prediction[0].squeeze(), cmap='gray')  # Remove the first dimension for display
-#     axs[2].set_title(f"Prediction\nDice Score: {dice_score:.4f}")
-#     axs[2].axis('off')
-#
-#     plt.tight_layout()
-#     plt.savefig(os.path.join(save_path, f'{img_name}_prediction.png'))
-#     plt.show()
 
 
 def visualize_prediction(input_img, ground_truth, prediction, img_name, dice_score, save_path):
@@ -128,19 +117,50 @@ def infer_single_image(state_dict_path, image_path, mask_dir, img_name, save_pat
 
 if __name__ == "__main__":
     # Paths to model, input image, and ground truth mask
+    # BAGLS =======================================================================================
+    #state_dict_path = "D:\\qy44lyfe\\LLM segmentation\\Results\\GPT o1 preview\\out of the box\\BAGLS output\\unet_model_state_dict.pth"
+    #state_dict_path = "D:\\qy44lyfe\\LLM segmentation\\Results\\GPT 4\\out of the box\\BAGLS output\\model_state.pth"
+    #state_dict_path = "D:\\qy44lyfe\\LLM segmentation\\Results\\GPT 4o\\out of the box\\BAGLS output\\unet_model_state_dict.pth"
+    #state_dict_path = "D:\\qy44lyfe\\LLM segmentation\\Results\\Copilot\\out of the box\\BAGLS output\\unet_model.pth"
+    #state_dict_path = "D:\\qy44lyfe\\LLM segmentation\\Results\\Bing Microsoft Copilot\\out of the box\\BAGLS output\\unet_model.pth"
+    #state_dict_path = "D:\\qy44lyfe\\LLM segmentation\\Results\\Claude 3.5 Sonnet\\out of the box\\BAGLS output\\best_model.pth"
+    #state_dict_path = "D:\\qy44lyfe\\LLM segmentation\\Results\\Gemini 1.5 pro\\out of the box\\BAGLS output\\unet_model_weights.pth"
+    #state_dict_path = "D:\\qy44lyfe\\LLM segmentation\\Results\\LLAMA 3.1 405B\\out of the box\\BAGLS output\\unet_model_state_dict.pth"
 
-    # state_dict_path = "D:\\qy44lyfe\\LLM segmentation\\Results\\GPT o1 preview\\out of the box\\BAGLS output\\unet_model_state_dict.pth"
-    # state_dict_path = "D:\qy44lyfe\LLM segmentation\Results\GPT 4\out of the box\BAGLS output\model_state.pth"
-    # state_dict_path = "D:\\qy44lyfe\\LLM segmentation\\Results\\GPT 4o\\out of the box\\BAGLS output\\unet_model_state_dict.pth"
-    # state_dict_path = "D:\\qy44lyfe\\LLM segmentation\\Results\\Copilot\\out of the box\\BAGLS output\\unet_model.pth"
-    # state_dict_path = "D:\\qy44lyfe\\LLM segmentation\\Results\\Bing Microsoft Copilot\\out of the box\\BAGLS output\\unet_model.pth"
-    # state_dict_path = "D:\\qy44lyfe\\LLM segmentation\\Results\\Claude 3.5 Sonnet\\out of the box\\BAGLS output\\best_model.pth"
-    # state_dict_path = "D:\\qy44lyfe\\LLM segmentation\\Results\\Gemini 1.5 pro\\out of the box\\BAGLS output\\unet_model_weights.pth"
-    state_dict_path = "D:\\qy44lyfe\\LLM segmentation\\Results\\LLAMA 3.1 405B\\out of the box\\BAGLS output\\unet_model_state_dict.pth"
+    # BOLUS ========================================================================================
+    #state_dict_path = "D:\\qy44lyfe\\LLM segmentation\\Results\\GPT o1 preview\\out of the box\\Bolus output\\unet_model_state_dict.pth"
+    #state_dict_path = "D:\\qy44lyfe\\LLM segmentation\\Results\\GPT 4\\out of the box\\Bolus output\\model_state.pth"
+    #state_dict_path = "D:\\qy44lyfe\\LLM segmentation\\Results\\GPT 4o\\out of the box\\Bolus output\\unet_model_state_dict.pth"
+    #state_dict_path = "D:\\qy44lyfe\\LLM segmentation\\Results\\Copilot\\out of the box\\Bolus output\\unet_model.pth"
+    #state_dict_path = "D:\\qy44lyfe\\LLM segmentation\\Results\\Bing Microsoft Copilot\\out of the box\\Bolus output\\unet_model.pth"
+    #state_dict_path = "D:\\qy44lyfe\\LLM segmentation\\Results\\Claude 3.5 Sonnet\\out of the box\\Bolus output\\best_model.pth"
+    #state_dict_path = "D:\\qy44lyfe\\LLM segmentation\\Results\\Gemini 1.5 pro\\out of the box\\Bolus output\\unet_model_weights.pth"
+    state_dict_path = "D:\\qy44lyfe\\LLM segmentation\\Results\\LLAMA 3.1 405B\\out of the box\\Bolus output\\unet_model_state_dict.pth"
 
-    image_dir = 'D:\\qy44lyfe\\LLM segmentation\\Data sets\\BAGLS\\subset'  # Folder containing input images
-    mask_dir = 'D:\\qy44lyfe\\LLM segmentation\\Data sets\\BAGLS\\subset'  # Folder containing mask images
-    img_name = '1077.png'  # The name of the image you want to visualize (e.g., '11.png')
+    # BRAIN TUMOR ====================================================================================
+    #state_dict_path = "D:\\qy44lyfe\\LLM segmentation\\Results\\GPT o1 preview\\out of the box\\Brain output\\unet_model_state_dict.pth"
+    #state_dict_path = "D:\\qy44lyfe\\LLM segmentation\\Results\\GPT 4\\out of the box\\Brain output\\model_state.pth"
+    #state_dict_path = "D:\\qy44lyfe\\LLM segmentation\\Results\\GPT 4o\\out of the box\\Brain output\\unet_model_state_dict.pth"
+    #state_dict_path = "D:\\qy44lyfe\\LLM segmentation\\Results\\Copilot\\out of the box\\Brain output\\unet_model.pth"
+    #state_dict_path = "D:\\qy44lyfe\\LLM segmentation\\Results\\Bing Microsoft Copilot\\out of the box\\Brain output\\unet_model.pth"
+    #state_dict_path = "D:\\qy44lyfe\\LLM segmentation\\Results\\Claude 3.5 Sonnet\\out of the box\\Brain output\\best_model.pth"
+    #state_dict_path = "D:\\qy44lyfe\\LLM segmentation\\Results\\Gemini 1.5 pro\\out of the box\\Brain output\\unet_model_weights.pth"
+    #state_dict_path = "D:\\qy44lyfe\\LLM segmentation\\Results\\LLAMA 3.1 405B\\out of the box\\Brain output\\unet_model_state_dict.pth"
+
+    # image_dir = "D:\\qy44lyfe\\LLM segmentation\\Data sets\\BAGLS\\subset"  # Folder containing input images
+    image_dir = "D:\\qy44lyfe\\LLM segmentation\\Data sets\\Swallowing\\images"
+    #image_dir = "D:\\qy44lyfe\\LLM segmentation\\Data sets\\Brain Meningioma\\images"
+
+    # mask_dir = "D:\\qy44lyfe\\LLM segmentation\\Data sets\\BAGLS\\subset" # Folder containing mask images
+    mask_dir = "D:\\qy44lyfe\\LLM segmentation\\Data sets\\Swallowing\\masks"
+    #mask_dir = "D:\\qy44lyfe\\LLM segmentation\\Data sets\\Brain Meningioma\\Masks"
+
+    #img_name = '1077.png'  # BAGLS
+    img_name = '153.png'   # bolus
+    #img_name = 'Tr-me_0275.jpg'  # Brain tumor
+    #img_name = 'Tr-me_0022.jpg'  # Brain tumor
+    #img_name = 'Tr-me_0240.jpg'  # Brain tumor
+
     save_path = 'D:\\qy44lyfe\\LLM segmentation\\Results\\Models Comparison'  # Directory where you want to save the output
 
     image_path = os.path.join(image_dir, img_name)
