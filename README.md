@@ -68,12 +68,50 @@ Copilot (Closed-source)
 GPT-o1 Preview (Open-source)
 Key differences between these models include the number of encoder/decoder stages, convolutional block design, use of batch normalization, skip connections, bottleneck size, and final activation functions. These variations contribute to differences in segmentation performance and ease of model generation.
 
+| **Model**                  | **Company**         | **Model Version**      | **Open Source** | **Character Limit** | **Token Limit** |
+|----------------------------|---------------------|------------------------|-----------------|---------------------|-----------------|
+| **GPT-4**                  | OpenAI              | GPT-4                  | No               | 25,000              | 8,192           |
+| **GPT-4o**                 | OpenAI              | GPT-4o                 | No               | 50,000              | 32,768          |
+| **GPT o1 Preview**         | OpenAI              | GPT o1 Preview         | No               | 50,000              | 128,000         |
+| **Claude 3.5 Sonnet**      | Anthropic           | Claude 3.5 Sonnet      | No               | 90,000              | 100,000         |
+| **LLAMA 3.1 405B**         | Meta AI             | LLAMA 3.1              | Yes              | 30,000              | 32,768          |
+| **Gemini 1.5 Pro**         | Google DeepMind     | Gemini 1.5 Pro         | No               | 25,000              | 8,192           |
+| **GitHub Copilot**         | GitHub (Microsoft)  | Codex-based Copilot    | No               | 16,000              | 4,000           |
+| **Bing Microsoft Copilot** | Microsoft           | GPT-4-powered          | No               | 32,768              | 8,192           |
+
+**Table**: Comparison of the selected LLMs by input character limit, token limit, and open-source status.
+
+
 ## Results
 ### Key Metrics
+1. Model Architecture and Hyper parameter differences:
+
+| **Feature**                      | **GPT-4** | **GPT-4o** | **GPT-o1** | **Claude 3.5** | **Copilot** | **Bing Copilot** | **LLAMA 3.1** | **Gemini 1.5 Pro** |
+|-----------------------------------|-----------|------------|------------|----------------|-------------|------------------|---------------|--------------------|
+| Batch Size                        | 16        | 8          | 16         | 16             | 16          | 16               | 32            | 8                  |
+| Epochs                            | 25        | 25         | 10         | 50             | 25          | 25               | 10            | 20                 |
+| Optimizer and Learning Rate       | Adam (lr=0.001) | Adam (lr=1e-4) | Adam (lr=1e-4) | Adam (lr=0.001) | Adam (lr=1e-4) | Adam (lr=1e-4) | Adam (lr=0.001) | Adam (lr=1e-4) |
+| Loss Function                     | BCEWithLogitsLoss | BCELoss | BCELoss | BCELoss | BCELoss | BCELoss | BCELoss | BCELoss |
+| Image Size                        | 256x256   | 256x256    | 256x256    | 256x256        | 128x128     | 256x256          | 256x256       | 256x256            |
+| Number of Encoder Stages          | 4         | 5          | 4          | 4              | 4           | 4                | 3             | 4                  |
+| Number of Decoder Stages          | 3         | 4          | 4          | 4              | 4           | 4                | 3             | 4                  |
+| Convolutional Block               | Double Conv (Conv2d + ReLU ×2) | Conv2d + BatchNorm2d + ReLU ×2 | Double Conv (Conv2d + BatchNorm + ReLU ×2) | Double Conv (Conv2d + BatchNorm2d + ReLU ×2) | Conv2d + BatchNorm2d + ReLU ×2 | Conv2d + ReLU ×2 | Conv2d + ReLU | Conv2d + BatchNorm2d + ReLU ×2 |
+| Bottleneck Layer                  | 512 channels | 1024 channels | 1024 channels | 1024 channels | 512 channels | 512 channels | 256 channels | 1024 channels |
+| Final Layer                       | Conv2d(64, 1, 1) | Conv2d(64, 1, 1) | Conv2d(64, 1, 1) | Conv2d(64, 1, 1) | Conv2d(64, 1, 1) | Conv2d(64, 1, 1) | Conv2d(64, 1, 1) | Conv2d(64, 1, 1) |
+| Encoder Channels                  | 64, 128, 256, 512 | 64, 128, 256, 512, 1024 | 64, 128, 256, 512, 1024 | 64, 128, 256, 512, 1024 | 64, 128, 256, 512 | 64, 128, 256, 512 | 64, 128, 256 | 64, 128, 256, 512 |
+| Decoder Channels                  | 512, 256, 128, 64 | 512, 256, 128, 64 | 512, 256, 128, 64 | 512, 256, 128, 64 | 512, 256, 128, 64 | 512, 256, 128, 64 | 256, 128, 64 | 512, 256, 128, 64 |
+| Total Trainable Model Parameters  | 7,696,193 | 31,042,369 | 31,042,369 | 31,042,369     | 6,153,297   | 6,147,659        | 533,953        | 31,042,369         |
+| Total Training Time (sec)         | 1474.03   | 949.33     | 780.13     | 5285.17        | 184.16      | 497.04           | 234.27         | 1066.50            |
+
+**Table**: Comparison of Features Across Different LLM-based Models.
+
+
 Error Comparison: Models such as GPT-o1 Preview and Claude had 0 errors and ran successfully without modifications, while others like Gemini and Copilot required more fixes.
 Training & Validation Losses: Validation losses varied across epochs for each model.
 Test Dice Scores: Dice scores varied significantly across datasets, with GPT-4o and Claude models showing better performance overall.
 Visualized Outputs: Visualizations of segmentation outputs were saved and compared across models.
+
+
 
 ## Summary
 We found that while most LLMs generated functional code, some models required more debugging than others. GPT-o1 Preview and Claude generated highly efficient architectures with minimal intervention. In contrast, models like LLAMA 3.1 performed poorly in comparison, particularly on complex datasets like the Brain Tumor dataset.
