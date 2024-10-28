@@ -5,40 +5,40 @@ import numpy as np
 # Paths for each model's validation and test dice scores
 
 # BAGLS OUTPUT =========================================================================================================
-# model_paths = {
-#     'Bing Copilot': {
-#         'validation': r"D:\qy44lyfe\LLM segmentation\Results\Bing Microsoft Copilot\out of the box\BAGLS output\validation_dice_scores.xlsx",
-#         'test': r"D:\qy44lyfe\LLM segmentation\Results\Bing Microsoft Copilot\out of the box\BAGLS output\test_dice_scores.xlsx"
-#     },
-#     'Claude 3.5 Sonnet': {
-#         'validation': r"D:\qy44lyfe\LLM segmentation\Results\Claude 3.5 Sonnet\out of the box\BAGLS output\validation_dice_scores.xlsx",
-#         'test': r"D:\qy44lyfe\LLM segmentation\Results\Claude 3.5 Sonnet\out of the box\BAGLS output\test_dice_scores.xlsx"
-#     },
-#     'Copilot': {
-#         'validation': r"D:\qy44lyfe\LLM segmentation\Results\Copilot\out of the box\BAGLS output\validation_dice_scores.xlsx",
-#         'test': r"D:\qy44lyfe\LLM segmentation\Results\Copilot\out of the box\BAGLS output\test_dice_scores.xlsx"
-#     },
-#     'Gemini 1.5 Pro': {
-#         'validation': r"D:\qy44lyfe\LLM segmentation\Results\Gemini 1.5 pro\out of the box\BAGLS output\validation_dice_scores.xlsx",
-#         'test': r"D:\qy44lyfe\LLM segmentation\Results\Gemini 1.5 pro\out of the box\BAGLS output\test_dice_scores.xlsx"
-#     },
-#     'GPT 4': {
-#         'validation': r"D:\qy44lyfe\LLM segmentation\Results\GPT 4\out of the box\BAGLS output\validation_dice_scores.xlsx",
-#         'test': r"D:\qy44lyfe\LLM segmentation\Results\GPT 4\out of the box\BAGLS output\test_dice_scores.xlsx"
-#     },
-#     'GPT 4o': {
-#         'validation': r"D:\qy44lyfe\LLM segmentation\Results\GPT 4o\out of the box\BAGLS output\validation_dice_scores.xlsx",
-#         'test': r"D:\qy44lyfe\LLM segmentation\Results\GPT 4o\out of the box\BAGLS output\test_dice_scores.xlsx"
-#     },
-#     'GPT o1 Preview': {
-#         'validation': r"D:\qy44lyfe\LLM segmentation\Results\GPT o1 preview\out of the box\BAGLS output\validation_dice_scores.xlsx",
-#         'test': r"D:\qy44lyfe\LLM segmentation\Results\GPT o1 preview\out of the box\BAGLS output\test_dice_scores.xlsx"
-#     },
-#     'LLAMA 3.1 405B': {
-#         'validation': r"D:\qy44lyfe\LLM segmentation\Results\LLAMA 3.1 405B\out of the box\BAGLS output\validation_dice_scores.xlsx",
-#         'test': r"D:\qy44lyfe\LLM segmentation\Results\LLAMA 3.1 405B\out of the box\BAGLS output\test_dice_scores.xlsx"
-#     }
-# }
+model_paths = {
+    'Bing Copilot': {
+        'validation': r"D:\qy44lyfe\LLM segmentation\Results\Bing Microsoft Copilot\out of the box\BAGLS output\validation_dice_scores.xlsx",
+        'test': r"D:\qy44lyfe\LLM segmentation\Results\Bing Microsoft Copilot\out of the box\BAGLS output\test_dice_scores.xlsx"
+    },
+    'Claude 3.5 Sonnet': {
+        'validation': r"D:\qy44lyfe\LLM segmentation\Results\Claude 3.5 Sonnet\out of the box\BAGLS output\validation_dice_scores.xlsx",
+        'test': r"D:\qy44lyfe\LLM segmentation\Results\Claude 3.5 Sonnet\out of the box\BAGLS output\test_dice_scores.xlsx"
+    },
+    'Copilot': {
+        'validation': r"D:\qy44lyfe\LLM segmentation\Results\Copilot\out of the box\BAGLS output\validation_dice_scores.xlsx",
+        'test': r"D:\qy44lyfe\LLM segmentation\Results\Copilot\out of the box\BAGLS output\test_dice_scores.xlsx"
+    },
+    'Gemini 1.5 Pro': {
+        'validation': r"D:\qy44lyfe\LLM segmentation\Results\Gemini 1.5 pro\out of the box\BAGLS output\validation_dice_scores.xlsx",
+        'test': r"D:\qy44lyfe\LLM segmentation\Results\Gemini 1.5 pro\out of the box\BAGLS output\test_dice_scores.xlsx"
+    },
+    'GPT 4': {
+        'validation': r"D:\qy44lyfe\LLM segmentation\Results\GPT 4\out of the box\BAGLS output\validation_dice_scores.xlsx",
+        'test': r"D:\qy44lyfe\LLM segmentation\Results\GPT 4\out of the box\BAGLS output\test_dice_scores.xlsx"
+    },
+    'GPT 4o': {
+        'validation': r"D:\qy44lyfe\LLM segmentation\Results\GPT 4o\out of the box\BAGLS output\validation_dice_scores.xlsx",
+        'test': r"D:\qy44lyfe\LLM segmentation\Results\GPT 4o\out of the box\BAGLS output\test_dice_scores.xlsx"
+    },
+    'GPT o1 Preview': {
+        'validation': r"D:\qy44lyfe\LLM segmentation\Results\GPT o1 preview\out of the box\BAGLS output\validation_dice_scores.xlsx",
+        'test': r"D:\qy44lyfe\LLM segmentation\Results\GPT o1 preview\out of the box\BAGLS output\test_dice_scores.xlsx"
+    },
+    'LLAMA 3.1 405B': {
+        'validation': r"D:\qy44lyfe\LLM segmentation\Results\LLAMA 3.1 405B\out of the box\BAGLS output\validation_dice_scores.xlsx",
+        'test': r"D:\qy44lyfe\LLM segmentation\Results\LLAMA 3.1 405B\out of the box\BAGLS output\test_dice_scores.xlsx"
+    }
+}
 
 # BOLUS OUTPUT =========================================================================================================
 # model_paths = {
@@ -78,40 +78,40 @@ import numpy as np
 
 
 # BRAIN TUMOR OUTPUT ===================================================================================================
-model_paths = {
-    'Bing Copilot': {
-        'validation': r"D:\qy44lyfe\LLM segmentation\Results\Bing Microsoft Copilot\out of the box\Brain output\validation_dice_scores.xlsx",
-        'test': r"D:\qy44lyfe\LLM segmentation\Results\Bing Microsoft Copilot\out of the box\Brain output\test_dice_scores.xlsx"
-    },
-    'Claude 3.5 Sonnet': {
-        'validation': r"D:\qy44lyfe\LLM segmentation\Results\Claude 3.5 Sonnet\out of the box\Brain output\validation_dice_scores.xlsx",
-        'test': r"D:\qy44lyfe\LLM segmentation\Results\Claude 3.5 Sonnet\out of the box\Brain output\test_dice_scores.xlsx"
-    },
-    'Copilot': {
-        'validation': r"D:\qy44lyfe\LLM segmentation\Results\Copilot\out of the box\Brain output\validation_dice_scores.xlsx",
-        'test': r"D:\qy44lyfe\LLM segmentation\Results\Copilot\out of the box\Brain output\test_dice_scores.xlsx"
-    },
-    'Gemini 1.5 Pro': {
-        'validation': r"D:\qy44lyfe\LLM segmentation\Results\Gemini 1.5 pro\out of the box\Brain output\validation_dice_scores.xlsx",
-        'test': r"D:\qy44lyfe\LLM segmentation\Results\Gemini 1.5 pro\out of the box\Brain output\test_dice_scores.xlsx"
-    },
-    'GPT 4': {
-        'validation': r"D:\qy44lyfe\LLM segmentation\Results\GPT 4\out of the box\Brain output\validation_dice_scores.xlsx",
-        'test': r"D:\qy44lyfe\LLM segmentation\Results\GPT 4\out of the box\Brain output\test_dice_scores.xlsx"
-    },
-    'GPT 4o': {
-        'validation': r"D:\qy44lyfe\LLM segmentation\Results\GPT 4o\out of the box\Brain output\validation_dice_scores.xlsx",
-        'test': r"D:\qy44lyfe\LLM segmentation\Results\GPT 4o\out of the box\Brain output\test_dice_scores.xlsx"
-    },
-    'GPT o1 Preview': {
-        'validation': r"D:\qy44lyfe\LLM segmentation\Results\GPT o1 preview\out of the box\Brain output\validation_dice_scores.xlsx",
-        'test': r"D:\qy44lyfe\LLM segmentation\Results\GPT o1 preview\out of the box\Brain output\test_dice_scores.xlsx"
-    },
-    'LLAMA 3.1 405B': {
-        'validation': r"D:\qy44lyfe\LLM segmentation\Results\LLAMA 3.1 405B\out of the box\Brain output\validation_dice_scores.xlsx",
-        'test': r"D:\qy44lyfe\LLM segmentation\Results\LLAMA 3.1 405B\out of the box\Brain output\test_dice_scores.xlsx"
-    }
-}
+# model_paths = {
+#     'Bing Copilot': {
+#         'validation': r"D:\qy44lyfe\LLM segmentation\Results\Bing Microsoft Copilot\out of the box\Brain output\validation_dice_scores.xlsx",
+#         'test': r"D:\qy44lyfe\LLM segmentation\Results\Bing Microsoft Copilot\out of the box\Brain output\test_dice_scores.xlsx"
+#     },
+#     'Claude 3.5 Sonnet': {
+#         'validation': r"D:\qy44lyfe\LLM segmentation\Results\Claude 3.5 Sonnet\out of the box\Brain output\validation_dice_scores.xlsx",
+#         'test': r"D:\qy44lyfe\LLM segmentation\Results\Claude 3.5 Sonnet\out of the box\Brain output\test_dice_scores.xlsx"
+#     },
+#     'Copilot': {
+#         'validation': r"D:\qy44lyfe\LLM segmentation\Results\Copilot\out of the box\Brain output\validation_dice_scores.xlsx",
+#         'test': r"D:\qy44lyfe\LLM segmentation\Results\Copilot\out of the box\Brain output\test_dice_scores.xlsx"
+#     },
+#     'Gemini 1.5 Pro': {
+#         'validation': r"D:\qy44lyfe\LLM segmentation\Results\Gemini 1.5 pro\out of the box\Brain output\validation_dice_scores.xlsx",
+#         'test': r"D:\qy44lyfe\LLM segmentation\Results\Gemini 1.5 pro\out of the box\Brain output\test_dice_scores.xlsx"
+#     },
+#     'GPT 4': {
+#         'validation': r"D:\qy44lyfe\LLM segmentation\Results\GPT 4\out of the box\Brain output\validation_dice_scores.xlsx",
+#         'test': r"D:\qy44lyfe\LLM segmentation\Results\GPT 4\out of the box\Brain output\test_dice_scores.xlsx"
+#     },
+#     'GPT 4o': {
+#         'validation': r"D:\qy44lyfe\LLM segmentation\Results\GPT 4o\out of the box\Brain output\validation_dice_scores.xlsx",
+#         'test': r"D:\qy44lyfe\LLM segmentation\Results\GPT 4o\out of the box\Brain output\test_dice_scores.xlsx"
+#     },
+#     'GPT o1 Preview': {
+#         'validation': r"D:\qy44lyfe\LLM segmentation\Results\GPT o1 preview\out of the box\Brain output\validation_dice_scores.xlsx",
+#         'test': r"D:\qy44lyfe\LLM segmentation\Results\GPT o1 preview\out of the box\Brain output\test_dice_scores.xlsx"
+#     },
+#     'LLAMA 3.1 405B': {
+#         'validation': r"D:\qy44lyfe\LLM segmentation\Results\LLAMA 3.1 405B\out of the box\Brain output\validation_dice_scores.xlsx",
+#         'test': r"D:\qy44lyfe\LLM segmentation\Results\LLAMA 3.1 405B\out of the box\Brain output\test_dice_scores.xlsx"
+#     }
+# }
 # ======================================================================================================================
 
 
@@ -151,6 +151,24 @@ def load_dice_scores(model_paths):
 
 # Load the dice scores for all models
 validation_scores, test_scores = load_dice_scores(model_paths)
+
+# Calculate the average dice scores for both validation and test sets
+avg_val_scores = {model: np.mean(scores) for model, scores in validation_scores.items()}
+avg_test_scores = {model: np.mean(scores) for model, scores in test_scores.items()}
+
+# Sort the models by average validation scores (from highest to lowest)
+sorted_val_scores = dict(sorted(avg_val_scores.items(), key=lambda item: item[1], reverse=True))
+sorted_test_scores = dict(sorted(avg_test_scores.items(), key=lambda item: item[1], reverse=True))
+
+# Print the sorted validation dice scores
+print("Average Validation Dice Scores from high to Low:")
+for model, score in sorted_val_scores.items():
+    print(f"{model}: {score:.4f}")
+
+# Print the sorted test dice scores
+print("\nAverage Test Dice Scores from high to low:")
+for model, score in sorted_test_scores.items():
+    print(f"{model}: {score:.4f}")
 
 # Define the save path
 save_path = "D:\\qy44lyfe\\LLM segmentation\\Results\\Models Comparison\\"
