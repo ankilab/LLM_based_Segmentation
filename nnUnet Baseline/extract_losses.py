@@ -1,11 +1,13 @@
 import re
 import pandas as pd
 
-# Define the path to your log file
-log_file_path = r"Z:\BVM_LM_datasets\nnunet_train\nnUNet_results\Dataset111_BAGLS\nnUNetTrainer__nnUNetPlans__2d\fold_6\training_log_2024_10_22_13_50_38.txt"
+# Define the path to log file
+#log_file_path = r"Z:\BVM_LM_datasets\nnunet_train\nnUNet_results\Dataset111_BAGLS\nnUNetTrainer__nnUNetPlans__2d\fold_6\training_log_2024_10_22_13_50_38.txt"
+#log_file_path = r"Z:\BVM_LM_datasets\nnunet_train\nnUNet_results\Dataset113_Swallowing\nnUNetTrainer__nnUNetPlans__2d\fold_6\training_log_2024_10_23_09_35_06.txt"
+log_file_path = r"Z:\BVM_LM_datasets\nnunet_train\nnUNet_results\Dataset112_BrainMeningioma\nnUNetTrainer__nnUNetPlans__2d\fold_6\training_log_2024_10_23_09_39_00.txt"
 
 # Define the path to save the output CSV file
-save_path = r"D:\qy44lyfe\LLM segmentation\Results\Models Comparison\parsed_metrics.xlsx"
+save_path = r"D:\qy44lyfe\LLM segmentation\Results\Models Comparison\parsed_metrics_Brain.xlsx"
 
 # Initialize lists to store metrics
 epochs = []
