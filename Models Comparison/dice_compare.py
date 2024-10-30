@@ -37,6 +37,10 @@ model_paths = {
     'LLAMA 3.1 405B': {
         'validation': r"D:\qy44lyfe\LLM segmentation\Results\LLAMA 3.1 405B\out of the box\BAGLS output\validation_dice_scores.xlsx",
         'test': r"D:\qy44lyfe\LLM segmentation\Results\LLAMA 3.1 405B\out of the box\BAGLS output\test_dice_scores.xlsx"
+    },
+    'nnUnet': {
+        'validation': r"D:\qy44lyfe\LLM segmentation\Results\nnUnet Baseline\validation_dice_scores_nnUnet.xlsx",
+        'test': r"D:\qy44lyfe\LLM segmentation\Results\nnUnet Baseline\test_dice_scores_nnUnet.xlsx"
     }
 }
 
@@ -182,7 +186,9 @@ color_map = {
     'GPT 4': '#a6d854',
     'GPT 4o': '#ffd92f',
     'GPT o1 Preview': '#e5c494',
-    'LLAMA 3.1 405B': '#b3b3b3'
+    'LLAMA 3.1 405B': '#b3b3b3',
+    'nnUnet': '#1f78b4',
+
 }
 
 # Create a figure with 1 row and 2 columns for the subplots
@@ -197,7 +203,7 @@ for patch, model in zip(boxplots['boxes'], model_paths.keys()):
     patch.set_facecolor(color_map[model])
 
 # Add titles and labels to the validation plot
-axes[0].set_title('Bolus Dataset', fontsize=14)
+axes[0].set_title('BAGLS Dataset', fontsize=14)
 axes[0].set_xlabel('Validation Dice Scores', fontsize=12)
 #axes[0].set_ylabel('Models', fontsize=12)
 axes[0].grid(True)
@@ -211,19 +217,19 @@ for patch, model in zip(boxplots['boxes'], model_paths.keys()):
     patch.set_facecolor(color_map[model])
 
 # Add titles and labels to the test plot
-axes[1].set_title('Brain Tumor Dataset', fontsize=14)
+axes[1].set_title('BAGLS Dataset', fontsize=14)
 axes[1].set_xlabel('Test Dice Scores', fontsize=12)
 axes[1].grid(True)
 
 # Set the overall title for the figure
-fig.suptitle('Model Dice Scores Comparison (Tumor Dataset)', fontsize=16)
+fig.suptitle('Model Dice Scores Comparison (BAGLS dataset)', fontsize=16)
 
 # Adjust layout to ensure there's no overlap
 plt.tight_layout(rect=[0, 0, 1, 0.95])
 plt.subplots_adjust(wspace=0.6)  # Increase space between the subplots
 
 # Save the combined plot
-plt.savefig(f"{save_path}all_model_dice_scores_Brain.png", dpi=600)
+plt.savefig(f"{save_path}all_model_dice_scores_baseline_BAGLS.png", dpi=600)
 
 # Show the plot
 #plt.show()
