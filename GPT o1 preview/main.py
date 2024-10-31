@@ -7,24 +7,32 @@ from sklearn.model_selection import train_test_split
 from dataset import CustomSegmentationDataset
 from model import UNet
 from train import train_model, validate_model, test_model, save_losses_to_excel, plot_losses, visualize_predictions
-from torchsummary import summary
+# from torchsummary import summary
+from torchinfo import summary
 import time
 import shutil
 from tqdm import tqdm
 
 if __name__ == "__main__":
     # Paths
-    dataset_path = 'D:\qy44lyfe\LLM segmentation\Data sets\BAGLS\subset'
+    # dataset_path = 'D:\qy44lyfe\LLM segmentation\Data sets\BAGLS\subset'
+    dataset_path = 'D:\qy44lyfe\LLM segmentation\Data sets\Swallowing\images'
+    #dataset_path = 'D:\qy44lyfe\LLM segmentation\Data sets\Brain Meningioma\images'
     image_dir = dataset_path
-    mask_dir = dataset_path
+    # mask_dir = dataset_path
+    mask_dir = 'D:\qy44lyfe\LLM segmentation\Data sets\Swallowing\masks'
+    #mask_dir = 'D:\qy44lyfe\LLM segmentation\Data sets\Brain Meningioma\Masks'
 
     # Save path for outputs
-    save_path = 'D:\qy44lyfe\LLM segmentation\Results\GPT o1 preview'
+    # save_path = 'D:\qy44lyfe\LLM segmentation\Results\GPT o1 preview\out of the box\BAGLS output'
+    save_path = 'D:\qy44lyfe\LLM segmentation\Results\GPT o1 preview\out of the box\Bolus output'
+    #save_path = 'D:\qy44lyfe\LLM segmentation\Results\GPT o1 preview\out of the box\Brain output'
     if not os.path.exists(save_path):
         os.makedirs(save_path)
 
     # Get list of image files
     images = [img for img in os.listdir(image_dir) if img.endswith('.png') and not img.endswith('_seg.png')]
+    #images = [img for img in os.listdir(image_dir) if img.endswith('.jpg') and not img.endswith('_m.jpg')]
     images.sort()
 
     # Shuffle and split the data
@@ -50,7 +58,9 @@ if __name__ == "__main__":
         img_dest = os.path.join(save_path, split, 'images')
         mask_dest = os.path.join(save_path, split, 'masks')
         for img_name in tqdm(file_list, desc=f"Copying {split} data"):
-            mask_name = img_name.replace('.png', '_seg.png')
+            #mask_name = img_name.replace('.png', '_seg.png')
+            #mask_name = img_name.replace('.jpg', '_m.jpg')
+            mask_name = img_name
             shutil.copy(os.path.join(image_dir, img_name), os.path.join(img_dest, img_name))
             shutil.copy(os.path.join(mask_dir, mask_name), os.path.join(mask_dest, mask_name))
 
@@ -99,7 +109,8 @@ if __name__ == "__main__":
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
     # Print model summary and total parameters
-    summary(model, input_size=(1, image_size[0], image_size[1]))
+    # summary(model, input_size=(1, image_size[0], image_size[1]))
+    summary(model, input_size=(batch_size, 1, image_size[0], image_size[1]))  # 1 channel for grayscale
     total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     print(f"Total number of trainable parameters: {total_params}")
 

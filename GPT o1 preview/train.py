@@ -120,9 +120,9 @@ def save_losses_to_excel(train_losses, val_losses, save_path):
 
 def plot_losses(train_losses, val_losses, save_path):
     epochs = list(range(1, len(train_losses) + 1))
-    plt.figure()
+    plt.figure(figsize=(6, 5))
     plt.plot(epochs, train_losses, 'b', label='Training loss')
-    plt.plot(epochs, val_losses, 'r', label='Validation loss')
+    plt.plot(epochs, val_losses, 'orange', label='Validation loss')
     plt.title('Training and Validation losses')
     plt.xlabel('Epochs')
     plt.ylabel('Loss')

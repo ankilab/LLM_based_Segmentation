@@ -5,6 +5,7 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 import pandas as pd
 import time
+import os
 import matplotlib.pyplot as plt
 
 def dice_coefficient(pred, target):
@@ -19,6 +20,7 @@ def train_model(model, train_loader, val_loader, num_epochs, criterion, optimize
     val_losses = []
     val_dice_scores = []
 
+    start_time = time.time()
     for epoch in range(num_epochs):
         model.train()
         running_loss = 0.0
@@ -49,6 +51,9 @@ def train_model(model, train_loader, val_loader, num_epochs, criterion, optimize
 
         print(f"Epoch {epoch+1}/{num_epochs}, Train Loss: {epoch_loss:.4f}, Val Loss: {val_loss:.4f}")
 
+    total_time = time.time() - start_time
+    print(f"Total training time: {total_time:.2f} seconds")
+
     pd.DataFrame({'Epoch': list(range(1, num_epochs+1)), 'Train Loss': train_losses}).to_excel(f"{save_path}/train_losses.xlsx", index=False)
     pd.DataFrame({'Epoch': list(range(1, num_epochs+1)), 'Val Loss': val_losses}).to_excel(f"{save_path}/val_losses.xlsx", index=False)
     pd.DataFrame(val_dice_scores).to_excel(f"{save_path}/validation_dice_scores.xlsx", index=False)
@@ -56,13 +61,16 @@ def train_model(model, train_loader, val_loader, num_epochs, criterion, optimize
     torch.save(model.state_dict(), f"{save_path}/unet_model.pth")
     torch.save(model, f"{save_path}/unet_model_full.pth")
 
-    plt.figure()
-    plt.plot(range(1, num_epochs+1), train_losses, label='Train Loss')
-    plt.plot(range(1, num_epochs+1), val_losses, label='Val Loss')
-    plt.xlabel('Epoch')
+    epochs = list(range(1, len(train_losses) + 1))
+    plt.figure(figsize=(6, 5))
+    plt.plot(epochs, train_losses, 'b', label='Training loss')
+    plt.plot(epochs, val_losses, 'orange', label='Validation loss')
+    plt.title('Training and Validation losses')
+    plt.xlabel('Epochs')
     plt.ylabel('Loss')
     plt.legend()
-    plt.savefig(f"{save_path}/loss_plot.png")
+    plt.savefig(os.path.join(save_path, 'losses.png'))
+    plt.close()
 
 def test_model(model, test_loader, device, save_path):
     model.eval()

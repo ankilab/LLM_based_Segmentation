@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import time
+import os
 from model import UNet
 from dataset import SegmentationDataset, get_transform
 
@@ -62,7 +63,10 @@ def train(model, train_loader, val_loader, criterion, optimizer, num_epochs, dev
                     loss = criterion(outputs, masks)
                     val_loss += loss.item()
                     dice = dice_coeff(outputs, masks)
-                    dice_scores.extend(dice.tolist())
+                    # dice_scores.extend(dice.tolist())
+                    dice_mean = dice.mean().item()
+                    # dice_scores.append(dice_coeff(outputs, masks).item())
+                    dice_scores.append(dice_mean)
                     pbar.update(1)
                     pbar.set_postfix({'Loss': f'{loss.item():.4f}', 'Dice': f'{dice.mean().item():.4f}'})
 
@@ -88,19 +92,20 @@ def train(model, train_loader, val_loader, criterion, optimizer, num_epochs, dev
                                                                     header=['Epoch', 'Loss'])
 
     # Save validation dice scores
-    pd.DataFrame(val_dice_scores).to_excel(f'{save_path}/validation_dice_scores.xlsx', index=False)
+    # pd.DataFrame(val_dice_scores).to_excel(f'{save_path}/validation_dice_scores.xlsx', index=False)
+    pd.DataFrame(val_dice_scores).to_excel(f"{save_path}/validation_dice_scores.xlsx", index=False)
 
     # Plot losses
-    plt.figure(figsize=(10, 5))
-    plt.plot(range(1, num_epochs + 1), train_losses, label='Train Loss')
-    plt.plot(range(1, num_epochs + 1), val_losses, label='Validation Loss')
-    plt.xlabel('Epoch')
+    epochs = list(range(1, len(train_losses) + 1))
+    plt.figure(figsize=(6, 5))
+    plt.plot(epochs, train_losses, 'b', label='Training loss')
+    plt.plot(epochs, val_losses, 'orange', label='Validation loss')
+    plt.title('Training and Validation losses')
+    plt.xlabel('Epochs')
     plt.ylabel('Loss')
     plt.legend()
-    plt.title('Training and Validation Losses')
-    plt.savefig(f'{save_path}/loss_plot.png')
+    plt.savefig(os.path.join(save_path, 'losses.png'))
     plt.close()
-
 
 def test(model, test_loader, device, save_path):
     model.eval()
@@ -112,39 +117,18 @@ def test(model, test_loader, device, save_path):
                 images, masks = images.to(device), masks.to(device)
                 outputs = model(images)
                 dice = dice_coeff(outputs, masks)
-                dice_scores.extend(dice.tolist())
+                # dice_scores.extend(dice.tolist())
+                dice_mean = dice.mean().item()
+                # dice_scores.append(dice_coeff(outputs, masks).item())
+                dice_scores.append(dice_mean)
                 pbar.update(1)
                 pbar.set_postfix({'Dice': f'{dice.mean().item():.4f}'})
 
-    pd.DataFrame(dice_scores).to_excel(f'{save_path}/test_dice_scores.xlsx', index=False)
+    # pd.DataFrame(dice_scores).to_excel(f'{save_path}/test_dice_scores.xlsx', index=False)
+    pd.DataFrame(dice_scores).to_excel(f"{save_path}/test_dice_scores.xlsx", index=False)
 
     return dice_scores
 
-
-# def visualize_predictions(model, test_dataset, device, save_path, num_samples=5):
-#     model.eval()
-#     fig, axes = plt.subplots(num_samples, 3, figsize=(15, 5 * num_samples))
-#
-#     for i in range(num_samples):
-#         idx = np.random.randint(len(test_dataset))
-#         image, mask = test_dataset[idx]
-#         image_name = test_dataset.images[idx]
-#
-#         with torch.no_grad():
-#             input_tensor = image.unsqueeze(0).to(device)
-#             output = model(input_tensor)
-#             prediction = output.squeeze().cpu().numpy()
-#
-#         axes[i, 0].imshow(image.squeeze(), cmap='gray')
-#         axes[i, 0].set_title(f'Input Image\n{image_name}')
-#         axes[i, 1].imshow(mask.squeeze(), cmap='gray')
-#         axes[i, 1].set_title('Ground Truth')
-#         axes[i, 2].imshow(prediction, cmap='gray')
-#         axes[i, 2].set_title('Prediction')
-#
-#     plt.tight_layout()
-#     plt.savefig(f'{save_path}/predictions_visualization.png')
-#     plt.close()
 
 def visualize_predictions(model, dataloader, device, save_path):
     model.eval()

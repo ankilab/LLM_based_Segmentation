@@ -7,6 +7,7 @@ import torchvision.transforms as transforms
 import pandas as pd
 import shutil #for copying files
 import time
+from torchinfo import summary
 import torch.optim as optim
 
 
@@ -16,15 +17,24 @@ from train import train_one_epoch, validate, test, visualize_predictions, plot_l
 
 if __name__ == "__main__":
     # 0. Set Hyperparameters, paths, etc
-    image_dir = "D:\qy44lyfe\LLM segmentation\Data sets\BAGLS\subset" # Replace with the actual path to your dataset
-    save_path = "D:\qy44lyfe\LLM segmentation\Results\Gemini 1.5 pro" #path to save model, logs, etc
+    #image_dir = "D:\qy44lyfe\LLM segmentation\Data sets\BAGLS\subset" # Replace with the actual path to your dataset
+    image_dir = "D:\qy44lyfe\LLM segmentation\Data sets\Swallowing\images"
+    #image_dir = "D:\qy44lyfe\LLM segmentation\Data sets\Brain Meningioma\images"
+
+    #mask_folder = "D:\\qy44lyfe\\LLM segmentation\\Data sets\\BAGLS\\subset"
+    mask_folder = "D:\qy44lyfe\LLM segmentation\Data sets\Swallowing\masks"
+    #mask_folder = "D:\qy44lyfe\LLM segmentation\Data sets\Brain Meningioma\Masks"
+
+    #save_path = "D:\qy44lyfe\LLM segmentation\Results\Gemini 1.5 pro\out of the box\BAGLS output" #path to save model, logs, etc
+    save_path = "D:\qy44lyfe\LLM segmentation\Results\Gemini 1.5 pro\out of the box\Bolus output"
+    #save_path = "D:\qy44lyfe\LLM segmentation\Results\Gemini 1.5 pro\out of the box\Brain output"
+
     os.makedirs(save_path, exist_ok=True)
 
     img_size = (256, 256) #resize images to this size
     batch_size = 8  # Adjust based on your GPU memory
     learning_rate = 1e-4
-    num_epochs = 20  # Adjust as needed
-    # num_epochs = 2
+    num_epochs = 20
 
 
     # 1. Create Dataset and DataLoaders
@@ -33,7 +43,7 @@ if __name__ == "__main__":
         transforms.ToTensor(),
     ])
 
-    dataset = SegmentationDataset(image_dir, transform=transform)
+    dataset = SegmentationDataset(image_dir, mask_folder, transform=transform)
 
 
     # 1. Split data
@@ -52,15 +62,18 @@ if __name__ == "__main__":
         os.makedirs(split_dir, exist_ok=True)
         for idx in range(len(split_data)):
             original_image_name = dataset.image_files[split_data.indices[idx]]
-            original_mask_name = original_image_name.split('.')[0] + "_seg.png"
-            shutil.copy(os.path.join(image_dir, original_image_name), split_dir)
-            shutil.copy(os.path.join(image_dir, original_mask_name), split_dir)
 
+            #original_mask_name = original_image_name.split('.')[0] + "_seg.png"
+            original_mask_name = original_image_name
+            #original_mask_name = original_image_name.split('.')[0] + "_m.jpg"
+
+            shutil.copy(os.path.join(image_dir, original_image_name), split_dir)
+            shutil.copy(os.path.join(mask_folder, original_mask_name), split_dir)
+
+    print(f"Total images: {len(dataset)}")
     print("Train dataset size:", len(train_dataset))
     print("Validation dataset size:", len(val_dataset))
     print("Test dataset size:", len(test_dataset))
-
-
 
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
@@ -81,8 +94,9 @@ if __name__ == "__main__":
     criterion = nn.BCELoss() #binary cross entropy loss for binary segmentation
 
     #print model summary
-    from torchsummary import summary
-    summary(model, input_size=(1, img_size[0], img_size[1]))
+    # summary(model, input_size=(1, img_size[0], img_size[1]))
+    # Print model summary using torchinfo
+    summary(model, input_size=(batch_size, 1, img_size[0], img_size[1]))  # 1 channel for grayscale
     total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     print(f"Total number of learnable parameters: {total_params}")
 
@@ -100,8 +114,8 @@ if __name__ == "__main__":
         train_loss = train_one_epoch(model, train_loader, optimizer, criterion, device)
         train_losses.append(train_loss)
 
-        val_loss, val_dice = validate(model, val_loader, criterion, device, epoch + 1)
-        val_dice_all.append(val_dice.cpu().item())
+        val_loss, val_dice = validate(model, val_loader, criterion, device, epoch + 1, save_path)
+        # val_dice_all.append(val_dice.cpu().item())
         # val_losses.append(val_loss.cpu().item())
         val_losses.append(val_loss)
         #val_dice_all.append(val_dice)
@@ -128,17 +142,17 @@ if __name__ == "__main__":
     plot_losses(train_losses, val_losses, save_path)
 
     # 6. Save validation Dice scores to Excel
-    df_dice = pd.DataFrame(val_dice_all)
-    df_dice.to_excel(os.path.join(save_path, "validation_dice_scores.xlsx"), index=False)
+    #df_dice = pd.DataFrame(val_dice_all)
+    #df_dice.to_excel(os.path.join(save_path, "validation_dice_scores.xlsx"), index=False)
 
 
     # 7. Testing
-    test_dice = test(model, test_loader, device)
+    test_dice = test(model, test_loader, device, save_path)
     test_dice_all.append(test_dice)
 
     # 8. Save Test Dice scores to Excel
-    df_test_dice = pd.DataFrame(test_dice_all)
-    df_test_dice.to_excel(os.path.join(save_path, "test_dice_scores.xlsx"), index=False)
+    #df_test_dice = pd.DataFrame(test_dice_all)
+    #df_test_dice.to_excel(os.path.join(save_path, "test_dice_scores.xlsx"), index=False)
 
 
     # 9. Visualize Predictions

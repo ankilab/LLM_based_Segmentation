@@ -6,6 +6,7 @@ from tqdm import tqdm
 import pandas as pd
 import matplotlib.pyplot as plt
 import time
+import os
 
 # Define the device
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -14,6 +15,7 @@ def train_model(model, train_loader, val_loader, criterion, optimizer, num_epoch
     train_losses = []
     val_losses = []
     val_dice_scores = []
+    start_time = time.time()
 
     for epoch in range(num_epochs):
         model.train()
@@ -40,7 +42,8 @@ def train_model(model, train_loader, val_loader, criterion, optimizer, num_epoch
                 loss = criterion(outputs, masks)
                 val_loss += loss.item() * images.size(0)
                 dice_score = dice_coefficient(outputs, masks)
-                dice_scores.append(dice_score)
+                # dice_scores.append(dice_score)
+                dice_scores.append(dice_score.item())
 
         val_loss /= len(val_loader.dataset)
         val_losses.append(val_loss)
@@ -48,8 +51,13 @@ def train_model(model, train_loader, val_loader, criterion, optimizer, num_epoch
 
         print(f"Epoch {epoch + 1}/{num_epochs}, Training Loss: {epoch_loss:.4f}, Validation Loss: {val_loss:.4f}")
 
+    # Calculate total training time
+    total_time = time.time() - start_time
+    print(f"Total training time: {total_time:.2f} seconds")
+
     save_losses(train_losses, val_losses, save_path)
-    save_dice_scores(val_dice_scores, save_path, "validation_dice_scores.xlsx")
+    # save_dice_scores(val_dice_scores, save_path, "validation_dice_scores.xlsx")
+    pd.DataFrame(val_dice_scores).to_excel(f"{save_path}/validation_dice_scores.xlsx", index=False)
     plot_losses(train_losses, val_losses, save_path)
     torch.save(model.state_dict(), f"{save_path}/unet_model.pth")
     torch.save(model, f"{save_path}/unet_model_full.pth")
@@ -75,16 +83,27 @@ def save_dice_scores(dice_scores, save_path, filename):
     dice_df.to_excel(f"{save_path}/{filename}", index=False)
 
 
+# def plot_losses(train_losses, val_losses, save_path):
+#     plt.figure()
+#     plt.plot(train_losses, label='Training Loss')
+#     plt.plot(val_losses, label='Validation Loss')
+#     plt.xlabel('Epoch')
+#     plt.ylabel('Loss')
+#     plt.legend()
+#     plt.savefig(f"{save_path}/loss_plot.png")
+#     plt.close()
+
 def plot_losses(train_losses, val_losses, save_path):
-    plt.figure()
-    plt.plot(train_losses, label='Training Loss')
-    plt.plot(val_losses, label='Validation Loss')
-    plt.xlabel('Epoch')
+    epochs = list(range(1, len(train_losses) + 1))
+    plt.figure(figsize=(6, 5))
+    plt.plot(epochs, train_losses, 'b', label='Training loss')
+    plt.plot(epochs, val_losses, 'orange', label='Validation loss')
+    plt.title('Training and Validation losses')
+    plt.xlabel('Epochs')
     plt.ylabel('Loss')
     plt.legend()
-    plt.savefig(f"{save_path}/loss_plot.png")
+    plt.savefig(os.path.join(save_path, 'losses.png'))
     plt.close()
-
 
 def test(model, test_loader, device, save_path):
     model.eval()
@@ -96,11 +115,13 @@ def test(model, test_loader, device, save_path):
                 images, masks = images.to(device), masks.to(device)
                 outputs = model(images)
                 dice = dice_coefficient(outputs, masks)
-                dice_scores.extend(dice.tolist())
+                # dice_scores.extend(dice.tolist())
+                dice_scores.append(dice_coefficient(outputs, masks).item())
                 pbar.update(1)
                 pbar.set_postfix({'Dice': f'{dice.mean().item():.4f}'})
 
-    pd.DataFrame(dice_scores).to_excel(f'{save_path}/test_dice_scores.xlsx', index=False)
+    # pd.DataFrame(dice_scores).to_excel(f'{save_path}/test_dice_scores.xlsx', index=False)
+    pd.DataFrame(dice_scores).to_excel(f"{save_path}/test_dice_scores.xlsx", index=False)
 
     return dice_scores
 

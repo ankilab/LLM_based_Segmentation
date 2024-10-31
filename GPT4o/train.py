@@ -5,6 +5,7 @@ from tqdm import tqdm
 import numpy as np
 import time
 import pandas as pd
+import os
 import matplotlib.pyplot as plt
 import torch.nn.functional as F  # Import functional module for resizing
 
@@ -34,7 +35,7 @@ def train(model, dataloader, criterion, optimizer, device):
     return running_loss / len(dataloader.dataset)
 
 
-def validate(model, dataloader, criterion, device):
+def validate(model, dataloader, criterion, device, save_path):
     model.eval()
     running_loss = 0
     dice_scores = []
@@ -50,10 +51,24 @@ def validate(model, dataloader, criterion, device):
             running_loss += loss.item() * images.size(0)
             dice = dice_score(outputs, masks)
             dice_scores.append(dice.item())
+
+        # Save dice scores to Excel
+        df_new = pd.DataFrame([dice_scores])
+        excel_path = os.path.join(save_path, 'validation_dice_scores.xlsx')
+        if not os.path.exists(excel_path):
+            df_new.to_excel(excel_path, index=False, header=False)
+        else:
+            # Read existing data
+            df_existing = pd.read_excel(excel_path, header=None)
+            # Append new data
+            df_combined = pd.concat([df_existing, df_new], ignore_index=True)
+            # Write back to Excel
+            df_combined.to_excel(excel_path, index=False, header=False)
+
     return running_loss / len(dataloader.dataset), np.mean(dice_scores)
 
 
-def test(model, dataloader, device):
+def test(model, dataloader, device, save_path):
     model.eval()
     dice_scores = []
     with torch.no_grad():
@@ -66,6 +81,11 @@ def test(model, dataloader, device):
 
             dice = dice_score(outputs, masks)
             dice_scores.append(dice.item())
+    # Save dice scores to Excel
+    df_new = pd.DataFrame([dice_scores])
+    excel_path = os.path.join(save_path, 'test_dice_scores.xlsx')
+    df_new.to_excel(excel_path, index=False, header=False)
+
     return np.mean(dice_scores)
 
 
@@ -81,17 +101,41 @@ def save_dice_scores(dice_scores, save_path, file_name):
     df_dice = pd.DataFrame(dice_scores)
     df_dice.to_excel(f'{save_path}/{file_name}.xlsx', index=False)
 
+    # Save dice scores to Excel
+    df_new = pd.DataFrame([dice_scores])
+    excel_path = os.path.join(save_path, 'validation_dice_scores.xlsx')
+    if not os.path.exists(excel_path):
+        df_new.to_excel(excel_path, index=False, header=False)
+    else:
+        # Read existing data
+        df_existing = pd.read_excel(excel_path, header=None)
+        # Append new data
+        df_combined = pd.concat([df_existing, df_new], ignore_index=True)
+        # Write back to Excel
+        df_combined.to_excel(excel_path, index=False, header=False)
+
+
+# def plot_losses(train_losses, val_losses, save_path):
+#     plt.figure()
+#     plt.plot(train_losses, label='Training Loss')
+#     plt.plot(val_losses, label='Validation Loss')
+#     plt.xlabel('Epochs')
+#     plt.ylabel('Loss')
+#     plt.legend()
+#     plt.savefig(f'{save_path}/losses_plot.png')
+#     plt.close()
 
 def plot_losses(train_losses, val_losses, save_path):
-    plt.figure()
-    plt.plot(train_losses, label='Training Loss')
-    plt.plot(val_losses, label='Validation Loss')
+    epochs = list(range(1, len(train_losses) + 1))
+    plt.figure(figsize=(6, 5))
+    plt.plot(epochs, train_losses, 'b', label='Training loss')
+    plt.plot(epochs, val_losses, 'orange', label='Validation loss')
+    plt.title('Training and Validation losses')
     plt.xlabel('Epochs')
     plt.ylabel('Loss')
     plt.legend()
-    plt.savefig(f'{save_path}/losses_plot.png')
+    plt.savefig(os.path.join(save_path, 'losses.png'))
     plt.close()
-
 
 def visualize_predictions(model, dataloader, device, save_path):
     model.eval()

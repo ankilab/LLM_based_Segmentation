@@ -17,8 +17,17 @@ if __name__ == "__main__":
     num_epochs = 25
     learning_rate = 1e-4
     image_size = (256, 256)  # Define a consistent image size for all inputs
-    data_dir = "D:\\qy44lyfe\\LLM segmentation\\Data sets\\BAGLS\\subset"
-    save_path = "D:\\qy44lyfe\\LLM segmentation\\Results\\GPT 4o\\test"
+    #data_dir = "D:\\qy44lyfe\\LLM segmentation\\Data sets\\BAGLS\\subset"
+    data_dir = "D:\qy44lyfe\LLM segmentation\Data sets\Swallowing\images"
+    #data_dir = "D:\qy44lyfe\LLM segmentation\Data sets\Brain Meningioma\images"
+
+    #mask_dir = "D:\\qy44lyfe\\LLM segmentation\\Data sets\\BAGLS\\subset"
+    mask_dir = "D:\qy44lyfe\LLM segmentation\Data sets\Swallowing\masks"
+    #mask_dir = "D:\qy44lyfe\LLM segmentation\Data sets\Brain Meningioma\Masks"
+
+    #save_path = "D:\qy44lyfe\LLM segmentation\Results\GPT 4o\out of the box\BAGLS output"
+    save_path = "D:\qy44lyfe\LLM segmentation\Results\GPT 4o\out of the box\Bolus output"
+    #save_path = "D:\qy44lyfe\LLM segmentation\Results\GPT 4o\out of the box\Brain output"
     os.makedirs(save_path, exist_ok=True)
 
     # Device configuration
@@ -28,7 +37,7 @@ if __name__ == "__main__":
     transform = T.Compose([T.ToTensor()])
 
     # Load dataset
-    dataset = SegmentationDataset(image_dir=data_dir, transform=transform, image_size=image_size)
+    dataset = SegmentationDataset(image_dir=data_dir, mask_dir=mask_dir, transform=transform, image_size=image_size)
     train_data, test_data = train_test_split(dataset, test_size=0.2, random_state=42)
     val_data, test_data = train_test_split(test_data, test_size=0.5, random_state=42)
 
@@ -57,7 +66,7 @@ if __name__ == "__main__":
     for epoch in range(num_epochs):
         print(f'Epoch {epoch + 1}/{num_epochs}')
         train_loss = train(model, train_loader, criterion, optimizer, device)
-        val_loss, val_dice = validate(model, val_loader, criterion, device)
+        val_loss, val_dice = validate(model, val_loader, criterion, device, save_path)
 
         train_losses.append(train_loss)
         val_losses.append(val_loss)
@@ -65,25 +74,25 @@ if __name__ == "__main__":
 
         print(f"Training Loss: {train_loss:.4f}, Validation Loss: {val_loss:.4f}, Validation Dice: {val_dice:.4f}")
 
+    # Calculate total training time
+    total_time = time.time() - start_time
+    print(f"Total training time: {total_time:.2f} seconds")
+
     # Save model
     torch.save(model, os.path.join(save_path, 'unet_model.pth'))
     torch.save(model.state_dict(), os.path.join(save_path, 'unet_model_state_dict.pth'))
 
     # Save training losses and validation losses
     save_losses(train_losses, val_losses, save_path)
-    save_dice_scores(dice_scores_val, save_path, 'validation_dice_scores')
+    # save_dice_scores(dice_scores_val, save_path, 'validation_dice_scores')
 
     # Plot losses
     plot_losses(train_losses, val_losses, save_path)
 
-    # Calculate total training time
-    total_time = time.time() - start_time
-    print(f"Total training time: {total_time:.2f} seconds")
-
     # Testing
-    dice_score_test = test(model, test_loader, device)
+    dice_score_test = test(model, test_loader, device, save_path)
     print(f"Test Dice Score: {dice_score_test:.4f}")
-    save_dice_scores([dice_score_test], save_path, 'test_dice_scores')
+    # save_dice_scores([dice_score_test], save_path, 'test_dice_scores')
 
     # Visualize predictions
     visualize_predictions(model, test_loader, device, save_path)
