@@ -152,13 +152,19 @@ Visualized Outputs: Visualizations of segmentation outputs were saved and compar
    
 
 ### Performance
-
+<img src="Models Comparison/Results/inference_baseline.png" alt="Inferences on example image from each dataset, across different models" width="900" height="400">
 
 
 ## Summary
 We found that while most LLMs generated functional code, some models required more debugging than others. GPT-o1 Preview and Claude generated highly efficient architectures with minimal intervention. In contrast, models like LLAMA 3.1 performed poorly in comparison, particularly on complex datasets like the Brain Tumor dataset.
 
+## License
 
+This project is licensed under the Apache License, Version 2.0. You may obtain a copy of the License at:
+
+[Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0)
+
+Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License.
 
 
 
