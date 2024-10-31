@@ -61,6 +61,11 @@ You can train and evaluate the models using the scripts and main.py provided for
 The prompt text in Prompt_final.txt file can directly be used or tailored according to needs, to generate the dataset, train, model and main scripts using any other LLM. The dataloader in Dataset.py can also be modified based on dataset requirements.
 For comparison of performances across models, the scripts in Models Comparison can be used to visualize and compare the validation and test dice scores, as well as the train and validation losses across models, and run inference on a single example image from the dataset for each model.
 
+### Additional Material
+- The full chat script with each LLM from prompt input to final error correction was added as a .json file in each LLM's respective folder.
+- The prompt engineering process documentation was added as .docx in Models Comparison/Results folder
+- The tables for initial comparison of all features for dataloader, models, train and main scripts across models were added as excel sheets in Models Comparison/Results folder
+
 ## Models and LLMs
 This project uses the following LLMs to generate U-Net architectures:
 
