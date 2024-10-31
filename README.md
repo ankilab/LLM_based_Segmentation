@@ -8,11 +8,11 @@ This project utilizes Large Language Models (LLMs) to generate code for medical 
 ## Table of Contents
 - [Project Overview](#project-overview)
 - [Features](#features)
-- [Installation](#installation)
-- [Usage](#usage)
+- [Installation and Usage](#installation)
 - [Models and LLMs](#models-and-llms)
 - [Datasets](#datasets)
 - [Results](#results)
+- [Summary](#summary)
 - [License](#license)
 
 
@@ -31,6 +31,7 @@ For benchmarking model performance, we used [nnUnet v2](https://github.com/MIC-D
 
 ## Features
 - **Multiple LLM Comparisons**: Assess how different LLMs perform in generating code for a U-Net-based segmentation model.
+- **Engineered Prompt**: Detailed prompt to generate scripts for dataset, train, model and main scripts is provided in Prompt_final.txt file, and can be modified and tailored based on needs or to test any additional LLM.
 - **Medical Datasets**: Utilized real medical image datasets for training and evaluation.
 - **Dice Score Evaluation**: Compare Dice scores for each model on different datasets.
 - **Error Tracking**: Record number of errors, error types and debugging for each LLM.
@@ -38,7 +39,7 @@ For benchmarking model performance, we used [nnUnet v2](https://github.com/MIC-D
 
 ---
 
-## Installation
+## Installation and Usage
 
 ### Prerequisites
 Ensure you have the following installed:
@@ -55,9 +56,11 @@ Ensure you have the following installed:
 2. Installing required packages:
    pip install -r requirements.txt
 
-3. Running the Models:
+### Usage
+#### Running the Models:
 You can train and evaluate the models using the scripts and main.py provided for each LLM-generated architecture, in it's respective folder.
-For comparison of performances across models, the scripts in Models Comparison can be used to visualize and compare the validation and test dice scores, as well as the train and validation losses.
+The prompt text in Prompt_final.txt file can directly be used or tailored according to needs, to generate the dataset, train, model and main scripts using any other LLM. The dataloader in Dataset.py can also be modified based on dataset requirements.
+For comparison of performances across models, the scripts in Models Comparison can be used to visualize and compare the validation and test dice scores, as well as the train and validation losses across models, and run inference on a single example image from the dataset for each model.
 
 ## Models and LLMs
 This project uses the following LLMs to generate U-Net architectures:
@@ -91,6 +94,7 @@ We evaluated the LLM-generated models on three standard medical image segmentati
 
 ### Preprocessing
 All datasets were preprocessed to fit the input requirements of the LLM-generated models. 5002 total images were selected for the BAGLS and Swallowing dataset and 999 total images for the Brain Meningioma tumor dataset respectively. Images were resized and normalized to a range between 0 and 1 in the LLM-generated code. Each dataset was split into training (80%), validation (10%), and testing (10%) sets with different methods by each LLM.
+The batch sizes, learning rate and number of epochs for training were also determined by the LLM.
 
 
 
@@ -117,6 +121,28 @@ All datasets were preprocessed to fit the input requirements of the LLM-generate
 
 **Table**: Comparison of Features Across Different LLM-based Models.
 
+#### Model Comparison
+
+1. **Encoder and Decoder Stages**:
+    - Most models have a typical 4-stage encoder-decoder setup, except for GPT-4o, which uses 5 encoder stages, and LLAMA 3.1 405B, which employs only 3 encoder-decoder stages. This variation might influence the models' depth and feature extraction capabilities, with more stages generally allowing deeper feature hierarchies.
+
+2. **Convolutional Block Design**:
+    - GPT-4, GPT-o1, and Claude 3.5 Sonnet rely on "Double Conv" blocks with two convolution layers followed by ReLU activations. GPT-4o, Copilot, and Gemini 1.5 Pro, incorporate BatchNorm2d after each convolution for added normalization, which helps in stabilizing training.
+
+3. **Bottleneck Layer**:
+    - The bottleneck layer varies significantly across models, with models like GPT-4o, GPT-o1, Claude, and Gemini having larger bottlenecks (1024 channels), potentially allowing more complex representations. Meanwhile, LLAMA 3.1 405B has a relatively smaller bottleneck with 256 channels, likely affecting its capacity for encoding detailed spatial information.
+
+4. **Final Layer and Output Channels**:
+    - All models conclude with a similar final layer configuration of `Conv2d(64, 1, 1)`, suggesting a standardized approach to mapping the output to a single-channel segmentation mask. However, variations in encoder and decoder channel sizes (e.g., LLAMA 3.1 with fewer channels in the decoder) could impact segmentation output consistency.
+
+5. **Parameter Counts**:
+    - The number of trainable parameters differs considerably, with models like GPT-4o, GPT-o1, Claude, and Gemini featuring over 31 million parameters due to deeper layers and larger bottlenecks. In contrast, LLAMA 3.1 has the smallest parameter count (533,953), reflecting a more lightweight architecture.
+
+6. **Training Configuration and Duration**:
+    - The training duration also varied greatly, with Claude 3.5 Sonnet taking the longest at over 5,000 seconds, likely due to its higher number of epochs (50). On the other hand, Copilot and LLAMA 3.1 had shorter training times, reflecting simpler architectures and fewer training epochs.
+
+This comparative analysis highlights how architectural and hyperparameter choices across LLM-generated U-Net models impact computational complexity, model depth, and training efficiency. These differences provide insights into balancing model complexity with training duration, essential for selecting models suited to varying computational resources.
+
 
 ### Error Comparison
 Errors and interactions with the LLM to fix the errors were tracked and logged. The errors were fed back to the LLM and the suggested fix was applied, until the code was could run through. For LLAMA 3.1 and Gemini 1.5 some additional explanation and input was needed for resolving some errors. GPT-o1 Preview and Claude had 0 errors and ran successfully without modifications, while others Gemini and LLAMA required more bug fixes.
@@ -125,11 +151,22 @@ Errors and interactions with the LLM to fix the errors were tracked and logged. 
 <img src="Models Comparison/Results/errors.png" alt="Errors comparison across the different models" width="500" height="300">
 
 ### Training & Validation Losses
-Reain and validation losses varied across epochs for each model.
 
-<img src="Models Comparison/Results/all_model_losses_logarithmic_baseline_CE_BAGLS.png" alt="Training and Validation losses across different models" width="600" height="300">
+<img src="Models Comparison/Results/all_model_losses_logarithmic_baseline_CE_BAGLS.png" alt="Training and Validation losses across different models" width="600" height="250">
 
+The graphs illustrate the training and validation loss per epoch for each model on the BAGLS dataset as an example, with losses plotted on a logarithmic scale for improved clarity.
 
+#### Training Loss
+- Most models, such as **Claude 3.5 Sonnet**, **GPT-o1 Preview**, **GPT-4o**, and **Gemini 1.5 Pro**, exhibit rapid convergence in training loss within the first 10 epochs, indicating efficient learning.
+- **Copilot** and **Bing Microsoft Copilot** show a slower and minimal reduction in training loss, which may suggest underfitting or optimization issues.
+- The **nnUnet** baseline demonstrates a stable and low training loss across epochs, showcasing its reliability as a baseline model for comparison.
+
+#### Validation Loss
+- **Claude 3.5 Sonnet**, **Gemini 1.5 Pro** and **GPT-o1 Preview** achieve the lowest validation loss consistently, suggesting strong generalization performance on the validation set.
+- **GPT-4** and **GPT-4o** display higher fluctuations in validation loss, possibly due to instability in the training process.
+- **Copilot** and **Bing Microsoft Copilot** showed almost no convergence at very high loss values. **LLAMA 3.1 405B** displayed gradual convergence but remained less converged compared to other models.
+
+In summary, while all models demonstrate some level of convergence, **Claude 3.5 Sonnet** and **GPT-o1 Preview** excel in training stability and validation performance, marking them as robust options among the tested models.
 
 
 ### Validation and Test Dice Scores
