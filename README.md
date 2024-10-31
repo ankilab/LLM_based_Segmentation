@@ -122,13 +122,34 @@ All datasets were preprocessed to fit the input requirements of the LLM-generate
 Errors and interactions with the LLM to fix the errors were tracked and logged. The errors were fed back to the LLM and the suggested fix was applied, until the code was could run through. For LLAMA 3.1 and Gemini 1.5 some additional explanation and input was needed for resolving some errors. GPT-o1 Preview and Claude had 0 errors and ran successfully without modifications, while others Gemini and LLAMA required more bug fixes.
 
 
+<img src="Models Comparison/Results/errors.png" alt="Errors comparison across the different models" width="500" height="300">
+
 ### Training & Validation Losses
-Validation losses varied across epochs for each model.
+Reain and validation losses varied across epochs for each model.
+
+<img src="Models Comparison/Results/all_model_losses_logarithmic_baseline_CE_BAGLS.png" alt="Training and Validation losses across different models" width="600" height="300">
+
+
 
 
 ### Validation and Test Dice Scores
 Dice scores varied significantly across datasets, with GPT-4o and Claude models showing better performance overall.
 Visualized Outputs: Visualizations of segmentation outputs were saved and compared across models.
+
+1. for BAGLS dataset:
+
+   <img src="Models Comparison/Results/all_model_dice_scores_baseline_BAGLS.png" alt="Validation and Test Dice scores comparison across different models" width="600" height="300">
+   
+
+2. for Bolus dataset:
+   
+   <img src="Models Comparison/Results/all_model_dice_scores_baseline_BOLUS.png" alt="Validation and Test Dice scores comparison across different models" width="600" height="300">
+   
+
+3. for Brain Meningioma Tumor dataset:
+   
+   <img src="Models Comparison/Results/all_model_dice_scores_baseline_BRAIN.png" alt="Validation and Test Dice scores comparison across different models" width="600" height="300">
+   
 
 ### Performance
 
