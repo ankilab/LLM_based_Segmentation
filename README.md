@@ -12,7 +12,6 @@ This project utilizes Large Language Models (LLMs) to generate code for medical 
 - [Models and LLMs](#models-and-llms)
 - [Datasets](#datasets)
 - [Results](#results)
-- [Summary](#summary)
 - [License](#license)
 
 
@@ -170,8 +169,7 @@ In summary, while all models demonstrate some level of convergence, **Claude 3.5
 
 
 ### Validation and Test Dice Scores
-Dice scores varied significantly across datasets, with GPT-4o and Claude models showing better performance overall.
-Visualized Outputs: Visualizations of segmentation outputs were saved and compared across models.
+Dice scores varied significantly across datasets, with **GPT-4o** and **GPT-o1 preview** and **Gemini 1.5 Pro** models showing better performance overall, and closer to nnU-net baseline dice scores.
 
 1. for BAGLS dataset:
 
@@ -189,11 +187,12 @@ Visualized Outputs: Visualizations of segmentation outputs were saved and compar
    
 
 ### Performance
+The performance differences observed quantitatively with the losses and dice scores comparison, can also be seen in the inference and visualization of the predictions of each model. 
+
 <img src="Models Comparison/Results/inference_baseline.png" alt="Inferences on example image from each dataset, across different models" width="900" height="350">
 
+**Figure**: Inference prediction masks comparison across LLM generated models along with nnU-net baseline. Each horizontal set shows performance of each model on a sample image from each of the three datasets.
 
-## Summary
-We found that while most LLMs generated functional code, some models required more debugging than others. GPT-o1 Preview and Claude generated highly efficient architectures with minimal intervention. In contrast, models like LLAMA 3.1 performed poorly in comparison, particularly on complex datasets like the Brain Tumor dataset.
 
 ## License
 
