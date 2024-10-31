@@ -152,7 +152,7 @@ This comparative analysis highlights how architectural and hyperparameter choice
 Errors and interactions with the LLM to fix the errors were tracked and logged. The errors were fed back to the LLM and the suggested fix was applied, until the code was could run through. For LLAMA 3.1 and Gemini 1.5 some additional explanation and input was needed for resolving some errors. GPT-o1 Preview and Claude had 0 errors and ran successfully without modifications, while others Gemini and LLAMA required more bug fixes.
 
 
-<img src="Models Comparison/Results/errors.png" alt="Errors comparison across the different models" width="500" height="300">
+<img src="Models Comparison/Results/errors.jpg" alt="Errors comparison across the different models" width="500" height="300">
 
 ### Training & Validation Losses
 
@@ -194,7 +194,7 @@ Dice scores varied significantly across datasets, with **GPT-4o** and **GPT-o1 p
 ### Performance
 The performance differences observed quantitatively with the losses and dice scores comparison, can also be seen in the inference and visualization of the predictions of each model. 
 
-<img src="Models Comparison/Results/inference_baseline.png" alt="Inferences on example image from each dataset, across different models" width="900" height="350">
+<img src="Models Comparison/Results/inference.jpg" alt="Inferences on example image from each dataset, across different models" width="900" height="350">
 
 **Figure**: Inference prediction masks comparison across LLM generated models along with nnU-net baseline. Each horizontal set shows performance of each model on a sample image from each of the three datasets.
 
