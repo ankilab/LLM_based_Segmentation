@@ -152,7 +152,7 @@ Visualized Outputs: Visualizations of segmentation outputs were saved and compar
    
 
 ### Performance
-<img src="Models Comparison/Results/inference_baseline.png" alt="Inferences on example image from each dataset, across different models" width="900" height="400">
+<img src="Models Comparison/Results/inference_baseline.png" alt="Inferences on example image from each dataset, across different models" width="900" height="350">
 
 
 ## Summary
