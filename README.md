@@ -1,5 +1,4 @@
-# LLM_based_Segmentation
-Comparison of LLM-based semantic segmentation strategies for medical images
+# LLM-Driven Baselines for Medical Image Segmentation
 
 This project utilizes Large Language Models (LLMs) to generate code for medical image segmentation tasks using U-Net architectures. We compare the performance of various LLMs in generating code for U-Net-based segmentation models and track the interactions with the LLMs and results on multiple datasets. The models are evaluated on their ability to generate functional code out-of-the-box, accuracy in segmentation, and error frequency during development.
 
