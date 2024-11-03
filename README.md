@@ -148,7 +148,7 @@ This comparative analysis highlights how architectural and hyperparameter choice
 
 
 ### Error Comparison
-Errors and interactions with the LLM to fix the errors were tracked and logged. The errors were fed back to the LLM and the suggested fix was applied, until the code was could run through. For LLAMA 3.1 and Gemini 1.5 some additional explanation and input was needed for resolving some errors. GPT-o1 Preview and Claude had 0 errors and ran successfully without modifications, while others Gemini and LLAMA required more bug fixes.
+Errors and interactions with the LLM to fix the errors were tracked and logged. The errors were fed back to the LLM and the suggested fix was applied, until the code was could run through. For LLAMA 3.1 and Gemini 1.5 some additional explanation and input was needed for resolving some errors. GPT-o1 Preview and Claude had 0 errors and ran successfully without modifications, while others such as Gemini and LLAMA required more bug fixes.
 
 
 <img src="Models Comparison/Results/errors.jpg" alt="Errors comparison across the different models" width="500" height="300">
