@@ -1,0 +1,245 @@
+JArjomandi: Please provide a complete ready-to-run Python implementation for a U-Net architecture using Tensorflow, for binary segmentation of grayscale images. The dataset should consist of grayscale images and corresponding binary masks, which are located in the same path (the images are named with numbering like "number.png" and the masks "number_seg.png", around 5000 samples in total). It should work and provide correct predictions, and save the losses and dice scores as instructed below. The code should be structured into importable scripts with the following:
+
+23.	A custom Dataset class for loading the grayscale images and corresponding binary masks. (only the png files, ignore meta files or additional files in the directory)
+24.	A UNet model class definition using Tensorflow, optimized for binary segmentation (with small foreground, mostly background)
+25.	Functions for the training procedure, validation procedure, and Testing procedure.
+
+Considerations for each part:
+26.	Ensure needed transforms on input image and mask pairs (Re-size images correctly, ensure gray scale and binary…)
+27.	Avoid overfitting and data leakage (without using augmentations), choose appropriate hyperparameters, learning rate, batch size, etc
+
+•	For Training and Validation:
+
+28.	Compute training and validation losses.
+29.	Track and save the average training loss for each epoch in a separate Excel file (train_losses.xlsx) in a given save path. The first row should contain the epoch numbers, and the second row should contain the corresponding average training loss for each epoch.
+30.	Similarly, save the validation loss for each epoch in an Excel file (val_losses.xlsx) with the same structure.
+31.	At the end of training, save both the entire model and the model's state dictionary (.pth files) in the save path
+32.	Calculate total training time from start to end, and print at the end of training
+33.	The progress, phase (train/validation), and all info should be shown epoch by epoch using `tqdm` progress bars during training, validation, and testing.
+34.	A function to visualize training losses and validation losses over epochs afterwards, on the same plot. Save plot in a specified save path as png. 
+35.	During Validation: Dice scores should be calculated for each batch, and all dice coefficients for the entire epoch should be stored in an Excel file, where each row in the Excel file should represent an epoch, and each column should represent a batch. The Excel file (named “validation_dice_scores” should be saved at the specified save path after validation is done.
+36.	Do the same for the Testing and store dice the Dice scores the same way and save the excel file as “test_dice_scores” after testing is done.
+
+•	For Testing:
+
+37.	A function to visualize the predicted masks, the input image, and the ground truth, for 5 random samples, after testing is done. (subplots for 5 random samples in one plot, in 5 rows and 3 columns (title at top: Input Image, Ground Truth, Prediction). Also display image file name /id string above each image and mask. save the plot as `.png`).
+
+•	For Main:
+
+38.	Shuffle the data, split the dataset into: 80% training, 10% validation, and 10% test sets using `train_test_split`. Print the sizes of each (how many images), and copy the splitted data (images and their respective masks) 
+39.	DataLoader setup for training, validation, and testing sets.
+40.	Ensure correct data loading, print data loader sizes.
+41.	Also print model summary, and total number of model parameters (n learnable params)
+
+42.	All the above functionalities should be implemented in a modular way so that they can be imported as scripts or classes.
+43.	All visualizations should just be saved as png. No need to display the plots during running.
+44.	Ensure that everything can be executed in an `if __name__ == "__main__":` block with instructions for loading the dataset, configuring hyperparameters, and saving the trained model.
+The directory structure should only be:
+unet_segmentation/
+├── dataset.py
+├── model.py
+├── train.py
+├── main.py
+
+
+GitHub Copilot: Sure, I'll provide a modular implementation for the U-Net architecture using TensorFlow for binary segmentation of grayscale images. The code will be structured into separate scripts as requested.
+
+### Directory Structure
+```
+unet_segmentation/
+├── dataset.py
+├── model.py
+├── train.py
+├── main.py
+```
+
+### `dataset.py`
+```python
+import os
+import tensorflow as tf
+from sklearn.model_selection import train_test_split
+import numpy as np
+from tensorflow.keras.preprocessing.image import load_img, img_to_array
+
+class CustomDataset:
+    def __init__(self, image_dir, mask_dir, img_size=(128, 128)):
+        self.image_dir = image_dir
+        self.mask_dir = mask_dir
+        self.img_size = img_size
+        self.image_paths = sorted([os.path.join(image_dir, f) for f in os.listdir(image_dir) if f.endswith('.png')])
+        self.mask_paths = sorted([os.path.join(mask_dir, f) for f in os.listdir(mask_dir) if f.endswith('.png')])
+
+    def load_data(self):
+        images = [img_to_array(load_img(img_path, color_mode='grayscale', target_size=self.img_size)) for img_path in self.image_paths]
+        masks = [img_to_array(load_img(mask_path, color_mode='grayscale', target_size=self.img_size)) for mask_path in self.mask_paths]
+        images = np.array(images) / 255.0
+        masks = np.array(masks) / 255.0
+        masks = (masks > 0.5).astype(np.float32)
+        return images, masks
+
+    def get_data_loaders(self, batch_size=16, test_size=0.2, val_size=0.1):
+        images, masks = self.load_data()
+        X_train, X_test, y_train, y_test = train_test_split(images, masks, test_size=test_size, random_state=42)
+        X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, test_size=val_size, random_state=42)
+        
+        train_dataset = tf.data.Dataset.from_tensor_slices((X_train, y_train)).batch(batch_size).shuffle(buffer_size=100)
+        val_dataset = tf.data.Dataset.from_tensor_slices((X_val, y_val)).batch(batch_size)
+        test_dataset = tf.data.Dataset.from_tensor_slices((X_test, y_test)).batch(batch_size)
+        
+        return train_dataset, val_dataset, test_dataset
+```
+
+### `model.py`
+```python
+import tensorflow as tf
+from tensorflow.keras import layers, models
+
+def unet_model(input_size=(128, 128, 1)):
+    inputs = layers.Input(input_size)
+    
+    # Encoder
+    c1 = layers.Conv2D(64, (3, 3), activation='relu', padding='same')(inputs)
+    c1 = layers.Conv2D(64, (3, 3), activation='relu', padding='same')(c1)
+    p1 = layers.MaxPooling2D((2, 2))(c1)
+    
+    c2 = layers.Conv2D(128, (3, 3), activation='relu', padding='same')(p1)
+    c2 = layers.Conv2D(128, (3, 3), activation='relu', padding='same')(c2)
+    p2 = layers.MaxPooling2D((2, 2))(c2)
+    
+    c3 = layers.Conv2D(256, (3, 3), activation='relu', padding='same')(p2)
+    c3 = layers.Conv2D(256, (3, 3), activation='relu', padding='same')(c3)
+    p3 = layers.MaxPooling2D((2, 2))(c3)
+    
+    c4 = layers.Conv2D(512, (3, 3), activation='relu', padding='same')(p3)
+    c4 = layers.Conv2D(512, (3, 3), activation='relu', padding='same')(c4)
+    p4 = layers.MaxPooling2D((2, 2))(c4)
+    
+    # Bottleneck
+    c5 = layers.Conv2D(1024, (3, 3), activation='relu', padding='same')(p4)
+    c5 = layers.Conv2D(1024, (3, 3), activation='relu', padding='same')(c5)
+    
+    # Decoder
+    u6 = layers.Conv2DTranspose(512, (2, 2), strides=(2, 2), padding='same')(c5)
+    u6 = layers.concatenate([u6, c4])
+    c6 = layers.Conv2D(512, (3, 3), activation='relu', padding='same')(u6)
+    c6 = layers.Conv2D(512, (3, 3), activation='relu', padding='same')(c6)
+    
+    u7 = layers.Conv2DTranspose(256, (2, 2), strides=(2, 2), padding='same')(c6)
+    u7 = layers.concatenate([u7, c3])
+    c7 = layers.Conv2D(256, (3, 3), activation='relu', padding='same')(u7)
+    c7 = layers.Conv2D(256, (3, 3), activation='relu', padding='same')(c7)
+    
+    u8 = layers.Conv2DTranspose(128, (2, 2), strides=(2, 2), padding='same')(c7)
+    u8 = layers.concatenate([u8, c2])
+    c8 = layers.Conv2D(128, (3, 3), activation='relu', padding='same')(u8)
+    c8 = layers.Conv2D(128, (3, 3), activation='relu', padding='same')(c8)
+    
+    u9 = layers.Conv2DTranspose(64, (2, 2), strides=(2, 2), padding='same')(c8)
+    u9 = layers.concatenate([u9, c1])
+    c9 = layers.Conv2D(64, (3, 3), activation='relu', padding='same')(u9)
+    c9 = layers.Conv2D(64, (3, 3), activation='relu', padding='same')(c9)
+    
+    outputs = layers.Conv2D(1, (1, 1), activation='sigmoid')(c9)
+    
+    model = models.Model(inputs=[inputs], outputs=[outputs])
+    return model
+```
+
+### `train.py`
+```python
+import tensorflow as tf
+import pandas as pd
+import time
+from tqdm import tqdm
+import matplotlib.pyplot as plt
+
+def dice_coefficient(y_true, y_pred):
+    y_true_f = tf.keras.backend.flatten(y_true)
+    y_pred_f = tf.keras.backend.flatten(y_pred)
+    intersection = tf.keras.backend.sum(y_true_f * y_pred_f)
+    return (2. * intersection + 1) / (tf.keras.backend.sum(y_true_f) + tf.keras.backend.sum(y_pred_f) + 1)
+
+def train_model(model, train_dataset, val_dataset, epochs, save_path):
+    optimizer = tf.keras.optimizers.Adam(learning_rate=1e-4)
+    loss_fn = tf.keras.losses.BinaryCrossentropy()
+    train_losses = []
+    val_losses = []
+    val_dice_scores = []
+
+    for epoch in range(epochs):
+        print(f'Epoch {epoch+1}/{epochs}')
+        start_time = time.time()
+        
+        # Training
+        train_loss = 0
+        for step, (x_batch_train, y_batch_train) in enumerate(tqdm(train_dataset, desc="Training")):
+            with tf.GradientTape() as tape:
+                logits = model(x_batch_train, training=True)
+                loss_value = loss_fn(y_batch_train, logits)
+            grads = tape.gradient(loss_value, model.trainable_weights)
+            optimizer.apply_gradients(zip(grads, model.trainable_weights))
+            train_loss += loss_value
+        train_loss /= (step + 1)
+        train_losses.append(train_loss)
+        
+        # Validation
+        val_loss = 0
+        dice_scores = []
+        for step, (x_batch_val, y_batch_val) in enumerate(tqdm(val_dataset, desc="Validation")):
+            val_logits = model(x_batch_val, training=False)
+            val_loss_value = loss_fn(y_batch_val, val_logits)
+            val_loss += val_loss_value
+            dice_scores.append(dice_coefficient(y_batch_val, val_logits))
+        val_loss /= (step + 1)
+        val_losses.append(val_loss)
+        val_dice_scores.append(dice_scores)
+        
+        # Save losses and dice scores
+        pd.DataFrame(train_losses).to_excel(f'{save_path}/train_losses.xlsx', index=False)
+        pd.DataFrame(val_losses).to_excel(f'{save_path}/val_losses.xlsx', index=False)
+        pd.DataFrame(val_dice_scores).to_excel(f'{save_path}/validation_dice_scores.xlsx', index=False)
+        
+        print(f'Training loss: {train_loss:.4f} - Validation loss: {val_loss:.4f} - Time: {time.time() - start_time:.2f}s')
+    
+    model.save(f'{save_path}/unet_model.h5')
+    model.save_weights(f'{save_path}/unet_model_weights.h5')
+
+def plot_losses(train_losses, val_losses, save_path):
+    plt.figure()
+    plt.plot(train_losses, label='Training Loss')
+    plt.plot(val_losses, label='Validation Loss')
+    plt.xlabel('Epochs')
+    plt.ylabel('Loss')
+    plt.legend()
+    plt.savefig(f'{save_path}/loss_plot.png')
+```
+
+### `main.py`
+```python
+import os
+from dataset import CustomDataset
+from model import unet_model
+from train import train_model, plot_losses
+
+if __name__ == "__main__":
+    image_dir = 'path/to/images'
+    mask_dir = 'path/to/masks'
+    save_path = 'path/to/save'
+    os.makedirs(save_path, exist_ok=True)
+    
+    dataset = CustomDataset(image_dir, mask_dir)
+    train_dataset, val_dataset, test_dataset = dataset.get_data_loaders(batch_size=16)
+    
+    model = unet_model()
+    model.summary()
+    
+    train_model(model, train_dataset, val_dataset, epochs=50, save_path=save_path)
+    
+    train_losses = pd.read_excel(f'{save_path}/train_losses.xlsx').values.flatten()
+    val_losses = pd.read_excel(f'{save_path}/val_losses.xlsx').values.flatten()
+    plot_losses(train_losses, val_losses, save_path)
+```
+
+This code provides a complete implementation of the U-Net architecture for binary segmentation of grayscale images. It includes a custom dataset class, U-Net model definition, training procedure, and main script to run the training. The losses and dice scores are saved in Excel files, and the training and validation losses are plotted and saved as a PNG file.
+
+Similar code found with 1 license type

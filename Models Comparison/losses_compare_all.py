@@ -48,7 +48,7 @@ color_map = {
 
 ### Normal Scale Plot ### ==============================================================================
 # Create a figure with 1 row and 2 columns for the subplots
-fig, axes = plt.subplots(1, 2, figsize=(10, 5))
+fig, axes = plt.subplots(1, 2, figsize=(12, 5))
 
 # Plotting Training Losses on the first subplot (axes[0])
 for i, model in enumerate(train_models):
@@ -77,11 +77,11 @@ fig.suptitle('Loss Comparison (BAGLS dataset)', fontsize=16)
 plt.tight_layout(rect=[0, 0, 1, 0.95])  # Leave space for the suptitle
 #plt.show()
 # Save the combined plot
-plt.savefig(f"{save_path}all_model_losses_baseline_CE_BAGLS.png", dpi=600)
+plt.savefig(f"{save_path}all_model_losses_baseline_total_BAGLS.png", dpi=600)
 
 ### Logarithmic Scale Plot ### ===========================================================================
 # Create a figure with 1 row and 2 columns for the subplots
-fig, axes = plt.subplots(1, 2, figsize=(10, 5))
+fig, axes = plt.subplots(1, 2, figsize=(12, 5))
 # Define more detailed custom y-ticks for the logarithmic scale
 yticks_custom = [0.001, 0.01, 0.1, 1]
 
@@ -114,5 +114,5 @@ fig.suptitle('Loss Comparison (BAGLS Dataset)', fontsize=16)
 
 # Adjust layout to ensure there's no overlap and more space between subplots
 plt.tight_layout(rect=[0, 0, 1, 0.95])
-plt.savefig(f"{save_path}all_model_losses_logarithmic_baseline_CE_BAGLS.png", dpi=600)
+plt.savefig(f"{save_path}all_model_losses_logarithmic_baseline_total_BAGLS.png", dpi=600)
 #plt.show()
