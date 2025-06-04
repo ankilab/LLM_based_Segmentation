@@ -12,6 +12,7 @@ from sklearn.model_selection import train_test_split
 from torch.utils.data import DataLoader, Subset
 from torch import optim
 from tqdm.auto import tqdm  # just to ensure tqdm is imported early
+from torchinfo import summary
 
 from dataset import SegmentationDataset
 from model import UNet
@@ -39,17 +40,21 @@ def set_seed(seed: int = 42):
     torch.backends.cudnn.benchmark = False
 
 
-def print_model_summary(model: torch.nn.Module, img_size=(1, 256, 256)):
-    total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-    print(model)
-    print(f"\nTotal learnable parameters: {total_params:,}")
-
-    # simple one-line summary of layers with output shapes
-    x = torch.randn(1, *img_size)
-    for name, layer in model.named_children():
-        x = layer(x) if not isinstance(layer, torch.nn.Sequential) else layer(x)
-        print(f"{name:<12s} → {tuple(x.shape)}")
-
+# def print_model_summary(model: torch.nn.Module,
+#                         device: torch.device,
+#                         img_size: tuple[int, int, int] = (1, 256, 256)) -> None:
+#     """
+#     Rudimentary summary: prints children names and the shape they output when
+#     fed a single dummy image.  Works on CPU or GPU.
+#     """
+#     total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+#     print(model)
+#     print(f"\nTotal learnable parameters: {total_params:,}")
+#
+#     x = torch.randn(1, *img_size, device=device)  # <-- send dummy to *same* device
+#     for name, layer in model.named_children():
+#         x = layer(x)              # call layer, regardless of its type
+#         print(f"{name:<12s} → {tuple(x.shape)}")
 
 def main():
     set_seed(RANDOM_SEED)
@@ -81,7 +86,11 @@ def main():
     # 3. model & optimiser -----------------------------------------------------
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     model  = UNet(in_channels=1, out_channels=1, init_features=32).to(device)
-    print_model_summary(model)
+    #print_model_summary(model, device)
+    summary(model,
+            input_size=(1, 1, 256, 256),
+            col_names=("input_size", "output_size", "num_params"),
+            device=device)
 
     optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
     criterion = torch.nn.BCEWithLogitsLoss()

@@ -7,7 +7,7 @@ from sklearn.model_selection import train_test_split
 from dataset import CustomSegmentationDataset
 from model import UNet
 from train import train_model, validate_model, test_model, save_losses_to_excel, plot_losses, visualize_predictions
-# from torchsummary import summary
+from torchsummary import summary
 from torchinfo import summary
 import time
 import shutil

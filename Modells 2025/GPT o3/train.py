@@ -30,6 +30,45 @@ def dice_coeff(pred_logits: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
     return dice
 
 
+# def _epoch_template(
+#     loader: DataLoader,
+#     model: torch.nn.Module,
+#     criterion,
+#     device: torch.device,
+#     phase: str = "train",
+#     optimiser: torch.optim.Optimizer | None = None,
+# ) -> Tuple[float, List[float]]:
+#     assert phase in {"train", "val", "test"}
+#     is_train = phase == "train"
+#     model.train(is_train)
+#
+#     running_loss = 0.0
+#     dice_scores: List[float] = []
+#
+#     loop = tqdm(loader, desc=f"{phase:>5}", leave=False)
+#
+#     for images, masks, _ in loop:
+#         images, masks = images.to(device), masks.to(device)
+#         optimiser.zero_grad() if is_train else None
+#
+#         logits = model(images)
+#         loss = criterion(logits, masks)
+#         running_loss += loss.item() * images.size(0)
+#
+#         if is_train:
+#             loss.backward()
+#             optimiser.step()
+#
+#         if phase in {"val", "test"}:
+#             dice = dice_coeff(logits, masks)      # (N,)
+#             dice_scores.extend(dice.detach().cpu().tolist())
+#             loop.set_postfix(loss=loss.item(), dice=sum(dice_scores) / len(dice_scores))
+#         else:
+#             loop.set_postfix(loss=loss.item())
+#
+#     epoch_loss = running_loss / len(loader.dataset)
+#     return epoch_loss, dice_scores
+
 def _epoch_template(
     loader: DataLoader,
     model: torch.nn.Module,
@@ -38,37 +77,44 @@ def _epoch_template(
     phase: str = "train",
     optimiser: torch.optim.Optimizer | None = None,
 ) -> Tuple[float, List[float]]:
+    """
+    Returns:
+        epoch_loss          – average BCE-with-logits loss over *samples*
+        batch_dice_scores   – list length == # batches
+                              (each item is the mean Dice of that batch)
+    """
     assert phase in {"train", "val", "test"}
     is_train = phase == "train"
     model.train(is_train)
 
     running_loss = 0.0
-    dice_scores: List[float] = []
+    batch_dice_scores: List[float] = []
 
     loop = tqdm(loader, desc=f"{phase:>5}", leave=False)
 
     for images, masks, _ in loop:
         images, masks = images.to(device), masks.to(device)
-        optimiser.zero_grad() if is_train else None
+        if is_train:
+            optimiser.zero_grad()
 
         logits = model(images)
-        loss = criterion(logits, masks)
+        loss   = criterion(logits, masks)
         running_loss += loss.item() * images.size(0)
 
         if is_train:
             loss.backward()
             optimiser.step()
 
+        # ── NEW: store *batch-mean* Dice instead of per-sample ────────────
         if phase in {"val", "test"}:
-            dice = dice_coeff(logits, masks)      # (N,)
-            dice_scores.extend(dice.detach().cpu().tolist())
-            loop.set_postfix(loss=loss.item(), dice=sum(dice_scores) / len(dice_scores))
+            dice_mean = dice_coeff(logits, masks).mean().item()  # scalar
+            batch_dice_scores.append(dice_mean)
+            loop.set_postfix(loss=loss.item(), dice=dice_mean)
         else:
             loop.set_postfix(loss=loss.item())
 
     epoch_loss = running_loss / len(loader.dataset)
-    return epoch_loss, dice_scores
-
+    return epoch_loss, batch_dice_scores
 
 def save_vector_as_excel(values: List[float], excel_path: Path, header: str = "loss") -> None:
     """
