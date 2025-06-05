@@ -20,12 +20,32 @@ from train import train_validate, test_phase
 
 
 # ---------- configure here ----------------------------------------------------
-DATA_ROOT = Path("D:\qy44lyfe\LLM segmentation\Data sets\BAGLS\subset")   # folder containing 5000 *.png & *_seg.png
-SAVE_DIR  = Path("D:\\qy44lyfe\\LLM segmentation\\Results\\2025\\GPT o3\\out of the box\\BAGLS output")                  # will be created if missing
+#DATA_ROOT = Path("D:\qy44lyfe\LLM segmentation\Data sets\BAGLS\subset")   # folder containing 5000 *.png & *_seg.png
+#DATA_ROOT = Path("D:\qy44lyfe\LLM segmentation\Data sets\Brain Meningioma\images")
+#DATA_ROOT = Path("D:\qy44lyfe\LLM segmentation\Data sets\Swallowing\images")
+#DATA_ROOT = Path("D:\qy44lyfe\LLM segmentation\Data sets\DRIVE\combined_images\converted")
+DATA_ROOT = Path("D:\qy44lyfe\LLM segmentation\Data sets\Skin cancer\subset\images")
+
+#MASKS_DIR = DATA_ROOT
+#MASKS_DIR = Path("D:\qy44lyfe\LLM segmentation\Data sets\Brain Meningioma\Masks")
+#MASKS_DIR = Path("D:\qy44lyfe\LLM segmentation\Data sets\Swallowing\masks")
+#MASKS_DIR = Path("D:\qy44lyfe\LLM segmentation\Data sets\DRIVE\combined_masks\converted")
+MASKS_DIR = Path("D:\qy44lyfe\LLM segmentation\Data sets\Skin cancer\subset\masks")
+#MASK_SUFFIX = "_seg"                             # ""  → masks have *exact* same name
+#MASK_SUFFIX = "_m"                         # "_m" → e.g. 0001_m.png
+#MASK_SUFFIX = ""
+MASK_SUFFIX = ""
+
+#SAVE_DIR  = Path("D:\\qy44lyfe\\LLM segmentation\\Results\\2025\\GPT o3\\out of the box\\BAGLS output")
+#SAVE_DIR  = Path("D:\\qy44lyfe\\LLM segmentation\\Results\\2025\\GPT o3\\out of the box\\Brain output")
+#SAVE_DIR  = Path("D:\\qy44lyfe\\LLM segmentation\\Results\\2025\\GPT o3\\out of the box\\Bolus output")
+SAVE_DIR  = Path("D:\\qy44lyfe\\LLM segmentation\\Results\\2025\\GPT o3\\out of the box\\skin output")
+
 
 RESIZE_TO     = (256, 256)
 BATCH_SIZE    = 8
-EPOCHS        = 25
+#EPOCHS        = 25
+EPOCHS        = 3
 LEARNING_RATE = 1e-3
 RANDOM_SEED   = 42
 # ------------------------------------------------------------------------------
@@ -60,7 +80,10 @@ def main():
     set_seed(RANDOM_SEED)
 
     # 1. dataset ---------------------------------------------------------------
-    full_dataset = SegmentationDataset(DATA_ROOT, resize=RESIZE_TO)
+    full_dataset = SegmentationDataset(DATA_ROOT,
+                                       masks_dir=MASKS_DIR,
+                                       mask_suffix=MASK_SUFFIX,
+                                       resize=RESIZE_TO)
 
     indices = list(range(len(full_dataset)))
     train_idx, tmp_idx = train_test_split(indices, test_size=0.2, random_state=RANDOM_SEED, shuffle=True)
