@@ -26,26 +26,27 @@ from train import train_validate, test_phase
 #DATA_ROOT = Path("D:\qy44lyfe\LLM segmentation\Data sets\DRIVE\combined_images\converted")
 DATA_ROOT = Path("D:\qy44lyfe\LLM segmentation\Data sets\Skin cancer\subset\images")
 
-#MASKS_DIR = DATA_ROOT
+MASKS_DIR = DATA_ROOT
 #MASKS_DIR = Path("D:\qy44lyfe\LLM segmentation\Data sets\Brain Meningioma\Masks")
 #MASKS_DIR = Path("D:\qy44lyfe\LLM segmentation\Data sets\Swallowing\masks")
 #MASKS_DIR = Path("D:\qy44lyfe\LLM segmentation\Data sets\DRIVE\combined_masks\converted")
 MASKS_DIR = Path("D:\qy44lyfe\LLM segmentation\Data sets\Skin cancer\subset\masks")
 #MASK_SUFFIX = "_seg"                             # ""  → masks have *exact* same name
 #MASK_SUFFIX = "_m"                         # "_m" → e.g. 0001_m.png
-#MASK_SUFFIX = ""
 MASK_SUFFIX = ""
+#MASK_SUFFIX = "_m"
 
 #SAVE_DIR  = Path("D:\\qy44lyfe\\LLM segmentation\\Results\\2025\\GPT o3\\out of the box\\BAGLS output")
 #SAVE_DIR  = Path("D:\\qy44lyfe\\LLM segmentation\\Results\\2025\\GPT o3\\out of the box\\Brain output")
 #SAVE_DIR  = Path("D:\\qy44lyfe\\LLM segmentation\\Results\\2025\\GPT o3\\out of the box\\Bolus output")
+#SAVE_DIR  = Path("D:\\qy44lyfe\\LLM segmentation\\Results\\2025\\GPT o3\\out of the box\\Retina output")
 SAVE_DIR  = Path("D:\\qy44lyfe\\LLM segmentation\\Results\\2025\\GPT o3\\out of the box\\skin output")
 
 
 RESIZE_TO     = (256, 256)
 BATCH_SIZE    = 8
-#EPOCHS        = 25
-EPOCHS        = 3
+EPOCHS        = 25
+#EPOCHS        = 3
 LEARNING_RATE = 1e-3
 RANDOM_SEED   = 42
 # ------------------------------------------------------------------------------
@@ -108,10 +109,11 @@ def main():
 
     # 3. model & optimiser -----------------------------------------------------
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    model  = UNet(in_channels=1, out_channels=1, init_features=32).to(device)
+    model  = UNet(in_channels=3, out_channels=1, init_features=32).to(device)
     #print_model_summary(model, device)
     summary(model,
-            input_size=(1, 1, 256, 256),
+            #input_size=(1, 1, 256, 256),
+            input_size=(1, 3, 256, 256),
             col_names=("input_size", "output_size", "num_params"),
             device=device)
 

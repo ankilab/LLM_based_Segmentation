@@ -85,7 +85,7 @@ class SegmentationDataset(Dataset):
         stem = img_path.stem
         cands = [
             self.masks_dir / f"{stem}{self.mask_suffix}.png",
-            self.masks_dir / f"{stem}_m.png",
+            self.masks_dir / f"{stem}_seg.png",
             self.masks_dir / img_path.name,
         ]
         for p in cands:
@@ -98,7 +98,13 @@ class SegmentationDataset(Dataset):
 
     def _preprocess(self, pil_img: Image.Image, is_mask: bool = False) -> torch.Tensor:
         # Ensure grayscale, resize, to tensor, normalise (images 0-1; masks 0/1)
-        pil_img = pil_img.convert("L").resize(self.resize, Image.NEAREST if is_mask else Image.BILINEAR)
+        #pil_img = pil_img.convert("L").resize(self.resize, Image.NEAREST if is_mask else Image.BILINEAR)
+
+        # ── NEW: use RGB for photographs, keep L for masks ─────────────────────
+        pil_img = pil_img.convert("RGB" if not is_mask else "L")  # <- only this bit changed
+        # resize as before (bilinear for images, nearest for masks)
+        pil_img = pil_img.resize(self.resize, Image.NEAREST if is_mask else Image.BILINEAR)
+
         tensor = TF.to_tensor(pil_img)          # shape [1,H,W] in (0,1)
         if is_mask:
             tensor = (tensor > 0.5).float()     # strictly binary 0/1
