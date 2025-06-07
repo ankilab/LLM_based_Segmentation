@@ -185,7 +185,11 @@ def visualize_predictions(model, dataset, device, save_path, num_samples=5):
             pred_mask = (prob > 0.5).float().squeeze(0).squeeze(0).cpu().numpy()  # [H,W]
 
             # Move original image to numpy for plotting
-            img_np = image_tensor.squeeze(0).cpu().numpy()  # [H,W]
+            # img_np = image_tensor.squeeze(0).cpu().numpy()  # [H,W]
+            # in case of RGB:
+            # Convert CHW → HWC → gray
+            img_np = image_tensor.permute(1, 2, 0).cpu().numpy()  # (H,W,3)
+            img_np = (img_np[..., 0] * 0.299 + img_np[..., 1] * 0.587 + img_np[..., 2] * 0.114)  # (H,W)
 
             for col in range(3):
                 ax = axes[row_idx, col]

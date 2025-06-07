@@ -87,11 +87,15 @@ if __name__ == "__main__":
 
     # 3) Initialize model, optimizer, loss
     device = torch.device(args.device)
-    model = UNet(in_channels=1, out_channels=1).to(device)
+    #model = UNet(in_channels=1, out_channels=1).to(device)
+    # in case of RGB input data
+    model = UNet(in_channels=3, out_channels=1).to(device)
 
     # Print model summary and total parameters
     print("\nModel Summary:")
-    summary(model, input_size=(args.batch_size, 1, args.image_size, args.image_size))
+    #summary(model, input_size=(args.batch_size, 1, args.image_size, args.image_size))
+    # in case of RGB data
+    summary(model, input_size=(args.batch_size, 3, args.image_size, args.image_size))
     total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     print(f"Total trainable parameters: {total_params}\n")
 

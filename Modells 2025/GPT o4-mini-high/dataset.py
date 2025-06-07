@@ -52,7 +52,9 @@ class GrayscaleDataset(Dataset):
         image_path, mask_path, base_name = self.samples[idx]
 
         # Load image and mask in PIL
-        image = Image.open(image_path).convert('L')
+        #image = Image.open(image_path).convert('L')
+        # in case of RGB image data:
+        image = Image.open(image_path).convert('RGB')
         mask = Image.open(mask_path).convert('L')
 
         # Resize
@@ -60,12 +62,16 @@ class GrayscaleDataset(Dataset):
         mask = mask.resize((self.image_size, self.image_size), resample=Image.NEAREST)
 
         # Convert to NumPy arrays
-        image_np = np.array(image, dtype=np.float32) / 255.0   # shape (H, W), [0,1]
+        #image_np = np.array(image, dtype=np.float32) / 255.0   # shape (H, W), [0,1]
+        # in case of RGB:
+        image_np = np.array(image, dtype=np.float32).transpose(2, 0, 1) / 255.0
         mask_np = np.array(mask, dtype=np.float32) / 255.0     # shape (H, W), [0,1]
         mask_np = (mask_np > 0.5).astype(np.float32)           # binarize
 
         # To torch tensors, add channel dim
-        image_tensor = torch.from_numpy(image_np).unsqueeze(0)  # [1, H, W]
+        #image_tensor = torch.from_numpy(image_np).unsqueeze(0)  # [1, H, W]
+        # in case of RGB:
+        image_tensor = torch.from_numpy(image_np)
         mask_tensor = torch.from_numpy(mask_np).unsqueeze(0)    # [1, H, W]
 
         return image_tensor, mask_tensor, base_name
