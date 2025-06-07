@@ -1,5 +1,6 @@
 import os
 from PIL import Image
+import numpy as np
 import torch
 from torch.utils.data import Dataset
 
@@ -31,14 +32,12 @@ class GrayscaleDataset(Dataset):
         for fname in all_files:
             if not fname.lower().endswith('.png'):
                 continue
-            # We expect masks named "<basename>_seg.png"
             base, _ = os.path.splitext(fname)
-            mask_name = f"{base}_seg.png"
+            mask_name = f"{base}.png"
+            img_path = os.path.join(self.image_dir, fname)
             mask_path = os.path.join(self.mask_dir, mask_name)
-            image_path = os.path.join(self.image_dir, fname)
             if os.path.isfile(mask_path):
-                self.samples.append((image_path, mask_path, base))
-            # else: skip images with no corresponding mask
+                self.samples.append((img_path, mask_path, base))
 
     def __len__(self):
         return len(self.samples)
@@ -60,19 +59,13 @@ class GrayscaleDataset(Dataset):
         image = image.resize((self.image_size, self.image_size), resample=Image.BILINEAR)
         mask = mask.resize((self.image_size, self.image_size), resample=Image.NEAREST)
 
-        # Convert to tensors
-        image_tensor = torch.from_numpy(
-            (torch.ByteTensor(torch.ByteStorage.from_buffer(image.tobytes()))
-             .float()
-             .view(self.image_size, self.image_size) / 255.0)
-        ).unsqueeze(0)  # shape [1, H, W]
+        # Convert to NumPy arrays
+        image_np = np.array(image, dtype=np.float32) / 255.0   # shape (H, W), [0,1]
+        mask_np = np.array(mask, dtype=np.float32) / 255.0     # shape (H, W), [0,1]
+        mask_np = (mask_np > 0.5).astype(np.float32)           # binarize
 
-        mask_tensor = torch.from_numpy(
-            (torch.ByteTensor(torch.ByteStorage.from_buffer(mask.tobytes()))
-             .float()
-             .view(self.image_size, self.image_size) / 255.0)
-        ).unsqueeze(0)
-        # Binarize mask
-        mask_tensor = (mask_tensor > 0.5).float()
+        # To torch tensors, add channel dim
+        image_tensor = torch.from_numpy(image_np).unsqueeze(0)  # [1, H, W]
+        mask_tensor = torch.from_numpy(mask_np).unsqueeze(0)    # [1, H, W]
 
         return image_tensor, mask_tensor, base_name
