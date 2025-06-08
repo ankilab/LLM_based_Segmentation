@@ -26,9 +26,9 @@ from train import (
 def main():
     # --- Configuration ---
     # Path to your data
-    IMAGE_DIR = "D:\qy44lyfe\LLM segmentation\Data sets\BAGLS\subset"
-    MASK_DIR = "D:\qy44lyfe\LLM segmentation\Data sets\BAGLS\subset"
-    SAVE_PATH = "D:\\qy44lyfe\\LLM segmentation\\Results\\2025\\Gemini 2.5 Pro\\out of the box\\BAGLS output"
+    IMAGE_DIR = "D:\qy44lyfe\LLM segmentation\Data sets\Skin cancer\subset\images"
+    MASK_DIR = "D:\qy44lyfe\LLM segmentation\Data sets\Skin cancer\subset\masks"
+    SAVE_PATH = "D:\\qy44lyfe\\LLM segmentation\\Results\\2025\\Gemini 2.5 Pro\\out of the box\\skin output"
 
     # Hyperparameters
     LEARNING_RATE = 1e-4
@@ -36,7 +36,7 @@ def main():
     NUM_EPOCHS = 25  # Adjust as needed
     IMG_HEIGHT = 256
     IMG_WIDTH = 256
-    MASK_SUFFIX = "_seg"
+    MASK_SUFFIX = ""
 
     os.makedirs(SAVE_PATH, exist_ok=True)
 
@@ -63,7 +63,7 @@ def main():
     all_image_files = [
         f for f in os.listdir(IMAGE_DIR)
         if f.lower().endswith(".png")  # keep only .png
-           and not f.lower().endswith(f"{MASK_SUFFIX}.png")  # drop masks
+        #   and not f.lower().endswith(f"{MASK_SUFFIX}.png")  # drop masks
     ]
 
     # Create indices and split them

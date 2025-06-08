@@ -11,7 +11,7 @@ class UNetDataset(Dataset):
     Custom Dataset for loading grayscale images and their corresponding binary masks.
     """
 
-    def __init__(self, image_dir, mask_dir, image_filenames, mask_suffix="_seg", transform=None, mask_transform=None):
+    def __init__(self, image_dir, mask_dir, image_filenames, mask_suffix="", transform=None, mask_transform=None):
         """
         Args:
             image_dir (str): Directory with all the images.
@@ -31,7 +31,7 @@ class UNetDataset(Dataset):
         # ── keep only true images, drop any *_seg.png that slipped in ──
         self.image_filenames = [
             f for f in image_filenames
-            if not f.lower().endswith(f"{mask_suffix}.png")
+            #if not f.lower().endswith(f"{mask_suffix}.png")
         ]
 
     def __len__(self):
