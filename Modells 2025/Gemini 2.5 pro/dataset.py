@@ -22,11 +22,17 @@ class UNetDataset(Dataset):
             mask_transform (callable, optional): Optional transform to be applied on a mask.
         """
         self.image_dir = image_dir
-        self.mask_dir = mask_dir
-        self.image_filenames = image_filenames
+        self.mask_dir = mask_dir if mask_dir is not None else image_dir
+        #self.image_filenames = image_filenames
         self.mask_suffix = mask_suffix
         self.transform = transform
         self.mask_transform = mask_transform
+
+        # ── keep only true images, drop any *_seg.png that slipped in ──
+        self.image_filenames = [
+            f for f in image_filenames
+            if not f.lower().endswith(f"{mask_suffix}.png")
+        ]
 
     def __len__(self):
         return len(self.image_filenames)
@@ -35,8 +41,8 @@ class UNetDataset(Dataset):
         img_name = self.image_filenames[idx]
         img_path = os.path.join(self.image_dir, img_name)
 
-        # Construct mask name by removing extension and adding suffix
-        mask_name = os.path.splitext(img_name)[0] + self.mask_suffix + ".png"
+        stem, _ = os.path.splitext(img_name)
+        mask_name = f"{stem}{self.mask_suffix}.png"
         mask_path = os.path.join(self.mask_dir, mask_name)
 
         # Open image and mask

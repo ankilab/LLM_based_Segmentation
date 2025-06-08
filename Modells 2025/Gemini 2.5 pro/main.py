@@ -33,8 +33,7 @@ def main():
     # Hyperparameters
     LEARNING_RATE = 1e-4
     BATCH_SIZE = 8
-    #NUM_EPOCHS = 25  # Adjust as needed
-    NUM_EPOCHS = 3  # Adjust as needed
+    NUM_EPOCHS = 25  # Adjust as needed
     IMG_HEIGHT = 256
     IMG_WIDTH = 256
     MASK_SUFFIX = "_seg"
@@ -59,7 +58,13 @@ def main():
     ])
 
     # Get all valid image filenames (those ending in .png)
-    all_image_files = sorted([f for f in os.listdir(IMAGE_DIR) if f.endswith('.png')])
+    # all_image_files = sorted([f for f in os.listdir(IMAGE_DIR) if f.endswith('.png')])
+    # account for images and masks in the same dir
+    all_image_files = [
+        f for f in os.listdir(IMAGE_DIR)
+        if f.lower().endswith(".png")  # keep only .png
+           and not f.lower().endswith(f"{MASK_SUFFIX}.png")  # drop masks
+    ]
 
     # Create indices and split them
     indices = list(range(len(all_image_files)))
