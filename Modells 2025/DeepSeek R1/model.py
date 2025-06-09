@@ -45,30 +45,30 @@ class UNet(nn.Module):
         self.out = nn.Conv2d(64, out_channels, kernel_size=1)
 
     def forward(self, x):
-        # Encoder
-        e1 = self.enc1(x)
-        e2 = self.enc2(self.pool(e1))
-        e3 = self.enc3(self.pool(e2))
-        e4 = self.enc4(self.pool(e3))
+        # Encoder with pooling
+        e1 = self.enc1(x)  # [b, 64, 256, 256]
+        e2 = self.enc2(self.pool(e1))  # [b, 128, 128, 128]
+        e3 = self.enc3(self.pool(e2))  # [b, 256, 64, 64]
+        e4 = self.enc4(self.pool(e3))  # [b, 512, 32, 32]
 
-        # Bottleneck
-        b = self.bottleneck(e4)
+        # Bottleneck (with additional pooling)
+        b = self.bottleneck(self.pool(e4))  # [b, 1024, 16, 16]
 
         # Decoder with skip connections
-        d4 = self.upconv4(b)
-        d4 = torch.cat([d4, e4], dim=1)
-        d4 = self.dec4(d4)
+        d4 = self.upconv4(b)  # [b, 512, 32, 32]
+        d4 = torch.cat([d4, e4], dim=1)  # [b, 1024, 32, 32]
+        d4 = self.dec4(d4)  # [b, 512, 32, 32]
 
-        d3 = self.upconv3(d4)
-        d3 = torch.cat([d3, e3], dim=1)
-        d3 = self.dec3(d3)
+        d3 = self.upconv3(d4)  # [b, 256, 64, 64]
+        d3 = torch.cat([d3, e3], dim=1)  # [b, 512, 64, 64]
+        d3 = self.dec3(d3)  # [b, 256, 64, 64]
 
-        d2 = self.upconv2(d3)
-        d2 = torch.cat([d2, e2], dim=1)
-        d2 = self.dec2(d2)
+        d2 = self.upconv2(d3)  # [b, 128, 128, 128]
+        d2 = torch.cat([d2, e2], dim=1)  # [b, 256, 128, 128]
+        d2 = self.dec2(d2)  # [b, 128, 128, 128]
 
-        d1 = self.upconv1(d2)
-        d1 = torch.cat([d1, e1], dim=1)
-        d1 = self.dec1(d1)
+        d1 = self.upconv1(d2)  # [b, 64, 256, 256]
+        d1 = torch.cat([d1, e1], dim=1)  # [b, 128, 256, 256]
+        d1 = self.dec1(d1)  # [b, 64, 256, 256]
 
-        return self.out(d1)
+        return self.out(d1)  # [b, 1, 256, 256]

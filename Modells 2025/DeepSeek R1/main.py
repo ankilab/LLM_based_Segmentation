@@ -67,7 +67,8 @@ criterion = DiceBCELoss()
 optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE, weight_decay=1e-5)
 
 # Print model summary
-summary(model, input_size=(1, 1, IMG_SIZE, IMG_SIZE))
+#summary(model, input_size=(1, 1, IMG_SIZE, IMG_SIZE)) # correction next line
+summary(model, input_size=(BATCH_SIZE, 1, IMG_SIZE, IMG_SIZE))
 
 # Training loop
 train_losses, val_losses = [], []
