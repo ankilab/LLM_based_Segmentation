@@ -5,6 +5,7 @@ import pandas as pd
 from torch.utils.data import DataLoader, Subset
 from sklearn.model_selection import train_test_split
 from dataset import SegmentationDataset
+import torch.optim as optim
 from model import UNet
 from train import train_epoch, validate_epoch, test_model, save_losses, plot_losses, visualize_results, DiceBCELoss, \
     dice_score
