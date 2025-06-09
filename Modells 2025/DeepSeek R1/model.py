@@ -3,6 +3,8 @@ import torch.nn as nn
 
 
 class DoubleConv(nn.Module):
+    """(Conv2d => BN => ReLU) * 2"""
+
     def __init__(self, in_channels, out_channels):
         super().__init__()
         self.double_conv = nn.Sequential(
@@ -18,57 +20,71 @@ class DoubleConv(nn.Module):
         return self.double_conv(x)
 
 
-class UNet(nn.Module):
-    def __init__(self, in_channels=1, out_channels=1):
+class Down(nn.Module):
+    """Downscaling with maxpool then double conv"""
+
+    def __init__(self, in_channels, out_channels):
         super().__init__()
-        # Encoder (Downsampling)
-        self.enc1 = DoubleConv(in_channels, 64)
-        self.enc2 = DoubleConv(64, 128)
-        self.enc3 = DoubleConv(128, 256)
-        self.enc4 = DoubleConv(256, 512)
-        self.pool = nn.MaxPool2d(kernel_size=2, stride=2)
-
-        # Bottleneck
-        self.bottleneck = DoubleConv(512, 1024)
-
-        # Decoder (Upsampling)
-        self.upconv4 = nn.ConvTranspose2d(1024, 512, kernel_size=2, stride=2)
-        self.dec4 = DoubleConv(1024, 512)
-        self.upconv3 = nn.ConvTranspose2d(512, 256, kernel_size=2, stride=2)
-        self.dec3 = DoubleConv(512, 256)
-        self.upconv2 = nn.ConvTranspose2d(256, 128, kernel_size=2, stride=2)
-        self.dec2 = DoubleConv(256, 128)
-        self.upconv1 = nn.ConvTranspose2d(128, 64, kernel_size=2, stride=2)
-        self.dec1 = DoubleConv(128, 64)
-
-        # Output layer
-        self.out = nn.Conv2d(64, out_channels, kernel_size=1)
+        self.maxpool_conv = nn.Sequential(
+            nn.MaxPool2d(2),
+            DoubleConv(in_channels, out_channels)
+        )
 
     def forward(self, x):
-        # Encoder with pooling
-        e1 = self.enc1(x)  # [b, 64, 256, 256]
-        e2 = self.enc2(self.pool(e1))  # [b, 128, 128, 128]
-        e3 = self.enc3(self.pool(e2))  # [b, 256, 64, 64]
-        e4 = self.enc4(self.pool(e3))  # [b, 512, 32, 32]
+        return self.maxpool_conv(x)
 
-        # Bottleneck (with additional pooling)
-        b = self.bottleneck(self.pool(e4))  # [b, 1024, 16, 16]
 
-        # Decoder with skip connections
-        d4 = self.upconv4(b)  # [b, 512, 32, 32]
-        d4 = torch.cat([d4, e4], dim=1)  # [b, 1024, 32, 32]
-        d4 = self.dec4(d4)  # [b, 512, 32, 32]
+class Up(nn.Module):
+    """Upscaling then double conv"""
 
-        d3 = self.upconv3(d4)  # [b, 256, 64, 64]
-        d3 = torch.cat([d3, e3], dim=1)  # [b, 512, 64, 64]
-        d3 = self.dec3(d3)  # [b, 256, 64, 64]
+    def __init__(self, in_channels, out_channels, bilinear=True):
+        super().__init__()
+        if bilinear:
+            self.up = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
+        else:
+            self.up = nn.ConvTranspose2d(in_channels // 2, in_channels // 2, kernel_size=2, stride=2)
 
-        d2 = self.upconv2(d3)  # [b, 128, 128, 128]
-        d2 = torch.cat([d2, e2], dim=1)  # [b, 256, 128, 128]
-        d2 = self.dec2(d2)  # [b, 128, 128, 128]
+        self.conv = DoubleConv(in_channels, out_channels)
 
-        d1 = self.upconv1(d2)  # [b, 64, 256, 256]
-        d1 = torch.cat([d1, e1], dim=1)  # [b, 128, 256, 256]
-        d1 = self.dec1(d1)  # [b, 64, 256, 256]
+    def forward(self, x1, x2):
+        x1 = self.up(x1)
+        # Pad if necessary for size mismatch
+        diffY = x2.size()[2] - x1.size()[2]
+        diffX = x2.size()[3] - x1.size()[3]
+        x1 = nn.functional.pad(x1, [diffX // 2, diffX - diffX // 2,
+                                    diffY // 2, diffY - diffY // 2])
+        x = torch.cat([x2, x1], dim=1)
+        return self.conv(x)
 
-        return self.out(d1)  # [b, 1, 256, 256]
+
+class UNet(nn.Module):
+    def __init__(self, n_channels=1, n_classes=1, bilinear=True):
+        super(UNet, self).__init__()
+        self.n_channels = n_channels
+        self.n_classes = n_classes
+        self.bilinear = bilinear
+
+        self.inc = DoubleConv(n_channels, 64)
+        self.down1 = Down(64, 128)
+        self.down2 = Down(128, 256)
+        self.down3 = Down(256, 512)
+        self.down4 = Down(512, 1024)
+        self.up1 = Up(1024 + 512, 512, bilinear)
+        self.up2 = Up(512 + 256, 256, bilinear)
+        self.up3 = Up(256 + 128, 128, bilinear)
+        self.up4 = Up(128 + 64, 64, bilinear)
+        self.outc = nn.Conv2d(64, n_classes, kernel_size=1)
+
+    def forward(self, x):
+        x1 = self.inc(x)
+        x2 = self.down1(x1)
+        x3 = self.down2(x2)
+        x4 = self.down3(x3)
+        x5 = self.down4(x4)
+
+        x = self.up1(x5, x4)
+        x = self.up2(x, x3)
+        x = self.up3(x, x2)
+        x = self.up4(x, x1)
+        logits = self.outc(x)
+        return torch.sigmoid(logits)
