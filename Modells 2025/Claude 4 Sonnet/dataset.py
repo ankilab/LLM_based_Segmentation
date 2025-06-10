@@ -7,7 +7,7 @@ from torchvision import transforms
 
 
 class SegmentationDataset(Dataset):
-    def __init__(self, image_dir, mask_suffix='_seg', transform=None, image_size=(256, 256)):
+    def __init__(self, image_dir, mask_dir: str = None, mask_suffix='_m', transform=None, image_size=(256, 256)):
         """
         Dataset for loading grayscale images and corresponding binary masks.
 
@@ -18,20 +18,25 @@ class SegmentationDataset(Dataset):
             image_size (tuple): Target size for images and masks
         """
         self.image_dir = image_dir
+        self.mask_dir = mask_dir
         self.mask_suffix = mask_suffix
         self.image_size = image_size
 
         # Get all PNG files
-        all_files = [f for f in os.listdir(image_dir) if f.lower().endswith('.png')]
+        all_files = [f for f in os.listdir(image_dir) if f.lower().endswith('.jpg')]
 
         # Filter out mask files and keep only original images
         self.image_files = []
         for f in all_files:
-            if not f.replace('.png', '').endswith(mask_suffix):
+            if not f.replace('.jpg', '').endswith(mask_suffix):
                 # Check if corresponding mask exists
-                mask_name = f.replace('.png', f'{mask_suffix}.png')
-                if mask_name in all_files:
+                mask_name = f.replace('.jpg', f'{mask_suffix}.jpg')
+                if os.path.exists(os.path.join(self.mask_dir, mask_name)):
                     self.image_files.append(f)
+                # if mask_name in all_files:
+                #     # look for the mask in mask_dir not only in image_dir
+                #     if os.path.exists(os.path.join(self.mask_dir, mask_name)):
+                #         self.image_files.append(f)
 
         self.image_files.sort()
 
@@ -57,8 +62,8 @@ class SegmentationDataset(Dataset):
         img_path = os.path.join(self.image_dir, img_name)
 
         # Load mask
-        mask_name = img_name.replace('.png', f'{self.mask_suffix}.png')
-        mask_path = os.path.join(self.image_dir, mask_name)
+        mask_name = img_name.replace('.jpg', f'{self.mask_suffix}.jpg')
+        mask_path = os.path.join(self.mask_dir, mask_name)
 
         # Open and convert images
         image = Image.open(img_path).convert('L')  # Convert to grayscale

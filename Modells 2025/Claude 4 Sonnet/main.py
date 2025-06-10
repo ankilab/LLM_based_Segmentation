@@ -14,9 +14,10 @@ from train import train_model, test_model, plot_losses, visualize_predictions
 
 def main():
     # Configuration
-    DATA_DIR = "D:\qy44lyfe\LLM segmentation\Data sets\BAGLS\subset"  # Change this to your dataset path
-    SAVE_PATH = "D:\\qy44lyfe\\LLM segmentation\\Results\\2025\\Claude 4 Sonnet\\out of the box\\BAGLS output"  # Change this to your desired save path
-    MASK_SUFFIX = "_seg"  # Change this if your mask suffix is different
+    DATA_DIR = "D:\qy44lyfe\LLM segmentation\Data sets\Brain Meningioma\images"  # Change this to your dataset path
+    MASK_DIR = "D:\qy44lyfe\LLM segmentation\Data sets\Brain Meningioma\Masks"
+    SAVE_PATH = "D:\\qy44lyfe\\LLM segmentation\\Results\\2025\\Claude 4 Sonnet\\out of the box\\Brain output"  # Change this to your desired save path
+    MASK_SUFFIX = "_m"  # Change this if your mask suffix is different
 
     # Hyperparameters
     BATCH_SIZE = 8
@@ -35,6 +36,7 @@ def main():
     print("Loading dataset...")
     dataset = SegmentationDataset(
         image_dir=DATA_DIR,
+        mask_dir= MASK_DIR,
         mask_suffix=MASK_SUFFIX,
         image_size=IMAGE_SIZE
     )
