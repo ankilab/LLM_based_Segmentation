@@ -20,7 +20,8 @@ os.makedirs(SAVE_PATH, exist_ok=True)
 # Hyperparameters
 IMG_SIZE = 256
 BATCH_SIZE = 8
-EPOCHS = 30
+#EPOCHS = 30
+EPOCHS = 3
 LR = 0.001
 WEIGHT_DECAY = 1e-5
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -60,6 +61,7 @@ def main():
     # Loss and optimizer
     criterion = DiceBCELoss(weight=0.7)  # 70% BCE, 30% Dice
     optimizer = optim.Adam(model.parameters(), lr=LR, weight_decay=WEIGHT_DECAY)
+    #optimizer = optim.Adam(model.parameters(), lr=LR)
 
     # Training loop
     train_losses = []
@@ -90,9 +92,22 @@ def main():
     pd.DataFrame(val_losses).to_excel(os.path.join(SAVE_PATH, 'val_losses.xlsx'), header=False)
 
     # Save dice scores (epochs x batches)
-    dice_df = pd.DataFrame(val_dice_scores).T
-    dice_df.columns = [f'Epoch {i + 1}' for i in range(EPOCHS)]
-    dice_df.to_excel(os.path.join(SAVE_PATH, 'validation_dice_scores.xlsx'))
+    # dice_df = pd.DataFrame(val_dice_scores).T
+    # dice_df.columns = [f'Epoch {i + 1}' for i in range(EPOCHS)]
+    # dice_df.to_excel(os.path.join(SAVE_PATH, 'validation_dice_scores.xlsx'))
+
+    # manual edit: Save validation dice scores (rows=epochs, cols=batches)
+    dice_df = pd.DataFrame(
+        val_dice_scores,
+        index=[f'Epoch {i + 1}' for i in range(EPOCHS)]
+    )
+    dice_df.columns = [f'Batch {j + 1}' for j in range(dice_df.shape[1])]
+    dice_df.index.name = 'Epoch'
+    dice_df.to_excel(
+        os.path.join(SAVE_PATH, 'validation_dice_scores.xlsx'),
+        index = True
+    )
+
 
     # Save model
     torch.save(model.state_dict(), os.path.join(SAVE_PATH, 'unet_model.pth'))
@@ -107,6 +122,15 @@ def main():
 
     # Save test dice scores
     pd.DataFrame(test_dice).to_excel(os.path.join(SAVE_PATH, 'test_dice_scores.xlsx'), header=False)
+    # Save test dice scores as one “Test” row, batches as columns
+    # manual edit:
+    test_df = pd.DataFrame([test_dice], index=['Test'])
+    test_df.columns = [f'Batch {j + 1}' for j in range(test_df.shape[1])]
+    test_df.index.name = 'Split'
+    test_df.to_excel(
+        os.path.join(SAVE_PATH, 'test_dice_scores.xlsx'),
+        index=True
+    )
 
     # Visualize samples
     save_sample_visualization(test_samples, SAVE_PATH)

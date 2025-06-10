@@ -67,7 +67,8 @@ def validate_epoch(model, loader, device, criterion):
 
             # Calculate Dice per sample
             batch_dice = dice_score(outputs, masks).cpu().numpy()
-            dice_scores.extend(batch_dice)
+            # dice_scores.extend(batch_dice)
+            dice_scores.append(batch_dice.mean())
 
     return running_loss / len(loader.dataset), np.array(dice_scores)
 
@@ -84,7 +85,8 @@ def test_model(model, loader, device):
 
             outputs = model(images)
             batch_dice = dice_score(outputs, masks).cpu().numpy()
-            dice_scores.extend(batch_dice)
+            #dice_scores.extend(batch_dice)
+            dice_scores.append(batch_dice.mean())
 
             # Store samples for visualization
             if len(all_images) < 5:
