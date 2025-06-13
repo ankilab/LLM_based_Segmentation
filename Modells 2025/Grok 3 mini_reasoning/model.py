@@ -23,10 +23,10 @@ class UNet(nn.Module):
         self.final_conv = nn.Conv2d(features[0], out_channels, kernel_size=1)
         self.sigmoid = nn.Sigmoid()  # For binary segmentation
 
-    def forward(x):
+    def forward(self, x):  # Added 'self' as the first parameter
         skip_connections = []
 
-        for down in self.downs:
+        for down in self.downs:  # Note: Using 'self' to access downs
             x = down(x)
             skip_connections.append(x)
             x = self.pool(x)

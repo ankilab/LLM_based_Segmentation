@@ -37,7 +37,8 @@ def train_model(model, train_loader, val_loader, optimizer, criterion, num_epoch
 
             optimizer.zero_grad()
             outputs = model(images)
-            loss = criterion(outputs, masks.unsqueeze(1))  # Add channel dim for masks
+            #loss = criterion(outputs, masks.unsqueeze(1))  # Add channel dim for masks
+            loss = criterion(outputs, masks)
             loss.backward()
             optimizer.step()
 

@@ -9,8 +9,8 @@ import os
 
 if __name__ == "__main__":
     # Configuration
-    root_dir = 'path/to/your/dataset'  # Update this
-    save_path = 'results/'  # Where to save outputs
+    root_dir = 'D:\qy44lyfe\LLM segmentation\Data sets\BAGLS\subset'  # Update this
+    save_path = 'D:\\qy44lyfe\\LLM segmentation\\Results\\2025\\Grok 3 mini Reasoning\\out of the box\\BAGLS output'  # Where to save outputs
     os.makedirs(save_path, exist_ok=True)
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     batch_size = 16  # Chosen to avoid overfitting
