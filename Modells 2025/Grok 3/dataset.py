@@ -19,7 +19,8 @@ class SegmentationDataset(Dataset):
         self.transform = transform
 
         # Get list of image files (only .png)
-        self.image_files = sorted([f for f in os.listdir(image_dir) if f.endswith('.png')])
+        self.image_files = sorted([f for f in os.listdir(image_dir) if f.endswith('.png')
+                                   and not f.endswith(f"{self.mask_suffix}.png")])
 
     def __len__(self):
         return len(self.image_files)
