@@ -38,7 +38,7 @@ def train_model(model, train_loader, val_loader, optimizer, criterion, num_epoch
 
             optimizer.zero_grad()
             outputs = model(images)  # outputs: [batch_size, 1, 256, 256]
-            print(f"Debug: Outputs shape: {outputs.shape}, Masks shape: {masks.shape}")  # Add this for debugging
+            #print(f"Debug: Outputs shape: {outputs.shape}, Masks shape: {masks.shape}")  # Add this for debugging
             loss = criterion(outputs, masks)  # No need to unsqueeze
             loss.backward()
             optimizer.step()
@@ -61,7 +61,7 @@ def train_model(model, train_loader, val_loader, optimizer, criterion, num_epoch
                 images = images.to(device)
                 masks = masks.to(device)
                 outputs = model(images)
-                print(f"Debug: Outputs shape: {outputs.shape}, Masks shape: {masks.shape}")  # Add this for debugging
+                #print(f"Debug: Outputs shape: {outputs.shape}, Masks shape: {masks.shape}")  # Add this for debugging
                 loss = criterion(outputs, masks)  # No need to unsqueeze
                 epoch_val_loss += loss.item()
 
