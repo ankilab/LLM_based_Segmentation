@@ -11,8 +11,8 @@ from train import train_model, validate_model, test_model, save_losses, plot_los
 
 def main():
     # Hyperparameters and configurations
-    IMAGE_DIR = "D:\qy44lyfe\LLM segmentation\Data sets\BAGLS"  # Update with your dataset path
-    MASK_DIR = "D:\qy44lyfe\LLM segmentation\Data sets\BAGLS"    # Update if masks are in a different folder
+    IMAGE_DIR = "D:\qy44lyfe\LLM segmentation\Data sets\BAGLS\subset"  # Update with your dataset path
+    MASK_DIR = "D:\qy44lyfe\LLM segmentation\Data sets\BAGLS\subset"    # Update if masks are in a different folder
     SAVE_PATH = "D:\\qy44lyfe\\LLM segmentation\\Results\\2025\\Grok 3\\out of the box\\BAGLS output"
     os.makedirs(SAVE_PATH, exist_ok=True)
     DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
