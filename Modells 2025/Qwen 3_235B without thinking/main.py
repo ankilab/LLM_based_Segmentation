@@ -3,6 +3,7 @@
 import os
 import torch
 import pandas as pd
+import time
 from sklearn.model_selection import train_test_split
 from torch.utils.data import Subset, DataLoader
 from dataset import GrayscaleBinarySegmentationDataset

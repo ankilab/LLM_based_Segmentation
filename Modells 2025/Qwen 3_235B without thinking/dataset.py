@@ -38,20 +38,43 @@ class GrayscaleBinarySegmentationDataset(Dataset):
     def __len__(self):
         return len(self.image_paths)
 
+    # def __getitem__(self, idx):
+    #     image = Image.open(self.image_paths[idx]).convert("L")  # grayscale
+    #     mask = Image.open(self.mask_paths[idx]).convert("L")  # binary mask
+    #
+    #     image = np.array(image).astype(np.float32) / 255.0
+    #     mask = np.array(mask).astype(np.float32) / 255.0
+    #     mask = (mask > 0.5).astype(np.float32)  # binary
+    #
+    #     if self.transform:
+    #         transformed = self.transform(image=image, mask=mask)
+    #         image = transformed['image']
+    #         mask = transformed['mask']
+    #
+    #     image = torch.tensor(image, dtype=torch.float32).unsqueeze(0)  # add channel dim
+    #     mask = torch.tensor(mask, dtype=torch.float32).unsqueeze(0)
+    #
+    #     return image, mask
+
     def __getitem__(self, idx):
         image = Image.open(self.image_paths[idx]).convert("L")  # grayscale
         mask = Image.open(self.mask_paths[idx]).convert("L")  # binary mask
 
         image = np.array(image).astype(np.float32) / 255.0
         mask = np.array(mask).astype(np.float32) / 255.0
-        mask = (mask > 0.5).astype(np.float32)  # binary
+        mask = (mask > 0.5).astype(np.float32)  # binarize
 
         if self.transform:
             transformed = self.transform(image=image, mask=mask)
             image = transformed['image']
             mask = transformed['mask']
 
-        image = torch.tensor(image, dtype=torch.float32).unsqueeze(0)  # add channel dim
-        mask = torch.tensor(mask, dtype=torch.float32).unsqueeze(0)
+        # Ensure correct shape and type
+        image = image[None, ...]  # Add channel dim -> [1, H, W]
+        mask = mask[None, ...]
+
+        # Convert to torch tensor (this handles memory properly)
+        image = torch.tensor(image, dtype=torch.float32)
+        mask = torch.tensor(mask, dtype=torch.float32)
 
         return image, mask
