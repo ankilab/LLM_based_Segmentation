@@ -65,6 +65,7 @@ class UNet(nn.Module):
         return torch.sigmoid(self.final_conv(x))
 
 def print_model_summary(model, input_size=(1, 256, 256)):
-    summary = torchinfo.summary(model, input_size=input_size, verbose=0)
+    #summary = torchinfo.summary(model, input_size=input_size, verbose=0)
+    summary = torchinfo.summary(model, input_size=(1, 1, 256, 256), verbose=0)
     print(summary)
     print(f"Total trainable parameters: {summary.trainable_params}")

@@ -22,14 +22,14 @@ class GrayscaleBinarySegmentationDataset(Dataset):
         self.suffix = suffix
 
         # Only include .png files
-        self.image_files = [f for f in os.listdir(image_dir) if f.endswith('.png')]
+        self.image_files = [f for f in os.listdir(image_dir) if f.endswith('.jpg')]
         self.image_paths = [os.path.join(image_dir, f) for f in self.image_files]
 
         # Match mask names
         self.mask_paths = []
         for img_file in self.image_files:
             base_name = os.path.splitext(img_file)[0]
-            mask_file = f"{base_name}{suffix}.png"
+            mask_file = f"{base_name}{suffix}.jpg"
             mask_path = os.path.join(self.mask_dir, mask_file)
             if not os.path.exists(mask_path):
                 raise FileNotFoundError(f"Mask file {mask_path} not found.")
