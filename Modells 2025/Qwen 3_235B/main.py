@@ -12,14 +12,14 @@ import time
 
 if __name__ == '__main__':
     # Hyperparameters
-    image_dir = 'D:\qy44lyfe\LLM segmentation\Data sets\Skin cancer\subset\images'
-    mask_dir = 'D:\qy44lyfe\LLM segmentation\Data sets\Skin cancer\subset\masks'
-    mask_suffix = ''
+    image_dir = 'D:\qy44lyfe\LLM segmentation\Data sets\BAGLS\subset'
+    mask_dir = 'D:\qy44lyfe\LLM segmentation\Data sets\BAGLS\subset'
+    mask_suffix = '_seg'
     batch_size = 16
     epochs = 20
     lr = 0.001
     img_size = 256
-    save_path = 'D:\\qy44lyfe\\LLM segmentation\Results\\2025\\Qwen 3_235B\\out of the box\\skin output'
+    save_path = 'D:\\qy44lyfe\\LLM segmentation\Results\\2025\\Qwen 3_235B\\out of the box\\BAGLS output'
     os.makedirs(save_path, exist_ok=True)
 
     # Dataset and DataLoader

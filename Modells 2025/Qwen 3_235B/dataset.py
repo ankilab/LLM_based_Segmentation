@@ -7,12 +7,18 @@ import numpy as np
 from sklearn.model_selection import train_test_split
 
 class GrayscaleBinaryMaskDataset(Dataset):
-    def __init__(self, image_dir, mask_dir=None, mask_suffix='', img_size=256):
+    def __init__(self, image_dir, mask_dir=None, mask_suffix='_seg', img_size=256):
         self.image_dir = image_dir
         self.mask_dir = mask_dir if mask_dir else image_dir
         self.mask_suffix = mask_suffix
         self.img_size = img_size
-        self.image_files = [f for f in os.listdir(image_dir) if f.endswith('.png')]
+        # self.image_files = [f for f in os.listdir(image_dir) if f.endswith('.png')]
+        # handle if images and masks same path
+        self.image_files = [
+            f for f in os.listdir(image_dir)
+            if f.endswith('.png')
+            and not f.endswith(f"{self.mask_suffix}.png")
+        ]
 
         # Transformations
         self.image_transform = transforms.Compose([
