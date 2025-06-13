@@ -15,7 +15,7 @@ if __name__ == "__main__":
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     batch_size = 16  # Chosen to avoid overfitting
     learning_rate = 1e-4  # Small LR
-    num_epochs = 20
+    num_epochs = 2
 
     # Create dataset
     dataset = GrayscaleSegmentationDataset(root_dir, transform=get_transforms())

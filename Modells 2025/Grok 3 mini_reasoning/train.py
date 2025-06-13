@@ -1,3 +1,4 @@
+import os  # Ensure this is imported
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
@@ -31,14 +32,14 @@ def train_model(model, train_loader, val_loader, optimizer, criterion, num_epoch
         train_progress = tqdm(train_loader, desc=f'Epoch {epoch + 1}/{num_epochs} [Train]')
 
         for batch in train_progress:
-            images, masks = batch
+            images, masks = batch  # masks is already [batch_size, 1, 256, 256]
             images = images.to(device)
-            masks = masks.to(device)
+            masks = masks.to(device)  # Ensure masks is on device
 
             optimizer.zero_grad()
-            outputs = model(images)
-            #loss = criterion(outputs, masks.unsqueeze(1))  # Add channel dim for masks
-            loss = criterion(outputs, masks)
+            outputs = model(images)  # outputs: [batch_size, 1, 256, 256]
+            print(f"Debug: Outputs shape: {outputs.shape}, Masks shape: {masks.shape}")  # Add this for debugging
+            loss = criterion(outputs, masks)  # No need to unsqueeze
             loss.backward()
             optimizer.step()
 
@@ -56,17 +57,17 @@ def train_model(model, train_loader, val_loader, optimizer, criterion, num_epoch
 
         with torch.no_grad():
             for batch in val_progress:
-                images, masks = batch
+                images, masks = batch  # masks: [batch_size, 1, 256, 256]
                 images = images.to(device)
                 masks = masks.to(device)
-
                 outputs = model(images)
-                loss = criterion(outputs, masks.unsqueeze(1))
+                print(f"Debug: Outputs shape: {outputs.shape}, Masks shape: {masks.shape}")  # Add this for debugging
+                loss = criterion(outputs, masks)  # No need to unsqueeze
                 epoch_val_loss += loss.item()
 
-                # Calculate Dice per batch
-                batch_dice = dice_score(outputs.cpu(), masks.unsqueeze(1).cpu())
-                epoch_val_dice.append(batch_dice.item())
+                # Calculate Dice per batch - Ensure shapes match
+                batch_dice = dice_score(outputs.cpu(), masks.cpu())  # outputs and masks both [batch_size, 1, 256, 256]
+                epoch_val_dice.append(batch_dice.item())  # Average Dice for the batch
 
                 val_progress.set_postfix({'Loss': loss.item(), 'Dice': batch_dice.item()})
 
@@ -111,23 +112,27 @@ def test_model(model, test_loader, device='cuda', save_path='results/'):
     all_images = []  # For visualization
     all_masks = []  # For visualization
     all_preds = []  # For visualization
-    filenames = []  # For visualization
+    # Fix: Get filenames from the original dataset using subset indices
+    if hasattr(test_loader.dataset, 'dataset') and hasattr(test_loader.dataset, 'indices'):
+        original_dataset = test_loader.dataset.dataset  # Original GrayscaleSegmentationDataset
+        subset_indices = test_loader.dataset.indices  # Indices of the subset
+        filenames = [original_dataset.image_files[idx] for idx in subset_indices]  # Correct filenames for the subset
+    else:
+        filenames = []  # Fallback if not available
 
     test_progress = tqdm(test_loader, desc='Testing')
 
     with torch.no_grad():
         for batch in test_progress:
-            images, masks = batch
-            filenames.extend(
-                [f for f in test_loader.dataset.image_files if f in test_loader.dataset.samples])  # Mock for filenames
+            images, masks = batch  # masks: [batch_size, 1, 256, 256]
             images = images.to(device)
             outputs = model(images)
-            batch_dice = dice_score(outputs.cpu(), masks.unsqueeze(1).cpu())
-            test_dice_scores.append(batch_dice.item())
+            batch_dice = dice_score(outputs.cpu(), masks.cpu())  # outputs and masks both [batch_size, 1, 256, 256]
+            test_dice_scores.append(batch_dice.item())  # Assuming batch-level Dice
 
-            # Store for visualization
+            # Store for visualization - Note: We're not extending filenames per batch anymore
             all_images.append(images.cpu())
-            all_masks.append(masks.unsqueeze(1).cpu())  # Add channel dim
+            all_masks.append(masks.cpu())  # Already [batch_size, 1, 256, 256]
             all_preds.append((outputs.cpu() > 0.5).float())
 
     # Save test Dice scores
@@ -135,24 +140,26 @@ def test_model(model, test_loader, device='cuda', save_path='results/'):
                                               index=False)  # One row for test
 
     # Visualize 5 random samples
-    indices = np.random.choice(len(all_images[0]), 5, replace=False)  # 5 random from first batch
-    plt.figure(figsize=(15, 25))  # 5 rows, 3 columns
-    for i, idx in enumerate(indices):
-        plt.subplot(5, 3, i * 3 + 1)
-        plt.imshow(all_images[0][idx].squeeze(), cmap='gray')
-        plt.title(f'Input Image\n{filenames[idx]}')
-        plt.axis('off')
+    if len(all_images) > 0 and len(all_images[0]) > 0:  # Ensure there's data
+        indices = np.random.choice(len(all_images[0]), 5, replace=False)  # 5 random from first batch
+        plt.figure(figsize=(15, 25))  # 5 rows, 3 columns
+        for i, idx in enumerate(indices):
+            plt.subplot(5, 3, i * 3 + 1)
+            plt.imshow(all_images[0][idx].squeeze(), cmap='gray')
+            plt.title(
+                f'Input Image\n{filenames[idx] if idx < len(filenames) else "Unknown"}')  # Use the precomputed filenames
+            plt.axis('off')
 
-        plt.subplot(5, 3, i * 3 + 2)
-        plt.imshow(all_masks[0][idx].squeeze(), cmap='gray')
-        plt.title('Ground Truth')
-        plt.axis('off')
+            plt.subplot(5, 3, i * 3 + 2)
+            plt.imshow(all_masks[0][idx].squeeze(), cmap='gray')
+            plt.title('Ground Truth')
+            plt.axis('off')
 
-        plt.subplot(5, 3, i * 3 + 3)
-        plt.imshow(all_preds[0][idx].squeeze(), cmap='gray')
-        plt.title('Prediction')
-        plt.axis('off')
+            plt.subplot(5, 3, i * 3 + 3)
+            plt.imshow(all_preds[0][idx].squeeze(), cmap='gray')
+            plt.title('Prediction')
+            plt.axis('off')
 
-    plt.suptitle('Test Predictions for 5 Random Samples')
-    plt.savefig(os.path.join(save_path, 'test_visualization.png'))  # Save as PNG
-    plt.close()
+        plt.suptitle('Test Predictions for 5 Random Samples')
+        plt.savefig(os.path.join(save_path, 'test_visualization.png'))  # Save as PNG
+        plt.close()
