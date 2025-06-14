@@ -9,8 +9,9 @@ import os
 
 if __name__ == "__main__":
     # Configuration
-    root_dir = 'D:\qy44lyfe\LLM segmentation\Data sets\BAGLS\subset'  # Update this
-    save_path = 'D:\\qy44lyfe\\LLM segmentation\\Results\\2025\\Grok 3 mini Reasoning\\out of the box\\BAGLS output'  # Where to save outputs
+    root_dir = 'D:\qy44lyfe\LLM segmentation\Data sets\Swallowing\images'  # Update this
+    mask_dir = 'D:\qy44lyfe\LLM segmentation\Data sets\Swallowing\masks'  # Update this
+    save_path = 'D:\\qy44lyfe\\LLM segmentation\\Results\\2025\\Grok 3 mini Reasoning\\out of the box\\Bolus output'  # Where to save outputs
     os.makedirs(save_path, exist_ok=True)
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     batch_size = 16  # Chosen to avoid overfitting
@@ -18,7 +19,7 @@ if __name__ == "__main__":
     num_epochs = 20
 
     # Create dataset
-    dataset = GrayscaleSegmentationDataset(root_dir, transform=get_transforms())
+    dataset = GrayscaleSegmentationDataset(root_dir, mask_dir, mask_suffix='', transform=get_transforms())
     print(f'Total samples: {len(dataset)}')
 
     # Split dataset (80% train, 10% val, 10% test) on indices
