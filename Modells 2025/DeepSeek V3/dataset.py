@@ -3,8 +3,6 @@ import torch
 from torch.utils.data import Dataset
 from PIL import Image
 import numpy as np
-import torchvision.transforms as transforms
-import torchvision.transforms.functional as F
 import albumentations as A
 from albumentations.pytorch import ToTensorV2
 
@@ -52,12 +50,12 @@ class SegmentationDataset(Dataset):
             transformed = self.transform(image=image, mask=mask)
             image = transformed['image']
             mask = transformed['mask']
+        else:
+            # If no transform, convert to tensor and normalize manually
+            image = torch.from_numpy(image).unsqueeze(0).float() / 255.0
+            mask = torch.from_numpy(mask).float()
 
-        # Convert to tensors and normalize image
-        image_tensor = torch.from_numpy(image).unsqueeze(0).float() / 255.0
-        mask_tensor = torch.from_numpy(mask).float()
-
-        return image_tensor, mask_tensor, img_name
+        return image, mask, img_name
 
 
 def get_transforms(size=(256, 256)):
