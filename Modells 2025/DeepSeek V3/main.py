@@ -1,9 +1,11 @@
 import os
 import torch
 from torch.utils.data import Dataset, DataLoader, Subset
+import torch.optim as optim
 from sklearn.model_selection import train_test_split
 from torchinfo import summary
 import time
+import numpy as np
 from dataset import SegmentationDataset, get_transforms
 from model import UNet
 from train import (
@@ -15,10 +17,12 @@ from train import (
 
 def main():
     # Configuration
-    data_dir = 'path/to/your/data'  # Update this path
-    image_dir = os.path.join(data_dir, 'images')
-    mask_dir = os.path.join(data_dir, 'masks')
-    save_path = 'results'  # Directory to save results
+    data_dir = 'D:\qy44lyfe\LLM segmentation\Data sets\BAGLS\subset'  # Update this path
+    #image_dir = os.path.join(data_dir, 'images')
+    #mask_dir = os.path.join(data_dir, 'masks')
+    image_dir = 'D:\qy44lyfe\LLM segmentation\Data sets\BAGLS\subset'
+    mask_dir = 'D:\qy44lyfe\LLM segmentation\Data sets\BAGLS\subset'
+    save_path = 'D:\\qy44lyfe\\LLM segmentation\\Results\\2025\\DeepSeek V3\\out of the box\\BAGLS output'  # Directory to save results
     os.makedirs(save_path, exist_ok=True)
 
     # Hyperparameters
