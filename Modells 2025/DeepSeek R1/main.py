@@ -12,16 +12,15 @@ from model import UNet
 from train import *
 
 # Configuration
-DATA_PATH = 'D:\qy44lyfe\LLM segmentation\Data sets\BAGLS\subset'
-MASK_PATH = 'D:\qy44lyfe\LLM segmentation\Data sets\BAGLS\subset'
-SAVE_PATH = 'D:\\qy44lyfe\\LLM segmentation\\Results\\2025\\DeepSeek R1\\out of the box\\BAGLS output'
+DATA_PATH = 'D:\qy44lyfe\LLM segmentation\Data sets\Brain Meningioma\images'
+MASK_PATH = 'D:\qy44lyfe\LLM segmentation\Data sets\Brain Meningioma\Masks'
+SAVE_PATH = 'D:\\qy44lyfe\\LLM segmentation\\Results\\2025\\DeepSeek R1\\out of the box\\Brain output'
 os.makedirs(SAVE_PATH, exist_ok=True)
 
 # Hyperparameters
 IMG_SIZE = 256
 BATCH_SIZE = 8
-#EPOCHS = 30
-EPOCHS = 3
+EPOCHS = 30
 LR = 0.001
 WEIGHT_DECAY = 1e-5
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -31,7 +30,7 @@ torch.manual_seed(SEED)
 
 def main():
     # Create dataset
-    dataset = SegmentationDataset(DATA_PATH, img_size=IMG_SIZE)
+    dataset = SegmentationDataset(DATA_PATH, mask_dir= MASK_PATH, img_size=IMG_SIZE)
 
     # Split indices
     idx = list(range(len(dataset)))

@@ -1,3 +1,4 @@
+import os
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -5,7 +6,6 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from tqdm import tqdm
-import os
 
 
 # Loss function with background weighting
@@ -27,9 +27,15 @@ class DiceBCELoss(nn.Module):
 
 
 def dice_score(preds, targets):
+    """
+    Compute per-sample Dice, with smoothing to avoid 0/0=NaN when
+    both pred and target are all zeros.
+    """
     preds_bin = (preds > 0.5).float()
     intersection = (preds_bin * targets).sum(dim=(1, 2, 3))
-    return (2. * intersection) / (preds_bin.sum(dim=(1, 2, 3)) + targets.sum(dim=(1, 2, 3)))
+    union = preds_bin.sum(dim=(1, 2, 3)) + targets.sum(dim=(1, 2, 3))
+    smooth = 1e-6
+    return (2. * intersection + smooth) / (union + smooth)
 
 
 def train_epoch(model, loader, device, optimizer, criterion):
@@ -38,11 +44,11 @@ def train_epoch(model, loader, device, optimizer, criterion):
 
     for images, masks, _ in tqdm(loader, desc="Training"):
         images = images.to(device)
-        masks = masks.to(device)
+        masks  = masks.to(device)
 
         optimizer.zero_grad()
         outputs = model(images)
-        loss = criterion(outputs, masks)
+        loss    = criterion(outputs, masks)
         loss.backward()
         optimizer.step()
 
@@ -51,62 +57,82 @@ def train_epoch(model, loader, device, optimizer, criterion):
     return running_loss / len(loader.dataset)
 
 
-def validate_epoch(model, loader, device, criterion):
+def validate_epoch(model, loader, device, criterion, save_path=None, epoch_idx=None):
     model.eval()
     running_loss = 0.0
-    dice_scores = []
+    batch_means  = []
 
     with torch.no_grad():
         for images, masks, _ in tqdm(loader, desc="Validation"):
             images = images.to(device)
-            masks = masks.to(device)
+            masks  = masks.to(device)
 
             outputs = model(images)
-            loss = criterion(outputs, masks)
+            loss    = criterion(outputs, masks)
             running_loss += loss.item() * images.size(0)
 
-            # Calculate Dice per sample
-            batch_dice = dice_score(outputs, masks).cpu().numpy()
-            # dice_scores.extend(batch_dice)
-            dice_scores.append(batch_dice.mean())
+            bd = dice_score(outputs, masks).cpu().numpy()
+            batch_means.append(bd.mean())
 
-    return running_loss / len(loader.dataset), np.array(dice_scores)
+    epoch_loss = running_loss / len(loader.dataset)
+    batch_means = np.array(batch_means)
+
+    if save_path is not None and epoch_idx is not None:
+        df = pd.DataFrame(
+            [batch_means],
+            columns=[f'Batch {i+1}' for i in range(len(batch_means))]
+        )
+        df.index.name = 'Epoch'
+        df.to_excel(
+            os.path.join(save_path, f'val_dice_epoch_{epoch_idx+1}.xlsx'),
+            index=True
+        )
+
+    return epoch_loss, batch_means
 
 
-def test_model(model, loader, device):
+def test_model(model, loader, device, save_path=None):
     model.eval()
-    dice_scores = []
+    batch_means = []
     all_images, all_masks, all_preds, all_names = [], [], [], []
 
     with torch.no_grad():
         for images, masks, names in tqdm(loader, desc="Testing"):
             images = images.to(device)
-            masks = masks.to(device)
+            masks  = masks.to(device)
 
             outputs = model(images)
-            batch_dice = dice_score(outputs, masks).cpu().numpy()
-            #dice_scores.extend(batch_dice)
-            dice_scores.append(batch_dice.mean())
+            bd = dice_score(outputs, masks).cpu().numpy()
+            batch_means.append(bd.mean())
 
-            # Store samples for visualization
             if len(all_images) < 5:
                 all_images.append(images.cpu())
-                all_masks.append(masks.cpu())
-                all_preds.append(outputs.cpu())
-                all_names.extend(names)
+                all_masks .append(masks.cpu())
+                all_preds .append(outputs.cpu())
+                all_names .extend(names)
 
-    # Concatenate stored samples
     vis_images = torch.cat(all_images, dim=0)[:5]
-    vis_masks = torch.cat(all_masks, dim=0)[:5]
-    vis_preds = torch.cat(all_preds, dim=0)[:5]
+    vis_masks  = torch.cat(all_masks,  dim=0)[:5]
+    vis_preds  = torch.cat(all_preds,  dim=0)[:5]
 
-    return np.array(dice_scores), (vis_images, vis_masks, vis_preds, all_names[:5])
+    batch_means = np.array(batch_means)
+
+    if save_path is not None:
+        df = pd.DataFrame(
+            [batch_means],
+            columns=[f'Batch {i+1}' for i in range(len(batch_means))]
+        )
+        df.index.name = 'Split'
+        df.index = ['Test']
+        df.to_excel(os.path.join(save_path, 'test_dice_scores.xlsx'), index=True)
+
+    return batch_means, (vis_images, vis_masks, vis_preds, all_names[:5])
 
 
 def save_loss_plot(train_losses, val_losses, save_path):
     plt.figure(figsize=(10, 5))
     plt.plot(train_losses, label='Training Loss')
-    plt.plot(val_losses, label='Validation Loss')
+    plt.plot(val_losses,   label='Validation Loss')
     plt.xlabel('Epochs')
     plt.ylabel('Loss')
     plt.title('Training and Validation Losses')
@@ -121,19 +147,14 @@ def save_sample_visualization(samples, save_path):
     fig.suptitle('Segmentation Results', fontsize=16)
 
     for i in range(5):
-        # Input image (denormalize)
-        img = images[i].squeeze().numpy()
-        img = (img * 0.5) + 0.5  # [-1,1] to [0,1]
-
+        img  = images[i].squeeze().numpy()
         axes[i, 0].imshow(img, cmap='gray')
         axes[i, 0].set_title(f"Input: {names[i]}")
 
-        # Ground truth mask
         mask = masks[i].squeeze().numpy()
         axes[i, 1].imshow(mask, cmap='gray')
         axes[i, 1].set_title("Ground Truth")
 
-        # Prediction
         pred = preds[i].squeeze().numpy()
         axes[i, 2].imshow(pred > 0.5, cmap='gray')
         axes[i, 2].set_title("Prediction")

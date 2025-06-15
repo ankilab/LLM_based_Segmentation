@@ -21,7 +21,7 @@ class SegmentationDataset(Dataset):
         self.is_test = is_test
 
         # Collect image files (png only)
-        self.image_files = [f for f in os.listdir(image_dir) if f.endswith('.png') and '_seg' not in f]
+        self.image_files = [f for f in os.listdir(image_dir) if f.endswith('.jpg') and '_seg' not in f]
 
         # Transform for images
         self.image_transform = transforms.Compose([
@@ -51,7 +51,7 @@ class SegmentationDataset(Dataset):
         # Handle mask if not in test mode
         mask = torch.Tensor()
         if not self.is_test:
-            mask_name = f"{os.path.splitext(img_name)[0]}_seg.png"
+            mask_name = f"{os.path.splitext(img_name)[0]}_m.jpg"
             mask_path = os.path.join(self.mask_dir, mask_name)
             mask = Image.open(mask_path).convert('L')
             mask = self.mask_transform(mask)
