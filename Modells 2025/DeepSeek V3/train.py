@@ -24,6 +24,16 @@ class DiceLoss(nn.Module):
         return 1 - dice
 
 
+# class BCEDiceLoss(nn.Module):
+#     def __init__(self):
+#         super().__init__()
+#         self.bce = nn.BCELoss()
+#         self.dice = DiceLoss()
+#
+#     def forward(self, pred, target):
+#         return self.bce(pred, target) + self.dice(pred, target)
+
+
 class BCEDiceLoss(nn.Module):
     def __init__(self):
         super().__init__()
@@ -31,6 +41,9 @@ class BCEDiceLoss(nn.Module):
         self.dice = DiceLoss()
 
     def forward(self, pred, target):
+        # Ensure inputs are properly shaped
+        if target.dim() == 3:
+            target = target.unsqueeze(1)
         return self.bce(pred, target) + self.dice(pred, target)
 
 

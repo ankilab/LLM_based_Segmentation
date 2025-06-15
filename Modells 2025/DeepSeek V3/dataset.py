@@ -4,6 +4,9 @@ from torch.utils.data import Dataset
 from PIL import Image
 import numpy as np
 import torchvision.transforms as transforms
+import torchvision.transforms.functional as F
+import albumentations as A
+from albumentations.pytorch import ToTensorV2
 
 
 class SegmentationDataset(Dataset):
@@ -39,12 +42,8 @@ class SegmentationDataset(Dataset):
         mask_path = os.path.join(self.mask_dir, self._get_mask_name(img_name))
 
         # Load image and mask
-        image = Image.open(img_path).convert('L')  # Convert to grayscale
-        mask = Image.open(mask_path).convert('L')  # Convert to grayscale
-
-        # Convert to numpy arrays
-        image = np.array(image)
-        mask = np.array(mask)
+        image = np.array(Image.open(img_path).convert('L'))  # Convert to grayscale numpy array
+        mask = np.array(Image.open(mask_path).convert('L'))  # Convert to grayscale numpy array
 
         # Binarize mask (assuming it's already binary, but just in case)
         mask = (mask > 0).astype(np.float32)
@@ -54,13 +53,16 @@ class SegmentationDataset(Dataset):
             image = transformed['image']
             mask = transformed['mask']
 
-        return image, mask, img_name
+        # Convert to tensors and normalize image
+        image_tensor = torch.from_numpy(image).unsqueeze(0).float() / 255.0
+        mask_tensor = torch.from_numpy(mask).float()
+
+        return image_tensor, mask_tensor, img_name
 
 
 def get_transforms(size=(256, 256)):
-    return transforms.Compose([
-        transforms.ToPILImage(),
-        transforms.Resize(size),
-        transforms.ToTensor(),
-        transforms.Normalize(mean=[0.5], std=[0.5])
+    return A.Compose([
+        A.Resize(height=size[0], width=size[1]),
+        A.Normalize(mean=[0.5], std=[0.5]),
+        ToTensorV2()
     ])
