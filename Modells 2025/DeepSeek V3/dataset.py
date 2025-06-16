@@ -8,15 +8,16 @@ from albumentations.pytorch import ToTensorV2
 
 
 class SegmentationDataset(Dataset):
-    def __init__(self, image_dir, mask_dir=None, transform=None, image_mask_suffix='_seg'):
+    def __init__(self, image_dir, mask_dir=None, transform=None, image_mask_suffix=''):
         self.image_dir = image_dir
         self.mask_dir = mask_dir if mask_dir is not None else image_dir
         self.transform = transform
         self.image_mask_suffix = image_mask_suffix
 
         # Get all PNG files in image directory
-        self.image_files = [f for f in os.listdir(image_dir) if
-                            f.endswith('.png') and not f.endswith(f'{image_mask_suffix}.png')]
+        self.image_files = [f for f in os.listdir(image_dir) if f.endswith('.jpg')]
+        #self.image_files = [f for f in os.listdir(image_dir) if
+        #                    f.endswith('.png') and not f.endswith(f'{image_mask_suffix}.png')]
 
         # Verify corresponding masks exist
         self.valid_files = []

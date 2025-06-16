@@ -17,12 +17,12 @@ from train import (
 
 def main():
     # Configuration
-    data_dir = 'D:\qy44lyfe\LLM segmentation\Data sets\BAGLS\subset'  # Update this path
+    #data_dir = 'D:\qy44lyfe\LLM segmentation\Data sets\BAGLS\subset'  # Update this path
     #image_dir = os.path.join(data_dir, 'images')
     #mask_dir = os.path.join(data_dir, 'masks')
-    image_dir = 'D:\qy44lyfe\LLM segmentation\Data sets\BAGLS\subset'
-    mask_dir = 'D:\qy44lyfe\LLM segmentation\Data sets\BAGLS\subset'
-    save_path = 'D:\\qy44lyfe\\LLM segmentation\\Results\\2025\\DeepSeek V3\\out of the box\\BAGLS output'  # Directory to save results
+    image_dir = 'D:\qy44lyfe\LLM segmentation\Data sets\DRIVE\combined_images\converted'
+    mask_dir = 'D:\qy44lyfe\LLM segmentation\Data sets\DRIVE\combined_masks\converted'
+    save_path = 'D:\\qy44lyfe\\LLM segmentation\\Results\\2025\\DeepSeek V3\\out of the box\\Retina output'  # Directory to save results
     os.makedirs(save_path, exist_ok=True)
 
     # Hyperparameters
