@@ -12,12 +12,11 @@ import torchinfo
 def main():
     # Hyperparameters
     batch_size = 32
-    #epochs = 10
-    epochs = 3
+    epochs = 10
     lr = 0.001
-    image_path = 'D:\qy44lyfe\LLM segmentation\Data sets\Swallowing\images'
-    mask_path = 'D:\qy44lyfe\LLM segmentation\Data sets\Swallowing\masks'
-    save_path = 'D:\\qy44lyfe\\LLM segmentation\\Results\\2025\\Llama 4 Maverick\\out of the box\\Bolus output'
+    image_path = 'D:\qy44lyfe\LLM segmentation\Data sets\BAGLS\subset'
+    mask_path = 'D:\qy44lyfe\LLM segmentation\Data sets\BAGLS\subset'
+    save_path = 'D:\\qy44lyfe\\LLM segmentation\\Results\\2025\\Llama 4 Maverick\\out of the box\\BAGLS output'
 
     # Load dataset
     dataset = GrayscaleDataset(image_path, mask_path)

@@ -6,11 +6,11 @@ from PIL import Image
 import numpy as np
 
 class GrayscaleDataset(Dataset):
-    def __init__(self, image_dir, mask_dir, mask_suffix=''):
+    def __init__(self, image_dir, mask_dir, mask_suffix='_seg'):
         self.image_dir = image_dir
         self.mask_dir = mask_dir
         self.mask_suffix = mask_suffix
-        self.image_files = [f for f in os.listdir(image_dir) if f.endswith('.png')]
+        self.image_files = [f for f in os.listdir(image_dir) if f.endswith('.png') and not f.endswith('_seg.png')]
         self.transform = transforms.Compose([
             transforms.Resize((256, 256)),
             transforms.ToTensor(),
