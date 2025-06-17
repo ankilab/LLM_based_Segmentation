@@ -91,6 +91,7 @@ def visualize_predictions(model, device, loader, save_path):
         fig, axs = plt.subplots(5, 3, figsize=(15, 20))
         for i, idx in enumerate(indices):
             data, target = loader.dataset[idx]
+            original_idx = loader.dataset.indices[idx]
             data = data.unsqueeze(0).to(device)
             output = model(data)
             output = (output > 0.5).float()
@@ -98,9 +99,10 @@ def visualize_predictions(model, device, loader, save_path):
             target = target.cpu().numpy()
             output = output.squeeze(0).cpu().numpy()
             axs[i, 0].imshow(data[0], cmap='gray')
-            axs[i, 0].set_title(loader.dataset.image_files[idx])
+            axs[i, 0].set_title(loader.dataset.dataset.image_files[original_idx])
             axs[i, 1].imshow(target[0], cmap='gray')
             axs[i, 1].set_title('Ground Truth')
             axs[i, 2].imshow(output[0], cmap='gray')
             axs[i, 2].set_title('Prediction')
+        plt.tight_layout()
         plt.savefig(os.path.join(save_path, 'predictions.png'))
