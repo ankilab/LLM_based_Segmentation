@@ -1,5 +1,7 @@
 import os
 import torch
+import numpy as np
+import time
 from torch.utils.data import DataLoader, Subset
 from sklearn.model_selection import train_test_split
 from dataset import GrayscaleDataset
@@ -10,12 +12,15 @@ import torchinfo
 def main():
     # Hyperparameters
     batch_size = 32
-    epochs = 10
+    #epochs = 10
+    epochs = 3
     lr = 0.001
-    save_path = 'results'
+    image_path = 'D:\qy44lyfe\LLM segmentation\Data sets\Swallowing\images'
+    mask_path = 'D:\qy44lyfe\LLM segmentation\Data sets\Swallowing\masks'
+    save_path = 'D:\\qy44lyfe\\LLM segmentation\\Results\\2025\\Llama 4 Maverick\\out of the box\\Bolus output'
 
     # Load dataset
-    dataset = GrayscaleDataset('path_to_images', 'path_to_masks')
+    dataset = GrayscaleDataset(image_path, mask_path)
     indices = np.arange(len(dataset))
     train_idx, val_test_idx = train_test_split(indices, test_size=0.2, random_state=42)
     val_idx, test_idx = train_test_split(val_test_idx, test_size=0.5, random_state=42)

@@ -6,7 +6,7 @@ from PIL import Image
 import numpy as np
 
 class GrayscaleDataset(Dataset):
-    def __init__(self, image_dir, mask_dir, mask_suffix='_seg'):
+    def __init__(self, image_dir, mask_dir, mask_suffix=''):
         self.image_dir = image_dir
         self.mask_dir = mask_dir
         self.mask_suffix = mask_suffix
