@@ -14,9 +14,9 @@ def main():
     batch_size = 32
     epochs = 10
     lr = 0.001
-    image_path = 'D:\qy44lyfe\LLM segmentation\Data sets\BAGLS\subset'
-    mask_path = 'D:\qy44lyfe\LLM segmentation\Data sets\BAGLS\subset'
-    save_path = 'D:\\qy44lyfe\\LLM segmentation\\Results\\2025\\Llama 4 Maverick\\out of the box\\BAGLS output'
+    image_path = 'D:\qy44lyfe\LLM segmentation\Data sets\DRIVE\combined_images\converted'
+    mask_path = 'D:\qy44lyfe\LLM segmentation\Data sets\DRIVE\combined_masks\converted'
+    save_path = 'D:\\qy44lyfe\\LLM segmentation\\Results\\2025\\Llama 4 Maverick\\out of the box\\Retina output'
 
     # Load dataset
     dataset = GrayscaleDataset(image_path, mask_path)
