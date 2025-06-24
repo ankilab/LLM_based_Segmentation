@@ -1,5 +1,7 @@
 import os
 import torch
+import torch.nn as nn
+import torch.optim as optim
 from torch.utils.data import DataLoader, Subset
 from torchvision import transforms
 from sklearn.model_selection import train_test_split
@@ -10,14 +12,16 @@ from torchinfo import summary
 
 def main():
     # Paths and hyperparameters
-    image_dir = 'path_to_images'  # Replace with your image directory
-    mask_dir = None  # Set to None if masks are in the same directory with a suffix
-    save_path = 'results'  # Directory to save results
+    image_dir = 'D:\qy44lyfe\LLM segmentation\Data sets\Swallowing\images'  # Replace with your image directory
+    # mask_dir = None  # Set to None if masks are in the same directory with a suffix
+    mask_dir = 'D:\qy44lyfe\LLM segmentation\Data sets\Swallowing\masks'
+    save_path = 'D:\\qy44lyfe\\LLM segmentation\\Results\\2025\\Mistral Medium 3\\out of the box\\Bolus output'  # Directory to save results
     os.makedirs(save_path, exist_ok=True)
 
     # Hyperparameters
     batch_size = 16
-    num_epochs = 50
+    #num_epochs = 50
+    num_epochs = 3
     learning_rate = 0.001
     image_size = (256, 256)  # Resize images to this size
 
@@ -56,7 +60,8 @@ def main():
     model = UNet(n_channels=1, n_classes=1)
 
     # Print model summary
-    summary(model, input_size=(1, *image_size))
+    #summary(model, input_size=(1, *image_size))
+    summary(model, input_size=(batch_size, 1, *image_size))
 
     # Loss and optimizer
     criterion = nn.BCELoss()
