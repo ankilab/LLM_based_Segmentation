@@ -20,8 +20,7 @@ def main():
 
     # Hyperparameters
     batch_size = 16
-    #num_epochs = 50
-    num_epochs = 3
+    num_epochs = 50
     learning_rate = 0.001
     image_size = (256, 256)  # Resize images to this size
 

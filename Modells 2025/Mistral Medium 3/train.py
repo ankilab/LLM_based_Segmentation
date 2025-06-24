@@ -143,12 +143,59 @@ def test_model(model, test_loader, criterion, save_path):
 
     return test_loss, test_dice_scores
 
+# def visualize_predictions(model, test_loader, save_path, num_samples=5):
+#     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+#     model = model.to(device)
+#     model.eval()
+#
+#     # Get random samples
+#     indices = torch.randperm(len(test_loader.dataset))[:num_samples]
+#     sampler = torch.utils.data.SubsetRandomSampler(indices)
+#     sample_loader = DataLoader(test_loader.dataset, batch_size=1, sampler=sampler)
+#
+#     fig, axes = plt.subplots(num_samples, 3, figsize=(15, num_samples * 5))
+#     fig.suptitle('Input Image | Ground Truth | Prediction', fontsize=16)
+#
+#     with torch.no_grad():
+#         for i, (images, masks) in enumerate(sample_loader):
+#             images = images.to(device)
+#             masks = masks.to(device)
+#
+#             outputs = model(images)
+#             pred_mask = (outputs > 0.5).float().squeeze().cpu().numpy()
+#             input_img = images.squeeze().cpu().numpy()
+#             gt_mask = masks.squeeze().cpu().numpy()
+#
+#             # Plot input image
+#             axes[i, 0].imshow(input_img, cmap='gray')
+#             axes[i, 0].set_title(f"Input: {test_loader.dataset.image_files[indices[i]]}")
+#             axes[i, 0].axis('off')
+#
+#             # Plot ground truth mask
+#             axes[i, 1].imshow(gt_mask, cmap='gray')
+#             axes[i, 1].set_title("Ground Truth")
+#             axes[i, 1].axis('off')
+#
+#             # Plot predicted mask
+#             axes[i, 2].imshow(pred_mask, cmap='gray')
+#             axes[i, 2].set_title("Prediction")
+#             axes[i, 2].axis('off')
+#
+#     plt.tight_layout()
+#     plt.savefig(os.path.join(save_path, 'predictions.png'))
+#     plt.close()
+
+
+
 def visualize_predictions(model, test_loader, save_path, num_samples=5):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model = model.to(device)
     model.eval()
 
-    # Get random samples
+    # Get the original dataset from the test_loader
+    original_dataset = test_loader.dataset.dataset  # First .dataset gets Subset, second gets original dataset
+
+    # Get random samples from the test set
     indices = torch.randperm(len(test_loader.dataset))[:num_samples]
     sampler = torch.utils.data.SubsetRandomSampler(indices)
     sample_loader = DataLoader(test_loader.dataset, batch_size=1, sampler=sampler)
@@ -166,9 +213,13 @@ def visualize_predictions(model, test_loader, save_path, num_samples=5):
             input_img = images.squeeze().cpu().numpy()
             gt_mask = masks.squeeze().cpu().numpy()
 
+            # Get the original filename from the original dataset
+            original_idx = test_loader.dataset.indices[indices[i]]
+            filename = original_dataset.image_files[original_idx]
+
             # Plot input image
             axes[i, 0].imshow(input_img, cmap='gray')
-            axes[i, 0].set_title(f"Input: {test_loader.dataset.image_files[indices[i]]}")
+            axes[i, 0].set_title(f"Input: {filename}")
             axes[i, 0].axis('off')
 
             # Plot ground truth mask
