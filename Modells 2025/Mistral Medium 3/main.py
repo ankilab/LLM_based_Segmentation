@@ -12,10 +12,10 @@ from torchinfo import summary
 
 def main():
     # Paths and hyperparameters
-    image_dir = 'D:\qy44lyfe\LLM segmentation\Data sets\Swallowing\images'  # Replace with your image directory
+    image_dir = 'D:\qy44lyfe\LLM segmentation\Data sets\BAGLS\subset'  # Replace with your image directory
     # mask_dir = None  # Set to None if masks are in the same directory with a suffix
-    mask_dir = 'D:\qy44lyfe\LLM segmentation\Data sets\Swallowing\masks'
-    save_path = 'D:\\qy44lyfe\\LLM segmentation\\Results\\2025\\Mistral Medium 3\\out of the box\\Bolus output'  # Directory to save results
+    #mask_dir = 'D:\qy44lyfe\LLM segmentation\Data sets\BAGLS\subset'
+    save_path = 'D:\\qy44lyfe\\LLM segmentation\\Results\\2025\\Mistral Medium 3\\out of the box\\BAGLS output\\mask fix'  # Directory to save results
     os.makedirs(save_path, exist_ok=True)
 
     # Hyperparameters
@@ -31,7 +31,8 @@ def main():
     ])
 
     # Load dataset
-    dataset = SegmentationDataset(image_dir, mask_dir, transform=transform)
+    #dataset = SegmentationDataset(image_dir, mask_dir, transform=transform)
+    dataset = SegmentationDataset(image_dir, mask_suffix="_seg", transform=transform)
 
     # Split dataset into train, validation, and test sets
     indices = list(range(len(dataset)))

@@ -15,27 +15,31 @@ class SegmentationDataset(Dataset):
             transform (callable, optional): Optional transform to be applied on a sample.
         """
         self.image_dir = image_dir
-        self.mask_dir = mask_dir
+        #self.mask_dir = mask_dir
+        self.mask_dir = mask_dir or image_dir
         self.mask_suffix = mask_suffix
         self.transform = transform
 
         # Get list of image files (only .png)
-        self.image_files = [f for f in os.listdir(image_dir) if f.endswith('.png')]
+        self.image_files = [f for f in os.listdir(image_dir)
+                            if f.endswith('.png') and not f.endswith('_seg.png')]
 
         if mask_dir is None:
             # Masks are in the same directory with a suffix
             self.mask_files = [f.replace('.png', f'{mask_suffix}.png') for f in self.image_files]
         else:
             # Masks are in a separate directory with the same name
-            self.mask_files = [f for f in os.listdir(mask_dir) if f.endswith('.png')]
+            #self.mask_files = [f for f in os.listdir(mask_dir) if f.endswith('_seg.png')]
+            self.mask_files = [f for f in self.image_files]
 
         # Ensure all masks exist
         missing_masks = []
         for img, mask in zip(self.image_files, self.mask_files):
-            if mask_dir is None:
-                mask_path = os.path.join(image_dir, mask)
-            else:
-                mask_path = os.path.join(mask_dir, mask)
+            # if mask_dir is None:
+            #     mask_path = os.path.join(image_dir, mask)
+            # else:
+            #     mask_path = os.path.join(mask_dir, mask)
+            mask_path = os.path.join(self.mask_dir, mask)
             if not os.path.exists(mask_path):
                 missing_masks.append(mask)
 
