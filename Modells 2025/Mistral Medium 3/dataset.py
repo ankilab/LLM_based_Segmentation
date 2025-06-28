@@ -6,7 +6,7 @@ from PIL import Image
 import numpy as np
 
 class SegmentationDataset(Dataset):
-    def __init__(self, image_dir, mask_dir=None, mask_suffix='_seg', transform=None):
+    def __init__(self, image_dir, mask_dir=None, mask_suffix='', transform=None):
         """
         Args:
             image_dir (str): Directory with all the images.
@@ -22,15 +22,19 @@ class SegmentationDataset(Dataset):
 
         # Get list of image files (only .png)
         self.image_files = [f for f in os.listdir(image_dir)
-                            if f.endswith('.png') and not f.endswith('_seg.png')]
+                            if f.endswith('.jpg') and not f.endswith('_seg.png')]
 
-        if mask_dir is None:
-            # Masks are in the same directory with a suffix
-            self.mask_files = [f.replace('.png', f'{mask_suffix}.png') for f in self.image_files]
-        else:
-            # Masks are in a separate directory with the same name
-            #self.mask_files = [f for f in os.listdir(mask_dir) if f.endswith('_seg.png')]
-            self.mask_files = [f for f in self.image_files]
+        # if mask_dir is None:
+        #     # Masks are in the same directory with a suffix
+        #     self.mask_files = [f.replace('.png', f'{mask_suffix}.png') for f in self.image_files]
+        # else:
+        #     # Masks are in a separate directory with the same name
+        #     #self.mask_files = [f for f in os.listdir(mask_dir) if f.endswith('_seg.png')]
+        #     self.mask_files = [f for f in self.image_files]
+
+        # Build mask filenames by appending suffix to each image (works in both modes)  # <<< CHANGED
+        self.mask_files = [f.replace('.jpg', f'{mask_suffix}.jpg')
+                               for f in self.image_files]
 
         # Ensure all masks exist
         missing_masks = []
@@ -52,10 +56,12 @@ class SegmentationDataset(Dataset):
     def __getitem__(self, idx):
         img_path = os.path.join(self.image_dir, self.image_files[idx])
 
-        if self.mask_dir is None:
-            mask_path = os.path.join(self.image_dir, self.mask_files[idx])
-        else:
-            mask_path = os.path.join(self.mask_dir, self.mask_files[idx])
+        # if self.mask_dir is None:
+        #     mask_path = os.path.join(self.image_dir, self.mask_files[idx])
+        # else:
+        #     mask_path = os.path.join(self.mask_dir, self.mask_files[idx])
+        # Always load mask from self.mask_dir  # <<< CHANGED
+        mask_path = os.path.join(self.mask_dir, self.mask_files[idx])
 
         image = Image.open(img_path).convert('L')  # Ensure grayscale
         mask = Image.open(mask_path).convert('L')   # Ensure binary mask
