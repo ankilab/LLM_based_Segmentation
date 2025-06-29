@@ -24,15 +24,15 @@ def main():
 
     # Set paths
     #data_path = 'D:\qy44lyfe\LLM segmentation\Data sets\BAGLS\subset'
-    data_path = "D:\qy44lyfe\LLM segmentation\Data sets\Swallowing\images"
+    data_path = "D:\qy44lyfe\LLM segmentation\Data sets\Skin cancer\subset\images"
     #data_path = "D:\qy44lyfe\LLM segmentation\Data sets\Brain Meningioma\images"
 
     # mask_folder = "D:\\qy44lyfe\\LLM segmentation\\Data sets\\BAGLS\\subset"
-    mask_folder = "D:\qy44lyfe\LLM segmentation\Data sets\Swallowing\masks"
+    mask_folder = "D:\qy44lyfe\LLM segmentation\Data sets\Skin cancer\subset\masks"
     #mask_folder = "D:\qy44lyfe\LLM segmentation\Data sets\Brain Meningioma\Masks"
 
     #save_path = 'D:\qy44lyfe\LLM segmentation\Results\Claude 3.5 Sonnet\out of the box\BAGLS output'
-    save_path = 'D:\qy44lyfe\LLM segmentation\Results\Claude 3.5 Sonnet\out of the box\Bolus output'
+    save_path = 'D:\qy44lyfe\LLM segmentation\Results\Claude 3.5 Sonnet\out of the box\skin output'
     #save_path = 'D:\qy44lyfe\LLM segmentation\Results\Claude 3.5 Sonnet\out of the box\Brain output'
 
     os.makedirs(save_path, exist_ok=True)

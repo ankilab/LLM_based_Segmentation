@@ -13,8 +13,8 @@ class SegmentationDataset(Dataset):
         self.images = [f for f in os.listdir(image_dir) if f.endswith('.png') and not f.endswith('_seg.png')]
         #self.images = [f for f in os.listdir(image_dir) if f.endswith('.jpg') and not f.endswith('_m.jpg')]
 
-        self.images.sort(key=lambda x: int(x.split('.')[0]))
-        #self.images.sort()  # Sorts lexicographically (alphabetically) (for brain dataset) ##########################
+        #self.images.sort(key=lambda x: int(x.split('.')[0]))
+        self.images.sort()  # Sorts lexicographically (alphabetically) (for brain dataset) ##########################
 
     def __len__(self):
         return len(self.images)

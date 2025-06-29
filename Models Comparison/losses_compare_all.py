@@ -45,7 +45,6 @@ color_map = {
     'nnUnet': '#1f78b4'
 
 }
-
 ### Normal Scale Plot ### ==============================================================================
 # Create a figure with 1 row and 2 columns for the subplots
 fig, axes = plt.subplots(1, 2, figsize=(12, 5))

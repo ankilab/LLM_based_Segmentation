@@ -12,15 +12,15 @@ from torchinfo import summary
 
 if __name__ == "__main__":
     #image_dir = "D:\qy44lyfe\LLM segmentation\Data sets\BAGLS\subset"
-    image_dir = "D:\qy44lyfe\LLM segmentation\Data sets\Swallowing\images"
+    image_dir = "D:\qy44lyfe\LLM segmentation\Data sets\DRIVE\combined_images\converted"
     #image_dir = "D:\qy44lyfe\LLM segmentation\Data sets\Brain Meningioma\images"
 
     #mask_folder = "D:\\qy44lyfe\\LLM segmentation\\Data sets\\BAGLS\\subset"
-    mask_folder = "D:\qy44lyfe\LLM segmentation\Data sets\Swallowing\masks"
+    mask_folder = "D:\qy44lyfe\LLM segmentation\Data sets\DRIVE\combined_masks\converted"
     #mask_folder = "D:\qy44lyfe\LLM segmentation\Data sets\Brain Meningioma\Masks"
 
     #save_path = "D:\qy44lyfe\LLM segmentation\Results\Bing Microsoft Copilot\out of the box\BAGLS output"
-    save_path = "D:\qy44lyfe\LLM segmentation\Results\Bing Microsoft Copilot\out of the box\Bolus output"
+    save_path = "D:\qy44lyfe\LLM segmentation\Results\Bing Microsoft Copilot\out of the box\Retina output"
     #save_path = "D:\qy44lyfe\LLM segmentation\Results\Bing Microsoft Copilot\out of the box\Brain output"
 
     os.makedirs(save_path, exist_ok=True)
