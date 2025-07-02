@@ -16,22 +16,22 @@ from tqdm import tqdm
 if __name__ == "__main__":
     # Paths
     # dataset_path = 'D:\qy44lyfe\LLM segmentation\Data sets\BAGLS\subset'
-    dataset_path = 'D:\qy44lyfe\LLM segmentation\Data sets\Swallowing\images'
+    dataset_path = 'D:\qy44lyfe\LLM segmentation\Data sets\DRIVE\combined_images\converted'
     #dataset_path = 'D:\qy44lyfe\LLM segmentation\Data sets\Brain Meningioma\images'
     image_dir = dataset_path
     # mask_dir = dataset_path
-    mask_dir = 'D:\qy44lyfe\LLM segmentation\Data sets\Swallowing\masks'
+    mask_dir = 'D:\qy44lyfe\LLM segmentation\Data sets\DRIVE\combined_masks\converted'
     #mask_dir = 'D:\qy44lyfe\LLM segmentation\Data sets\Brain Meningioma\Masks'
 
     # Save path for outputs
     # save_path = 'D:\qy44lyfe\LLM segmentation\Results\GPT o1 preview\out of the box\BAGLS output'
-    save_path = 'D:\qy44lyfe\LLM segmentation\Results\GPT o1 preview\out of the box\Bolus output'
+    save_path = 'D:\qy44lyfe\LLM segmentation\Results\GPT o1 preview\out of the box\Retina output'
     #save_path = 'D:\qy44lyfe\LLM segmentation\Results\GPT o1 preview\out of the box\Brain output'
     if not os.path.exists(save_path):
         os.makedirs(save_path)
 
     # Get list of image files
-    images = [img for img in os.listdir(image_dir) if img.endswith('.png') and not img.endswith('_seg.png')]
+    images = [img for img in os.listdir(image_dir) if img.endswith('.jpg') and not img.endswith('_seg.png')]
     #images = [img for img in os.listdir(image_dir) if img.endswith('.jpg') and not img.endswith('_m.jpg')]
     images.sort()
 

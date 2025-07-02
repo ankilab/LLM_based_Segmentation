@@ -9,7 +9,7 @@ class CustomDataset(Dataset):
     def __init__(self, data_folder, mask_folder, transform=None):
         self.data_folder = data_folder
         self.mask_folder = mask_folder
-        self.image_filenames = [f for f in os.listdir(data_folder) if f.endswith('.png') and not f.endswith('_seg.png')]
+        self.image_filenames = [f for f in os.listdir(data_folder) if f.endswith('.jpg') and not f.endswith('_seg.png')]
         #self.image_filenames = [f for f in os.listdir(data_folder) if f.endswith('.jpg') and not f.endswith('_m.jpg')]
         self.transform = transform
 

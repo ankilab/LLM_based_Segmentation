@@ -18,15 +18,15 @@ from train import train_one_epoch, validate, test, visualize_predictions, plot_l
 if __name__ == "__main__":
     # 0. Set Hyperparameters, paths, etc
     #image_dir = "D:\qy44lyfe\LLM segmentation\Data sets\BAGLS\subset" # Replace with the actual path to your dataset
-    image_dir = "D:\qy44lyfe\LLM segmentation\Data sets\Swallowing\images"
+    image_dir = "D:\qy44lyfe\LLM segmentation\Data sets\DRIVE\combined_images\converted"
     #image_dir = "D:\qy44lyfe\LLM segmentation\Data sets\Brain Meningioma\images"
 
     #mask_folder = "D:\\qy44lyfe\\LLM segmentation\\Data sets\\BAGLS\\subset"
-    mask_folder = "D:\qy44lyfe\LLM segmentation\Data sets\Swallowing\masks"
+    mask_folder = "D:\qy44lyfe\LLM segmentation\Data sets\DRIVE\combined_masks\converted"
     #mask_folder = "D:\qy44lyfe\LLM segmentation\Data sets\Brain Meningioma\Masks"
 
     #save_path = "D:\qy44lyfe\LLM segmentation\Results\Gemini 1.5 pro\out of the box\BAGLS output" #path to save model, logs, etc
-    save_path = "D:\qy44lyfe\LLM segmentation\Results\Gemini 1.5 pro\out of the box\Bolus output"
+    save_path = "D:\qy44lyfe\LLM segmentation\Results\Gemini 1.5 pro\out of the box\Retina output"
     #save_path = "D:\qy44lyfe\LLM segmentation\Results\Gemini 1.5 pro\out of the box\Brain output"
 
     os.makedirs(save_path, exist_ok=True)

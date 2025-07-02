@@ -12,7 +12,7 @@ class CustomSegmentationDataset(Dataset):
         self.mask_dir = mask_dir    # Path to masks
         self.transform = transform
         self.image_size = image_size
-        self.images = [img for img in os.listdir(image_dir) if img.endswith('.png') and not img.endswith('_seg.png')]
+        self.images = [img for img in os.listdir(image_dir) if img.endswith('.jpg') and not img.endswith('_seg.png')]
         #self.images = [img for img in os.listdir(image_dir) if img.endswith('.jpg') and not img.endswith('_m.jpg')]
         self.images.sort()
 
@@ -22,7 +22,7 @@ class CustomSegmentationDataset(Dataset):
     def __getitem__(self, idx):
         img_name = self.images[idx]
         if self.image_dir == self.mask_dir:
-            mask_name = img_name.replace('.png', '_seg.png')
+            mask_name = img_name.replace('.jpg', '.jpg')
         else:
             mask_name = img_name
             #mask_name = img_name.replace('.jpg', '_m.jpg')

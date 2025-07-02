@@ -18,15 +18,15 @@ if __name__ == "__main__":
     learning_rate = 1e-4
     image_size = (256, 256)  # Define a consistent image size for all inputs
     #data_dir = "D:\\qy44lyfe\\LLM segmentation\\Data sets\\BAGLS\\subset"
-    data_dir = "D:\qy44lyfe\LLM segmentation\Data sets\Swallowing\images"
+    data_dir = "D:\qy44lyfe\LLM segmentation\Data sets\DRIVE\combined_images\converted"
     #data_dir = "D:\qy44lyfe\LLM segmentation\Data sets\Brain Meningioma\images"
 
     #mask_dir = "D:\\qy44lyfe\\LLM segmentation\\Data sets\\BAGLS\\subset"
-    mask_dir = "D:\qy44lyfe\LLM segmentation\Data sets\Swallowing\masks"
+    mask_dir = "D:\qy44lyfe\LLM segmentation\Data sets\DRIVE\combined_masks\converted"
     #mask_dir = "D:\qy44lyfe\LLM segmentation\Data sets\Brain Meningioma\Masks"
 
     #save_path = "D:\qy44lyfe\LLM segmentation\Results\GPT 4o\out of the box\BAGLS output"
-    save_path = "D:\qy44lyfe\LLM segmentation\Results\GPT 4o\out of the box\Bolus output"
+    save_path = "D:\qy44lyfe\LLM segmentation\Results\GPT 4o\out of the box\Retina output"
     #save_path = "D:\qy44lyfe\LLM segmentation\Results\GPT 4o\out of the box\Brain output"
     os.makedirs(save_path, exist_ok=True)
 

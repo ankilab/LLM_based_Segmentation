@@ -15,16 +15,16 @@ def main():
     epochs = 10
     learning_rate = 0.001
     # data_folder = "D:\qy44lyfe\LLM segmentation\Data sets\BAGLS\subset"
-    data_folder = "D:\qy44lyfe\LLM segmentation\Data sets\Swallowing\images"
+    data_folder = "D:\qy44lyfe\LLM segmentation\Data sets\DRIVE\combined_images\converted"
     #data_folder = "D:\qy44lyfe\LLM segmentation\Data sets\Brain Meningioma\images"
 
     # mask_folder = "D:\\qy44lyfe\\LLM segmentation\\Data sets\\BAGLS\\subset"
-    mask_folder = "D:\qy44lyfe\LLM segmentation\Data sets\Swallowing\masks"
+    mask_folder = "D:\qy44lyfe\LLM segmentation\Data sets\DRIVE\combined_masks\converted"
     #mask_folder = "D:\qy44lyfe\LLM segmentation\Data sets\Brain Meningioma\Masks"
 
 
     #save_path = 'D:\qy44lyfe\LLM segmentation\Results\LLAMA 3.1 405B\out of the box\BAGLS output'
-    save_path = 'D:\qy44lyfe\LLM segmentation\Results\LLAMA 3.1 405B\out of the box\Bolus output'
+    save_path = 'D:\qy44lyfe\LLM segmentation\Results\LLAMA 3.1 405B\out of the box\Retina output'
     #save_path = 'D:\qy44lyfe\LLM segmentation\Results\LLAMA 3.1 405B\out of the box\Brain output'
 
     # Set device

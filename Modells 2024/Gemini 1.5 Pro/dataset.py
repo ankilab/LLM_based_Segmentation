@@ -8,7 +8,8 @@ class SegmentationDataset(Dataset):
     def __init__(self, image_dir, mask_folder, transform=None):
         self.image_dir = image_dir
         self.mask_dir = mask_folder
-        self.image_files = sorted([f for f in os.listdir(image_dir) if f.endswith('.png') and not "_seg" in f], key=lambda x: int(x.split('.')[0])) #only png, ignore other files
+        #self.image_files = sorted([f for f in os.listdir(image_dir) if f.endswith('.png') and not "_seg" in f], key=lambda x: int(x.split('.')[0])) #only png, ignore other files
+        self.image_files = sorted([f for f in os.listdir(image_dir) if f.endswith('.jpg') and not "_seg" in f])
         #self.image_files = sorted([f for f in os.listdir(image_dir) if f.endswith('.jpg') and not "_m" in f])
         self.transform = transform
 

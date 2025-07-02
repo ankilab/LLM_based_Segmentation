@@ -10,7 +10,7 @@ class SegmentationDataset(Dataset):
         self.image_dir = image_dir
         self.mask_dir = mask_folder
         self.transform = transform
-        self.images = [f for f in os.listdir(image_dir) if f.endswith('.png') and not f.endswith('_seg.png')]
+        self.images = [f for f in os.listdir(image_dir) if f.endswith('.jpg') and not f.endswith('_seg.png')]
         #self.images = [f for f in os.listdir(image_dir) if f.endswith('.jpg') and not f.endswith('_m.jpg')]
 
         #self.images.sort(key=lambda x: int(x.split('.')[0]))
@@ -23,7 +23,7 @@ class SegmentationDataset(Dataset):
         img_name = self.images[idx]
         img_path = os.path.join(self.image_dir, img_name)
         #mask_path = os.path.join(self.mask_dir, img_name.replace('.png', '_seg.png'))
-        mask_path = os.path.join(self.mask_dir, img_name.replace('.png', '.png'))
+        mask_path = os.path.join(self.mask_dir, img_name.replace('.jpg', '.jpg'))
         #mask_path = os.path.join(self.mask_dir, img_name.replace('.jpg', '_m.jpg'))
 
         image = Image.open(img_path).convert('L')
