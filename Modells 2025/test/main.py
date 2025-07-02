@@ -113,7 +113,7 @@ if __name__=="__main__":
     p.add_argument("--save_path",   type=str, required=True)
     p.add_argument("--batch_size",  type=int,   default=2)
     p.add_argument("--lr",          type=float, default=1e-4)
-    p.add_argument("--epochs",      type=int,   default=5)
+    p.add_argument("--epochs",      type=int,   default=10)
     p.add_argument("--seed",        type=int,   default=42)
     p.add_argument("--patch_size",  type=int,   nargs=3, default=(64,64,32))
     args = p.parse_args()
