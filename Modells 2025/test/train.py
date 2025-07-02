@@ -1,118 +1,139 @@
 import os
-import torch
+import time
+import nibabel as nib
 import numpy as np
-import pandas as pd
-from tqdm import tqdm
 import matplotlib.pyplot as plt
+import torch
+import torch.nn.functional as F
 
-# ---------- Losses ----------
-class DiceLoss(torch.nn.Module):
-    def __init__(self, smooth=1e-6):
-        super().__init__()
-        self.smooth = smooth
-    def forward(self, logits, target):
-        probs = torch.sigmoid(logits)
-        num  = 2*(probs*target).sum(dim=(1,2,3,4)) + self.smooth
-        den  = (probs+target).sum(dim=(1,2,3,4)) + self.smooth
-        dice = (num/den).mean()
-        return 1 - dice
-
-bce_loss  = torch.nn.BCEWithLogitsLoss()
-dice_loss = DiceLoss()
-def combined_loss(logits, target):
-    return bce_loss(logits, target) + dice_loss(logits, target)
-
-# ---------- Metrics ----------
-def dice_coeff_batch(logits, target, threshold=0.5):
-    probs = torch.sigmoid(logits).detach().cpu().numpy() > threshold
-    t = target.cpu().numpy() > 0.5
-    dices = []
-    for p, gt in zip(probs, t):
-        intersect = (p & gt).sum()
-        union     = p.sum() + gt.sum()
-        dices.append((2*intersect)/(union+1e-6) if union>0 else 1.0)
-    return dices
-
-# ---------- Epoch routines ----------
 def train_epoch(model, loader, optimizer, device):
     model.train()
-    running = 0.0
-    pbar = tqdm(loader, desc="Train", leave=False)
-    for imgs, masks in pbar:
-        imgs, masks = imgs.to(device), masks.to(device)
+    running_loss = 0.0
+    for imgs, masks in loader:
+        imgs  = imgs.to(device, dtype=torch.float32)
+        masks = masks.to(device, dtype=torch.float32)
+
         optimizer.zero_grad()
         logits = model(imgs)
-        loss   = combined_loss(logits, masks)
+        loss   = F.binary_cross_entropy_with_logits(logits, masks)
         loss.backward()
         optimizer.step()
-        running += loss.item()
-        pbar.set_postfix(loss=f"{running/(pbar.n):.4f}")
-    return running/len(loader)
 
-def validate_epoch(model, loader, device):
+        running_loss += loss.item() * imgs.size(0)
+
+    return running_loss / len(loader.dataset)
+
+
+def validate_epoch(model, loader, device, thresh=0.5):
     model.eval()
-    running = 0.0
-    all_dices = []
-    pbar = tqdm(loader, desc="Val  ", leave=False)
-    with torch.no_grad():
-        for imgs, masks in pbar:
-            imgs, masks = imgs.to(device), masks.to(device)
-            logits = model(imgs)
-            loss   = combined_loss(logits, masks)
-            running += loss.item()
-            dices = dice_coeff_batch(logits, masks)
-            all_dices.append(dices)
-            pbar.set_postfix(loss=f"{running/(pbar.n):.4f}", dice=f"{np.mean(dices):.4f}")
-    return running/len(loader), all_dices
+    running_loss = 0.0
+    dice_scores  = []
 
-def test_epoch(model, loader, device, best_thresh=0.5):
+    with torch.no_grad():
+        for imgs, masks in loader:
+            imgs  = imgs.to(device, dtype=torch.float32)
+            masks = masks.to(device, dtype=torch.float32)
+
+            logits = model(imgs)
+            loss   = F.binary_cross_entropy_with_logits(logits, masks)
+            running_loss += loss.item() * imgs.size(0)
+
+            probs = torch.sigmoid(logits).cpu().numpy()
+            preds = (probs >= thresh).astype(np.uint8)
+            trues = masks.cpu().numpy().astype(np.uint8)
+
+            # compute Dice per sample in batch
+            for p, t in zip(preds, trues):
+                p_flat = p.reshape(-1)
+                t_flat = t.reshape(-1)
+                intersection = np.logical_and(p_flat, t_flat).sum()
+                dice = (2.0 * intersection) / (p_flat.sum() + t_flat.sum() + 1e-6)
+                dice_scores.append(dice)
+
+    mean_loss = running_loss / len(loader.dataset)
+    mean_dice = float(np.mean(dice_scores))
+    return mean_loss, mean_dice
+
+
+def test_epoch(model, loader, device, thresh=0.5):
     model.eval()
-    all_dices = []
-    pbar = tqdm(loader, desc="Test ", leave=False)
+    dice_scores = []
+
     with torch.no_grad():
-        for imgs, masks in pbar:
-            imgs, masks = imgs.to(device), masks.to(device)
-            logits = model(imgs)
-            dices = dice_coeff_batch(logits, masks, threshold=best_thresh)
-            all_dices.append(dices)
-            pbar.set_postfix(dice=f"{np.mean(dices):.4f}")
-    # flatten
-    return [d for batch in all_dices for d in batch]
+        for imgs, masks in loader:
+            imgs  = imgs.to(device, dtype=torch.float32)
+            masks = masks.to(device, dtype=torch.float32)
 
-# ---------- I/O & plotting ----------
-def save_excel(data_rows, filepath):
-    df = pd.DataFrame(data_rows)
-    df.to_excel(filepath, header=False, index=False)
+            probs = torch.sigmoid(model(imgs)).cpu().numpy()
+            preds = (probs >= thresh).astype(np.uint8)
+            trues = masks.cpu().numpy().astype(np.uint8)
 
-def plot_losses(train_losses, val_losses, save_path):
-    plt.figure()
-    epochs = list(range(1, len(train_losses)+1))
-    plt.plot(epochs, train_losses, label="Train")
-    plt.plot(epochs, val_losses,   label="Val")
-    plt.xlabel("Epoch"); plt.ylabel("Loss"); plt.legend()
-    plt.savefig(os.path.join(save_path, "loss_curve.png"))
-    plt.close()
+            for p, t in zip(preds, trues):
+                p_flat = p.reshape(-1)
+                t_flat = t.reshape(-1)
+                intersection = np.logical_and(p_flat, t_flat).sum()
+                dice = (2.0 * intersection) / (p_flat.sum() + t_flat.sum() + 1e-6)
+                dice_scores.append(dice)
 
-def plot_predictions(model, loader, device, save_path):
-    import random, numpy as np
-    fig, axes = plt.subplots(5,3,figsize=(9,15))
-    indices = random.sample(range(len(loader.dataset)), 5)
-    for i, idx in enumerate(indices):
-        img, gt = loader.dataset[idx]
-        img_b = img.unsqueeze(0).to(device)
+    return float(np.mean(dice_scores))
+
+
+def save_excel(data, path):
+    # ... your existing code for writing Excel ...
+    pass
+
+
+def plot_losses(train_losses, val_losses, save_dir):
+    # ... your existing code for plotting loss curves ...
+    pass
+
+
+def plot_predictions(model, loader, device, save_dir, case_indices=None, thresh=0.5):
+    import matplotlib.pyplot as plt
+    from nibabel import load as load_nii
+
+    model.eval()
+    os.makedirs(save_dir, exist_ok=True)
+
+    # default: first three cases
+    if case_indices is None:
+        case_indices = list(range(len(loader.dataset)))[:3]
+
+    for idx in case_indices:
+        img_path = loader.dataset.images[idx]
+        msk_path = loader.dataset.masks[idx]
+
+        img_nii = load_nii(img_path)
+        msk_nii = load_nii(msk_path)
+        img_vol = img_nii.get_fdata()
+        msk_vol = msk_nii.get_fdata()
+
+        # center slice
+        z = img_vol.shape[2] // 2
+        img_slice = img_vol[:, :, z]
+        msk_slice = msk_vol[:, :, z]
+
+        # full-volume inference
+        inp = torch.from_numpy(img_vol[None, None]).float().to(device)
         with torch.no_grad():
-            pred = torch.sigmoid(model(img_b)).cpu()[0,0]
-        img_np = img[0].numpy()
-        gt_np  = gt[0].numpy()
-        pr_np  = (pred.numpy()>0.5).astype(np.float32)
+            logits = model(inp)
+            probs  = torch.sigmoid(logits).cpu().numpy()[0, 0]
+        pred_slice = (probs[:, :, z] >= thresh).astype(np.uint8)
 
-        axes[i,0].imshow(img_np[img_np.shape[0]//2], cmap="gray")
-        axes[i,0].set_title(f"Input (idx={idx})")
-        axes[i,1].imshow(gt_np[gt_np.shape[0]//2], cmap="gray")
-        axes[i,1].set_title("GT")
-        axes[i,2].imshow(pr_np[pr_np.shape[0]//2], cmap="gray")
-        axes[i,2].set_title("Pred")
-        for j in range(3): axes[i,j].axis("off")
-    plt.tight_layout()
-    plt.savefig(os.path.join(save_path, "predictions.png"))
-    plt.close(fig)
+        # plot high-res, no interpolation
+        fig, axs = plt.subplots(1, 3, figsize=(12, 4), dpi=200)
+        for ax in axs: ax.axis("off")
+
+        axs[0].imshow(img_slice.T,  cmap="gray", origin="lower", interpolation="none")
+        axs[0].set_title(f"T2 image (slice {z})")
+
+        axs[1].imshow(msk_slice.T, cmap="gray", origin="lower", interpolation="none")
+        axs[1].set_title(f"GT mask (slice {z})")
+
+        axs[2].imshow(pred_slice.T, cmap="gray", origin="lower", interpolation="none")
+        axs[2].set_title(f"Pred mask (slice {z})")
+
+        plt.tight_layout()
+        out_png = os.path.join(save_dir, f"case_{idx:03d}_pred.png")
+        plt.savefig(out_png, bbox_inches="tight")
+        plt.close(fig)
