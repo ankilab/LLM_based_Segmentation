@@ -30,6 +30,10 @@ def main():
     MASK_DIR = "D:\qy44lyfe\LLM segmentation\Data sets\Skin cancer\subset\masks"
     SAVE_PATH = "D:\\qy44lyfe\\LLM segmentation\\Results\\2025\\Gemini 2.5 Pro\\out of the box\\skin output"
 
+    IMAGE_DIR = "D:\qy44lyfe\LLM segmentation\Data sets\Skin cancer\subset\images"
+    MASK_DIR = "D:\qy44lyfe\LLM segmentation\Data sets\Skin cancer\subset\masks"
+    SAVE_PATH = "D:\\qy44lyfe\\LLM segmentation\\Results\\2025\\Gemini 2.5 Pro\\out of the box\\skin output"
+
     # Hyperparameters
     LEARNING_RATE = 1e-4
     BATCH_SIZE = 8
