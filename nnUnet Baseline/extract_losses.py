@@ -4,10 +4,11 @@ import pandas as pd
 # Define the path to log file
 #log_file_path = r"Z:\BVM_LM_datasets\nnunet_train\nnUNet_results\Dataset111_BAGLS\nnUNetTrainer__nnUNetPlans__2d\fold_6\training_log_2024_10_22_13_50_38.txt"
 #log_file_path = r"Z:\BVM_LM_datasets\nnunet_train\nnUNet_results\Dataset113_Swallowing\nnUNetTrainer__nnUNetPlans__2d\fold_6\training_log_2024_10_23_09_35_06.txt"
-log_file_path = r"Z:\BVM_LM_datasets\nnunet_train\nnUNet_results\Dataset112_BrainMeningioma\nnUNetTrainer__nnUNetPlans__2d\fold_6\training_log_2024_10_23_09_39_00.txt"
+#log_file_path = r"Z:\BVM_LM_datasets\nnunet_train\nnUNet_results\Dataset112_BrainMeningioma\nnUNetTrainer__nnUNetPlans__2d\fold_6\training_log_2024_10_23_09_39_00.txt"
+log_file_path = r"D:\qy44lyfe\LLM segmentation\Results\nnUnet Baseline\Baseline 2025\nnunet_train\nnUNet_results\Dataset116_MYOMA\nnUNetTrainer_nnUNetPlans_2d\fold_0\training_log_2025_7_8_13_45_18.txt"
 
 # Define the path to save the output CSV file
-save_path = r"D:\qy44lyfe\LLM segmentation\Results\Models Comparison\parsed_metrics_Brain.xlsx"
+save_path = r"D:\qy44lyfe\LLM segmentation\Results\Models Comparison\parsed_metrics_Myoma.xlsx"
 
 # Initialize lists to store metrics
 epochs = []

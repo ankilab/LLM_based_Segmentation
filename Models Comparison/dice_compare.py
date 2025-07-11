@@ -115,7 +115,7 @@ import numpy as np
 #         'validation': r"D:\qy44lyfe\LLM segmentation\Results\GPT o1 preview\out of the box\skin output\validation_dice_scores.xlsx",
 #         'test': r"D:\qy44lyfe\LLM segmentation\Results\GPT o1 preview\out of the box\skin output\test_dice_scores.xlsx"
 #     },
-#     'LLAMA 3.1 405B': {
+#     'Llama 3.1 405B': {
 #         'validation': r"D:\qy44lyfe\LLM segmentation\Results\LLAMA 3.1 405B\out of the box\skin output\validation_dice_scores.xlsx",
 #         'test': r"D:\qy44lyfe\LLM segmentation\Results\LLAMA 3.1 405B\out of the box\skin output\test_dice_scores.xlsx"
 #     },
