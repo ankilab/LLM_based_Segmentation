@@ -3,10 +3,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # ─── 1. File paths ─────────────────────────────────────────────────────────────
-train_2024_path = r"D:\qy44lyfe\LLM segmentation\Results\Models Comparison\models 2024\all_train_losses_myoma.xlsx"
-val_2024_path   = r"D:\qy44lyfe\LLM segmentation\Results\Models Comparison\models 2024\all_validation_losses_myoma.xlsx"
-train_2025_path = r"D:\qy44lyfe\LLM segmentation\Results\Models Comparison\models 2025\all_train_losses_myoma.xlsx"
-val_2025_path   = r"D:\qy44lyfe\LLM segmentation\Results\Models Comparison\models 2025\all_validation_losses_myoma.xlsx"
+train_2024_path = r"/Results/Models Comparison/models 2024/all_train_losses_myoma.xlsx"
+val_2024_path   = r"/Results/Models Comparison/models 2024/all_validation_losses_myoma.xlsx"
+train_2025_path = r"/Results/Models Comparison/models 2025/all_train_losses_myoma.xlsx"
+val_2025_path   = r"/Results/Models Comparison/models 2025/all_validation_losses_myoma.xlsx"
 
 # ─── 2. Load DataFrames & drop nnU-Net ─────────────────────────────────────────
 train_2024 = pd.read_excel(train_2024_path, index_col=0)\
@@ -125,6 +125,6 @@ ax2.grid(True, linestyle="--", linewidth=0.5)
 plt.tight_layout(rect=[0, 0, 1, 0.92])
 
 # ─── 7. Save figure ────────────────────────────────────────────────────────────
-out_path = r"D:\qy44lyfe\LLM segmentation\Results\Models Comparison\Reason\Reasoning vs non reasoning losses_Myoma.png"
+out_path = r"/Results/Models Comparison/Reason/Reasoning vs non reasoning losses_Myoma.png"
 plt.savefig(out_path, dpi=600)
 #plt.show()
