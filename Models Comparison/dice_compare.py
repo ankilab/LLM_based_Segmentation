@@ -84,48 +84,50 @@ import numpy as np
 #     }
 # }
 
+# 2024 models:
 
-# BRAIN TUMOR OUTPUT ===================================================================================================
-# model_paths = {
-#     'Bing Copilot': {
-#         'validation': r"D:\qy44lyfe\LLM segmentation\Results\Bing Microsoft Copilot\out of the box\skin output\validation_dice_scores.xlsx",
-#         'test': r"D:\qy44lyfe\LLM segmentation\Results\Bing Microsoft Copilot\out of the box\skin output\test_dice_scores.xlsx"
-#     },
-#     'Claude 3.5 Sonnet': {
-#         'validation': r"D:\qy44lyfe\LLM segmentation\Results\Claude 3.5 Sonnet\out of the box\skin output\validation_dice_scores.xlsx",
-#         'test': r"D:\qy44lyfe\LLM segmentation\Results\Claude 3.5 Sonnet\out of the box\skin output\test_dice_scores.xlsx"
-#     },
-#     'Copilot': {
-#         'validation': r"D:\qy44lyfe\LLM segmentation\Results\Copilot\out of the box\skin output\validation_dice_scores.xlsx",
-#         'test': r"D:\qy44lyfe\LLM segmentation\Results\Copilot\out of the box\skin output\test_dice_scores.xlsx"
-#     },
-#     'Gemini 1.5 Pro': {
-#         'validation': r"D:\qy44lyfe\LLM segmentation\Results\Gemini 1.5 pro\out of the box\skin output\validation_dice_scores.xlsx",
-#         'test': r"D:\qy44lyfe\LLM segmentation\Results\Gemini 1.5 pro\out of the box\skin output\test_dice_scores.xlsx"
-#     },
-#     'GPT 4': {
-#         'validation': r"D:\qy44lyfe\LLM segmentation\Results\GPT 4\out of the box\skin output\validation_dice_scores.xlsx",
-#         'test': r"D:\qy44lyfe\LLM segmentation\Results\GPT 4\out of the box\skin output\test_dice_scores.xlsx"
-#     },
-#     'GPT 4o': {
-#         'validation': r"D:\qy44lyfe\LLM segmentation\Results\GPT 4o\out of the box\skin output\validation_dice_scores.xlsx",
-#         'test': r"D:\qy44lyfe\LLM segmentation\Results\GPT 4o\out of the box\skin output\test_dice_scores.xlsx"
-#     },
-#     'GPT o1 Preview': {
-#         'validation': r"D:\qy44lyfe\LLM segmentation\Results\GPT o1 preview\out of the box\skin output\validation_dice_scores.xlsx",
-#         'test': r"D:\qy44lyfe\LLM segmentation\Results\GPT o1 preview\out of the box\skin output\test_dice_scores.xlsx"
-#     },
-#     'Llama 3.1 405B': {
-#         'validation': r"D:\qy44lyfe\LLM segmentation\Results\LLAMA 3.1 405B\out of the box\skin output\validation_dice_scores.xlsx",
-#         'test': r"D:\qy44lyfe\LLM segmentation\Results\LLAMA 3.1 405B\out of the box\skin output\test_dice_scores.xlsx"
-#     },
-#     'nnUnet': {
-#         'validation': r"D:\qy44lyfe\LLM segmentation\Results\nnUnet Baseline\validation_dice_scores_nnUnet_BRAIN.xlsx",
-#         'test': r"D:\qy44lyfe\LLM segmentation\Results\nnUnet Baseline\test_dice_scores_nnUnet_BRAIN.xlsx"
-#     }
-# }
+#BRAIN TUMOR OUTPUT ===================================================================================================
+model_paths = {
+    'Bing Copilot': {
+        'validation': r"D:\qy44lyfe\LLM segmentation\Results\Bing Microsoft Copilot\out of the box\skin output\validation_dice_scores.xlsx",
+        'test': r"D:\qy44lyfe\LLM segmentation\Results\Bing Microsoft Copilot\out of the box\skin output\test_dice_scores.xlsx"
+    },
+    'Claude 3.5 Sonnet': {
+        'validation': r"D:\qy44lyfe\LLM segmentation\Results\Claude 3.5 Sonnet\out of the box\skin output\validation_dice_scores.xlsx",
+        'test': r"D:\qy44lyfe\LLM segmentation\Results\Claude 3.5 Sonnet\out of the box\skin output\test_dice_scores.xlsx"
+    },
+    'Copilot': {
+        'validation': r"D:\qy44lyfe\LLM segmentation\Results\Copilot\out of the box\skin output\validation_dice_scores.xlsx",
+        'test': r"D:\qy44lyfe\LLM segmentation\Results\Copilot\out of the box\skin output\test_dice_scores.xlsx"
+    },
+    'Gemini 1.5 Pro': {
+        'validation': r"D:\qy44lyfe\LLM segmentation\Results\Gemini 1.5 pro\out of the box\skin output\validation_dice_scores.xlsx",
+        'test': r"D:\qy44lyfe\LLM segmentation\Results\Gemini 1.5 pro\out of the box\skin output\test_dice_scores.xlsx"
+    },
+    'GPT 4': {
+        'validation': r"D:\qy44lyfe\LLM segmentation\Results\GPT 4\out of the box\skin output\validation_dice_scores.xlsx",
+        'test': r"D:\qy44lyfe\LLM segmentation\Results\GPT 4\out of the box\skin output\test_dice_scores.xlsx"
+    },
+    'GPT 4o': {
+        'validation': r"D:\qy44lyfe\LLM segmentation\Results\GPT 4o\out of the box\skin output\validation_dice_scores.xlsx",
+        'test': r"D:\qy44lyfe\LLM segmentation\Results\GPT 4o\out of the box\skin output\test_dice_scores.xlsx"
+    },
+    'GPT o1 Preview': {
+        'validation': r"D:\qy44lyfe\LLM segmentation\Results\GPT o1 preview\out of the box\skin output\validation_dice_scores.xlsx",
+        'test': r"D:\qy44lyfe\LLM segmentation\Results\GPT o1 preview\out of the box\skin output\test_dice_scores.xlsx"
+    },
+    'Llama 3.1 405B': {
+        'validation': r"D:\qy44lyfe\LLM segmentation\Results\LLAMA 3.1 405B\out of the box\skin output\validation_dice_scores.xlsx",
+        'test': r"D:\qy44lyfe\LLM segmentation\Results\LLAMA 3.1 405B\out of the box\skin output\test_dice_scores.xlsx"
+    },
+    'nnUnet': {
+        'validation': r"D:\qy44lyfe\LLM segmentation\Results\nnUnet Baseline\validation_dice_scores_nnUnet_BRAIN.xlsx",
+        'test': r"D:\qy44lyfe\LLM segmentation\Results\nnUnet Baseline\test_dice_scores_nnUnet_BRAIN.xlsx"
+    }
+}
 # ======================================================================================================================
-#2025:
+#2025 models:
+
 model_paths = {
     'Claude 4 Sonnet': {
         'validation': r"D:\qy44lyfe\LLM segmentation\Results\2025\Claude 4 Sonnet\out of the box\skin output\validation_dice_scores.xlsx",
