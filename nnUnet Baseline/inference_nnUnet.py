@@ -21,9 +21,11 @@ def load_image_and_mask(image_path, mask_dir, prediction_path, image_size=(256, 
 
     # Load input image and mask
     image = Image.open(image_path).convert('L')  # Convert to grayscale
+    #image = Image.open(image_path) # keep RGB
+
+    mask_name = img_name                               # bolus dataset
     #mask_name = img_name.replace('.png', '_seg.png')  # BAGLS dataset
-    #mask_name = img_name                               # bolus dataset
-    mask_name = img_name.replace('.jpg', '_m.jpg')   # Brain tumor dataset
+    #mask_name = img_name.replace('.jpg', '_m.jpg')   # Brain tumor dataset
 
     mask_path = os.path.join(mask_dir, mask_name)
     mask = Image.open(mask_path).convert('L')  # Convert to grayscale
@@ -52,8 +54,22 @@ def load_image_and_mask(image_path, mask_dir, prediction_path, image_size=(256, 
 def visualize_prediction(input_img, ground_truth, prediction, img_name, dice_score, save_path):
     fig, axs = plt.subplots(1, 3, figsize=(12, 5))
 
-    # Display input image
+    # Display input image (gray)
     axs[0].imshow(input_img.squeeze(), cmap='gray')
+
+    ## FOR COLOR IMAGE: =====================================================
+    # # move channels to the last dimension, then show in full color
+    # # For color image: convert the tensor to HWC and then show
+    # img_tensor = input_img.squeeze()  # shape = (3, H, W)
+    # # if it’s a torch.Tensor, use permute + .numpy()
+    # try:
+    #     img_np = img_tensor.permute(1, 2, 0).cpu().numpy()  # (H, W, 3)
+    # except AttributeError:
+    #     # already a NumPy array?
+    #     img_np = np.moveaxis(img_tensor, 0, -1)
+    # axs[0].imshow(img_np)
+    ##========================================================================
+
     axs[0].set_title(f"Input Image: {img_name}", fontsize=12)
     axs[0].axis('off')
 
@@ -97,19 +113,27 @@ if __name__ == "__main__":
     # BAGLS
     #image_dir = "D:\\qy44lyfe\\LLM segmentation\\Data sets\\BAGLS\\subset"  # Folder containing input images
     #image_dir = "D:\\qy44lyfe\\LLM segmentation\\Data sets\\Swallowing\\images"
-    image_dir = "D:\\qy44lyfe\\LLM segmentation\\Data sets\\Brain Meningioma\\images"
+    #image_dir = "D:\\qy44lyfe\\LLM segmentation\\Data sets\\Brain Meningioma\\images"
+    #image_dir = "D:\\qy44lyfe\\LLM segmentation\\Data sets\\Skin cancer\\subset\\images"
+    #image_dir = "D:\\qy44lyfe\\LLM segmentation\\Data sets\\DRIVE\\combined_images\\converted"
+    image_dir = "D:\\qy44lyfe\\LLM segmentation\\Data sets\\utrine myoma converted\\images"
 
     #mask_dir = "D:\\qy44lyfe\\LLM segmentation\\Data sets\\BAGLS\\subset" # Folder containing mask images
     #mask_dir = "D:\\qy44lyfe\\LLM segmentation\\Data sets\\Swallowing\\masks"
-    mask_dir = "D:\\qy44lyfe\\LLM segmentation\\Data sets\\Brain Meningioma\\Masks"
+    #mask_dir = "D:\\qy44lyfe\\LLM segmentation\\Data sets\\Brain Meningioma\\Masks"
+    #mask_dir = "D:\\qy44lyfe\\LLM segmentation\\Data sets\\DRIVE\\combined_masks\\converted"
+    mask_dir = "D:\\qy44lyfe\\LLM segmentation\\Data sets\\utrine myoma converted\\masks_myoma"
 
     #prediction_path = "D:\\qy44lyfe\\LLM segmentation\\Results\\nnUnet Baseline\\nnUnet_BAGLS_1077.png"
     #prediction_path = "D:\\qy44lyfe\\LLM segmentation\\Results\\nnUnet Baseline\\nnUnet_Swallowing_0153.png"
-    prediction_path = "D:\\qy44lyfe\\LLM segmentation\\Results\\nnUnet Baseline\\nnUnet_BrainMeningioma_0275.png"
+    #prediction_path = "D:\\qy44lyfe\\LLM segmentation\\Results\\nnUnet Baseline\\nnUnet_BrainMeningioma_0275.png"
+    #prediction_path = "D:\\qy44lyfe\\LLM segmentation\\Results\\nnUnet Baseline\\predictions\\nnUnet_ISIC_0024306.png"
+    prediction_path = "D:\\qy44lyfe\\LLM segmentation\\Results\\nnUnet Baseline\\predictions\\nnUnet_case_0039_UMD_221129_055_slice013.png"
 
-    img_name = 'Tr-me_0275.jpg'   # Example image name
 
-    save_path = 'D:\\qy44lyfe\\LLM segmentation\\Results\\Models Comparison'  # Directory to save the output
+    img_name = 'case_0039_UMD_221129_055_slice013.png'   # Example image name
+
+    save_path = 'D:\\qy44lyfe\\LLM segmentation\\Results\\Models Comparison\\Inference\\'  # Directory to save the output
     image_path = os.path.join(image_dir, img_name)
 
     # Ensure the save path exists
