@@ -3,10 +3,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # ─── 1. File paths ─────────────────────────────────────────────────────────────
-train_2024_path = r"D:\qy44lyfe\LLM segmentation\Results\Models Comparison\models 2024\all_train_losses_myoma.xlsx"
-val_2024_path   = r"D:\qy44lyfe\LLM segmentation\Results\Models Comparison\models 2024\all_validation_losses_myoma.xlsx"
-train_2025_path = r"D:\qy44lyfe\LLM segmentation\Results\Models Comparison\models 2025\all_train_losses_myoma.xlsx"
-val_2025_path   = r"D:\qy44lyfe\LLM segmentation\Results\Models Comparison\models 2025\all_validation_losses_myoma.xlsx"
+train_2024_path = r"D:\qy44lyfe\LLM segmentation\Results\Models Comparison\models 2024\all_train_losses_Retina.xlsx"
+val_2024_path   = r"D:\qy44lyfe\LLM segmentation\Results\Models Comparison\models 2024\all_validation_losses_Retina.xlsx"
+train_2025_path = r"D:\qy44lyfe\LLM segmentation\Results\Models Comparison\models 2025\all_train_losses_Retina.xlsx"
+val_2025_path   = r"D:\qy44lyfe\LLM segmentation\Results\Models Comparison\models 2025\all_validation_losses_Retina.xlsx"
 
 # ─── 2. Load DataFrames & drop nnU-Net ─────────────────────────────────────────
 train_2024 = pd.read_excel(train_2024_path, index_col=0)\
@@ -91,7 +91,7 @@ c_nr = "#00BDD6"
 
 # ─── 6. Plot ───────────────────────────────────────────────────────────────────
 fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 5), sharex=True)
-fig.suptitle("Average Loss comparison: Reasoning vs Non‐Reasoning Models, Myoma Dataset", fontsize=14)
+fig.suptitle("Average Loss comparison: Reasoning vs Non‐Reasoning Models, Retina Dataset", fontsize=14)
 
 # shared x ticks 0–20, whole numbers
 xticks = list(range(0, 21, 3))
@@ -125,6 +125,6 @@ ax2.grid(True, linestyle="--", linewidth=0.5)
 plt.tight_layout(rect=[0, 0, 1, 0.92])
 
 # ─── 7. Save figure ────────────────────────────────────────────────────────────
-out_path = r"D:\qy44lyfe\LLM segmentation\Results\Models Comparison\Reason\Reasoning vs non reasoning losses_Myoma.png"
+out_path = r"D:\qy44lyfe\LLM segmentation\Results\Models Comparison\Reason\Reasoning vs non reasoning losses_Retina.png"
 plt.savefig(out_path, dpi=600)
 #plt.show()

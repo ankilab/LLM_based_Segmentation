@@ -3,10 +3,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # ─── 1. File paths ─────────────────────────────────────────────────────────────
-train_2024_path = r"D:\qy44lyfe\LLM segmentation\Results\Models Comparison\models 2024\all_train_losses_myoma.xlsx"
-val_2024_path   = r"D:\qy44lyfe\LLM segmentation\Results\Models Comparison\models 2024\all_validation_losses_myoma.xlsx"
-train_2025_path = r"D:\qy44lyfe\LLM segmentation\Results\Models Comparison\models 2025\all_train_losses_myoma.xlsx"
-val_2025_path   = r"D:\qy44lyfe\LLM segmentation\Results\Models Comparison\models 2025\all_validation_losses_myoma.xlsx"
+train_2024_path = r"D:\qy44lyfe\LLM segmentation\Results\Models Comparison\models 2024\all_train_losses_Retina.xlsx"
+val_2024_path   = r"D:\qy44lyfe\LLM segmentation\Results\Models Comparison\models 2024\all_validation_losses_Retina.xlsx"
+train_2025_path = r"D:\qy44lyfe\LLM segmentation\Results\Models Comparison\models 2025\all_train_losses_Retina.xlsx"
+val_2025_path   = r"D:\qy44lyfe\LLM segmentation\Results\Models Comparison\models 2025\all_validation_losses_Retina.xlsx"
 
 # ─── 2. Load DataFrames & drop nnU-Net ─────────────────────────────────────────
 train_2024 = pd.read_excel(train_2024_path, index_col=0)\
@@ -41,7 +41,7 @@ c25 = "#FF5E69"
 
 # ─── 4. Plot #1: Linear y-axis ─────────────────────────────────────────────────
 fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 5), sharex=True)
-fig.suptitle("Average Loss comparison Models 2024 vs 2025, Myoma Dataset", fontsize=14)
+fig.suptitle("Average Loss comparison Models 2024 vs 2025, Retina Dataset", fontsize=14)
 x_ticks = list(range(0, 21, 3))   # 0,1,2,...,20
 for ax in (ax1, ax2):
     ax.set_xticks(x_ticks)
@@ -85,7 +85,7 @@ ax2.grid(True, linestyle="--", linewidth=0.5)
 plt.tight_layout(rect=[0, 0, 1, 0.92])
 
 # Save linear-scale figure
-out_path = r"D:\qy44lyfe\LLM segmentation\Results\Models Comparison\Reason\2024_vs_2025 losses_Myoma.png"
+out_path = r"D:\qy44lyfe\LLM segmentation\Results\Models Comparison\Reason\2024_vs_2025 losses_Retina.png"
 plt.savefig(out_path, dpi=600)
 #plt.show()
 
