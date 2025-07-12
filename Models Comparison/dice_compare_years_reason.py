@@ -1,6 +1,8 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
+from scipy.stats import mannwhitneyu
+import math
 
 def load_all_scores(paths_dict):
     vals, tests = [], []
@@ -189,4 +191,37 @@ ax4.grid(True, linestyle="--", linewidth=0.5)
 
 plt.tight_layout(rect=[0, 0, 1, 0.95])
 plt.savefig(r"D:\qy44lyfe\LLM segmentation\Results\Models Comparison\Reason\Reasoning_vs_non_reasoning_dice_BAGLS.png", dpi=600)
-plt.show()
+
+def mannwhitney_r(xs, ys, alternative='two-sided'):
+    """
+    Performs Mann–Whitney U test and returns U, p-value, and effect size r.
+    """
+    n1, n2 = len(xs), len(ys)
+    U, p = mannwhitneyu(xs, ys, alternative=alternative)
+    mu_U = n1 * n2 / 2
+    sigma_U = math.sqrt(n1 * n2 * (n1 + n2 + 1) / 12)
+    z = (U - mu_U) / sigma_U
+    r = z / math.sqrt(n1 + n2)
+    return U, p, r
+
+
+# ─── 6. Statistical comparison ─────────────────────────────────────────────────
+alpha = 0.05
+
+# Year: 2025 > 2024
+for label, (A, B) in [
+    ("Validation", (val_2025, val_2024)),
+    ("Test",       (test_2025, test_2024))
+]:
+    U, p, r = mannwhitney_r(A, B, alternative='greater')
+    sig = "Significant" if p < alpha else "Not significant"
+    print(f"{sig}: 2025 > 2024 ({label}): U={U:.1f}, p={p:.3g}, r={r:.3f}")
+
+# Reasoning > Non-Reasoning
+for label, (A, B) in [
+    ("Validation", (val_r, val_nr)),
+    ("Test",       (test_r, test_nr))
+]:
+    U, p, r = mannwhitney_r(A, B, alternative='greater')
+    sig = "Significant" if p < alpha else "Not significant"
+    print(f"{sig}: Reasoning > Non-Reasoning ({label}): U={U:.1f}, p={p:.3g}, r={r:.3f}")
