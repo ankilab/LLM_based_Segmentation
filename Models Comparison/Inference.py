@@ -24,13 +24,13 @@ from skimage.filters import threshold_otsu
 ## 2025 models: ================================================================================
 
 #model_dir = "D:\\qy44lyfe\\LLM segmentation\github repo\\LLM_based_Segmentation\\Modells 2025\\Claude 4 Sonnet"
-#model_dir = "D:\\qy44lyfe\\LLM segmentation\\github repo\\LLM_based_Segmentation\\Modells 2025\\DeepSeek R1"
+model_dir = "D:\\qy44lyfe\\LLM segmentation\\github repo\\LLM_based_Segmentation\\Modells 2025\\DeepSeek R1"
 #model_dir = "D:\\qy44lyfe\\LLM segmentation\\github repo\\LLM_based_Segmentation\\Modells 2025\\DeepSeek V3"
 #model_dir = "D:\\qy44lyfe\\LLM segmentation\\github repo\\LLM_based_Segmentation\\Modells 2025\\Gemini 2.5 pro"
 #model_dir = "D:\\qy44lyfe\\LLM segmentation\\github repo\\LLM_based_Segmentation\\Modells 2025\\GPT o3"
 #model_dir = "D:\\qy44lyfe\\LLM segmentation\\github repo\\LLM_based_Segmentation\\Modells 2025\\GPT o4-mini-high"
 #model_dir = "D:\\qy44lyfe\\LLM segmentation\\github repo\\LLM_based_Segmentation\\Modells 2025\\Grok 3"
-model_dir = "D:\\qy44lyfe\\LLM segmentation\\github repo\\LLM_based_Segmentation\\Modells 2025\\Grok 3 mini_reasoning"
+#model_dir = "D:\\qy44lyfe\\LLM segmentation\\github repo\\LLM_based_Segmentation\\Modells 2025\\Grok 3 mini_reasoning"
 #model_dir = "D:\\qy44lyfe\\LLM segmentation\\github repo\\LLM_based_Segmentation\\Modells 2025\\Llama 4 Maverick"
 #model_dir = "D:\\qy44lyfe\\LLM segmentation\\github repo\\LLM_based_Segmentation\\Modells 2025\\Mistral Medium 3"
 #model_dir = "D:\\qy44lyfe\\LLM segmentation\\github repo\\LLM_based_Segmentation\\Modells 2025\\Qwen 3_235B"
@@ -205,117 +205,117 @@ def visualize_prediction(input_img, ground_truth, prediction, img_name, dice_sco
 
 ## NEW
 ## for claude, DeepSeek, Gemini, GPTs, Llama, mistral, Qwen,
-# def infer_single_image(state_dict_path, image_path, mask_dir, img_name, save_path, image_size=(256, 256)):
-#     import torch.nn.functional as F
-#
-#     #mask_name = img_name                               # bolus dataset
-#     mask_name = img_name.replace('.png', '_seg.png')  # BAGLS dataset
-#     #mask_name = img_name.replace('.jpg', '_m.jpg')   # Brain tumor dataset
-#
-#     # 1) load checkpoint
-#     sd = torch.load(state_dict_path, map_location='cpu')
-#     # strip DataParallel prefix if present
-#     if any(k.startswith("module.") for k in sd):
-#         sd = {k.replace("module.", ""): v for k, v in sd.items()}
-#
-#     # 2) inspect first conv and last conv to figure in_ch, n_classes
-#     conv_keys = [k for k,v in sd.items() if isinstance(v, torch.Tensor) and v.ndim==4]
-#     first_w   = sd[conv_keys[0]]    # [out_ch, in_ch, k, k]
-#     last_w    = sd[conv_keys[-1]]   # [n_classes, feat, 1,1]
-#     in_ch     = first_w.shape[1]
-#     n_classes = last_w.shape[0]
-#
-#     # 3) instantiate matching UNet, load all matching weights
-#     model = UNet(in_ch, n_classes)
-#     msd   = model.state_dict()
-#     filtered = {k:v for k,v in sd.items() if k in msd and v.shape==msd[k].shape}
-#     msd.update(filtered)
-#     model.load_state_dict(msd)
-#     model.eval()
-#
-#     # 4) load + resize + to-tensor the grayscale image
-#     pil = Image.open(image_path).convert("L")
-#     pil = transforms.Resize(image_size)(pil)
-#     img_t = TF.to_tensor(pil).unsqueeze(0)  # [1,1,H,W]
-#
-#     # 5) tile if UNet expects 3 channels
-#     if in_ch == 1:
-#         inp = img_t
-#     elif in_ch == 3:
-#         inp = img_t.repeat(1,3,1,1)
-#     else:
-#         raise RuntimeError(f"Model expects {in_ch} input channels; only 1 or 3 are supported")
-#
-#     # 6) load + resize + to-tensor the mask
-#     mp  = Image.open(os.path.join(mask_dir, mask_name)).convert("L")
-#     mp  = transforms.Resize(image_size)(mp)
-#     mask_t = TF.to_tensor(mp).unsqueeze(0)
-#     mask_t = (mask_t > 0.5).float()
-#
-#     # 7) forward, slice to single channel, resize if needed
-#     with torch.no_grad():
-#         out = model(inp)                # [1,C,H,W]
-#         if out.shape[1] != 1:
-#             out = out[:, :1, :, :]      # keep only channel 0
-#         if out.shape != mask_t.shape:
-#             out = F.interpolate(
-#                 out,
-#                 size=mask_t.shape[2:],
-#                 mode="bilinear",
-#                 align_corners=False
-#             )
-#         pred = (out > 0.5).float()
-#
-#     # 8) dice + visualize
-#     d = dice_coefficient(pred, mask_t).item()
-#     visualize_prediction(inp, mask_t, pred, img_name, d, save_path)
+def infer_single_image(state_dict_path, image_path, mask_dir, img_name, save_path, image_size=(256, 256)):
+    import torch.nn.functional as F
+
+    #mask_name = img_name                               # bolus dataset
+    mask_name = img_name.replace('.png', '_seg.png')  # BAGLS dataset
+    #mask_name = img_name.replace('.jpg', '_m.jpg')   # Brain tumor dataset
+
+    # 1) load checkpoint
+    sd = torch.load(state_dict_path, map_location='cpu')
+    # strip DataParallel prefix if present
+    if any(k.startswith("module.") for k in sd):
+        sd = {k.replace("module.", ""): v for k, v in sd.items()}
+
+    # 2) inspect first conv and last conv to figure in_ch, n_classes
+    conv_keys = [k for k,v in sd.items() if isinstance(v, torch.Tensor) and v.ndim==4]
+    first_w   = sd[conv_keys[0]]    # [out_ch, in_ch, k, k]
+    last_w    = sd[conv_keys[-1]]   # [n_classes, feat, 1,1]
+    in_ch     = first_w.shape[1]
+    n_classes = last_w.shape[0]
+
+    # 3) instantiate matching UNet, load all matching weights
+    model = UNet(in_ch, n_classes)
+    msd   = model.state_dict()
+    filtered = {k:v for k,v in sd.items() if k in msd and v.shape==msd[k].shape}
+    msd.update(filtered)
+    model.load_state_dict(msd)
+    model.eval()
+
+    # 4) load + resize + to-tensor the grayscale image
+    pil = Image.open(image_path).convert("L")
+    pil = transforms.Resize(image_size)(pil)
+    img_t = TF.to_tensor(pil).unsqueeze(0)  # [1,1,H,W]
+
+    # 5) tile if UNet expects 3 channels
+    if in_ch == 1:
+        inp = img_t
+    elif in_ch == 3:
+        inp = img_t.repeat(1,3,1,1)
+    else:
+        raise RuntimeError(f"Model expects {in_ch} input channels; only 1 or 3 are supported")
+
+    # 6) load + resize + to-tensor the mask
+    mp  = Image.open(os.path.join(mask_dir, mask_name)).convert("L")
+    mp  = transforms.Resize(image_size)(mp)
+    mask_t = TF.to_tensor(mp).unsqueeze(0)
+    mask_t = (mask_t > 0.5).float()
+
+    # 7) forward, slice to single channel, resize if needed
+    with torch.no_grad():
+        out = model(inp)                # [1,C,H,W]
+        if out.shape[1] != 1:
+            out = out[:, :1, :, :]      # keep only channel 0
+        if out.shape != mask_t.shape:
+            out = F.interpolate(
+                out,
+                size=mask_t.shape[2:],
+                mode="bilinear",
+                align_corners=False
+            )
+        pred = (out > 0.5).float()
+
+    # 8) dice + visualize
+    d = dice_coefficient(pred, mask_t).item()
+    visualize_prediction(inp, mask_t, pred, img_name, d, save_path)
 
 
 ## NEW: for grok 3, grok 3 mini ##########################################################################
-def infer_single_image(state_dict_path, image_path, mask_dir, img_name, save_path, image_size=(256, 256)):
-    # 1. build model
-    model = UNet()
-    sd = torch.load(state_dict_path, map_location='cpu')
-    # load state_dict (bare or checkpoint)
-    if 'model_state_dict' in sd:
-        model.load_state_dict(sd['model_state_dict'])
-    else:
-        model.load_state_dict(sd)
-    model.eval()
-
-    # 2. load image+mask
-    img_t, gt_t = load_image_and_mask(image_path, mask_dir, image_size)
-    img_t = img_t.unsqueeze(0)   # [1,C,H,W]
-    gt_t  = gt_t.unsqueeze(0)    # [1,1,H,W]
-
-    # 3. inference
-    with torch.no_grad():
-        logits = model(img_t)    # [1, C_out, H, W]
-        if logits.shape[1] == 1:
-            probs = torch.sigmoid(logits)
-        else:
-            probs = torch.softmax(logits, dim=1)[:, 1:2]
-
-        pmin, pmax = probs.min().item(), probs.max().item()
-        print(f" prob range: {pmin:.4f} .. {pmax:.4f}")
-
-        # 4. compute Otsu threshold on CPU numpy array
-        prob_np = probs[0,0].cpu().numpy()
-        try:
-            otsu_thresh = threshold_otsu(prob_np)
-        except ValueError:
-            # fall back if uniform
-            otsu_thresh = 0.5
-        print(f" Otsu threshold: {otsu_thresh:.4f}")
-
-        pred_t = (probs > otsu_thresh).float()
-
-    # 5. dice
-    dice_score = dice_coefficient(pred_t, gt_t).item()
-    print(" Dice:", dice_score)
-
-    # 6. visualize + save
-    visualize_prediction(img_t, gt_t, pred_t, img_name, dice_score, save_path)
+# def infer_single_image(state_dict_path, image_path, mask_dir, img_name, save_path, image_size=(256, 256)):
+#     # 1. build model
+#     model = UNet()
+#     sd = torch.load(state_dict_path, map_location='cpu')
+#     # load state_dict (bare or checkpoint)
+#     if 'model_state_dict' in sd:
+#         model.load_state_dict(sd['model_state_dict'])
+#     else:
+#         model.load_state_dict(sd)
+#     model.eval()
+#
+#     # 2. load image+mask
+#     img_t, gt_t = load_image_and_mask(image_path, mask_dir, image_size)
+#     img_t = img_t.unsqueeze(0)   # [1,C,H,W]
+#     gt_t  = gt_t.unsqueeze(0)    # [1,1,H,W]
+#
+#     # 3. inference
+#     with torch.no_grad():
+#         logits = model(img_t)    # [1, C_out, H, W]
+#         if logits.shape[1] == 1:
+#             probs = torch.sigmoid(logits)
+#         else:
+#             probs = torch.softmax(logits, dim=1)[:, 1:2]
+#
+#         pmin, pmax = probs.min().item(), probs.max().item()
+#         print(f" prob range: {pmin:.4f} .. {pmax:.4f}")
+#
+#         # 4. compute Otsu threshold on CPU numpy array
+#         prob_np = probs[0,0].cpu().numpy()
+#         try:
+#             otsu_thresh = threshold_otsu(prob_np)
+#         except ValueError:
+#             # fall back if uniform
+#             otsu_thresh = 0.5
+#         print(f" Otsu threshold: {otsu_thresh:.4f}")
+#
+#         pred_t = (probs > otsu_thresh).float()
+#
+#     # 5. dice
+#     dice_score = dice_coefficient(pred_t, gt_t).item()
+#     print(" Dice:", dice_score)
+#
+#     # 6. visualize + save
+#     visualize_prediction(img_t, gt_t, pred_t, img_name, dice_score, save_path)
 
 
 
@@ -336,13 +336,13 @@ if __name__ == "__main__":
     ## 2025 models =======================================================================================
     # BAGLS
     #state_dict_path = "D:\\qy44lyfe\\LLM segmentation\\Results\\2025\\Claude 4 Sonnet\\out of the box\\BAGLS output\\model_state_dict.pth"
-    #state_dict_path = "D:\\qy44lyfe\\LLM segmentation\\Results\\2025\\DeepSeek R1\\out of the box\\BAGLS output\\unet_model.pth"
+    state_dict_path = "D:\\qy44lyfe\\LLM segmentation\\Results\\2025\\DeepSeek R1\\out of the box\\Brain output\\unet_model.pth"
     #state_dict_path = "D:\\qy44lyfe\\LLM segmentation\\Results\\2025\\DeepSeek V3\\out of the box\\BAGLS output\\model_state_dict.pth"
     #state_dict_path = "D:\\qy44lyfe\\LLM segmentation\\Results\\2025\\Gemini 2.5 Pro\\out of the box\\BAGLS output\\unet_model_state_dict.pth"
     #state_dict_path = "D:\\qy44lyfe\\LLM segmentation\\Results\\2025\\GPT o3\\out of the box\\BAGLS output\\unet_state_dict.pth"
     #state_dict_path = "D:\\qy44lyfe\\LLM segmentation\\Results\\2025\\GPT o4-mini-high\\out of the box\\BAGLS output\\unet_model_state_dict.pth"
     #state_dict_path = "D:\\qy44lyfe\\LLM segmentation\\Results\\2025\\Grok 3\\out of the box\\BAGLS output\\model_state_dict.pth"
-    state_dict_path = "D:\\qy44lyfe\\LLM segmentation\\Results\\2025\\Grok 3 mini Reasoning\\out of the box\\BAGLS output\\model_state_dict.pth"
+    #state_dict_path = "D:\\qy44lyfe\\LLM segmentation\\Results\\2025\\Grok 3 mini Reasoning\\out of the box\\BAGLS output\\model_state_dict.pth"
     #state_dict_path = "D:\\qy44lyfe\\LLM segmentation\\Results\\2025\\Llama 4 Maverick\\out of the box\\BAGLS output\\model.pth"
     #state_dict_path = "D:\\qy44lyfe\\LLM segmentation\\Results\\2025\\Mistral Medium 3\\out of the box\\BAGLS output\\mask fix\\unet_model.pth"
     #state_dict_path = "D:\\qy44lyfe\\LLM segmentation\\Results\\2025\\Qwen 3_235B\\out of the box\\BAGLS output\\model_state.pth"
@@ -373,7 +373,7 @@ if __name__ == "__main__":
     #img_name = 'case_0039_UMD_221129_055_slice013.png'  # Myoma
 
 
-    save_path = 'D:\\qy44lyfe\\LLM segmentation\\Results\\Models Comparison\\Inference\\inf_2025\\'
+    save_path = 'D:\\qy44lyfe\\LLM segmentation\\Results\\Models Comparison\\Inference\\inf_2025\\test\\'
 
     image_path = os.path.join(image_dir, img_name)
 
