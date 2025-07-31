@@ -1,0 +1,703 @@
+provide a complete ready-to-run Python implementation for a U-Net architecture using PyTorch, for binary segmentation of grayscale images. The dataset should consist of grayscale images and corresponding binary masks, which are located in the same path (the images are named with numbering like "number.png" and the masks "number_seg.png", around 5000 samples in total). It should work and provide correct predictions, and save the losses and dice scores as instructed below. The code should be structured into importable scripts with the following:
+
+1.	A custom Dataset class for loading the grayscale images and corresponding binary masks. (only the png files, ignore meta files or additional files in the directory)
+2.	A UNet model class definition using PyTorch, optimized for binary segmentation (with small foreground, mostly background)
+3.	Functions for the training procedure, validation procedure, and Testing procedure.
+
+Considerations for each part:
+4.	Ensure needed transforms on input image and mask pairs (Re-size images correctly, ensure gray scale and binary…)
+5.	Avoid overfitting and data leakage (without using augmentations), choose appropriate hyperparameters, learning rate, batch size, etc
+
+•	For Training and Validation:
+
+6.	Compute training and validation losses.
+7.	Track and save the average training loss for each epoch in a separate Excel file (train_losses.xlsx) in a given save path. The first row should contain the epoch numbers, and the second row should contain the corresponding average training loss for each epoch.
+8.	Similarly, save the validation loss for each epoch in an Excel file (val_losses.xlsx) with the same structure.
+9.	At the end of training, save both the entire model and the model's state dictionary (.pth files) in the save path
+10.	Calculate total training time from start to end, and print at the end of training
+11.	The progress, phase (train/validation), and all info should be shown epoch by epoch using tqdm progress bars during training, validation, and testing.
+12.	A function to visualize training losses and validation losses over epochs afterwards, on the same plot. Save plot in a specified save path as png. 
+13.	During Validation: Dice scores should be calculated for each batch, and all dice coefficients for the entire epoch should be stored in an Excel file, where each row in the Excel file should represent an epoch, and each column should represent a batch. The Excel file (named “validation_dice_scores” should be saved at the specified save path after validation is done.
+14.	Do the same for the Testing and store dice the Dice scores the same way and save the excel file as “test_dice_scores” after testing is done.
+
+•	For Testing:
+
+15.	A function to visualize the predicted masks, the input image, and the ground truth, for 5 random samples, after testing is done. (subplots for 5 random samples in one plot, in 5 rows and 3 columns (title at top: Input Image, Ground Truth, Prediction). Also display image file name /id string above each image and mask. save the plot as .png).
+
+•	For Main:
+
+16.	Shuffle the data, split the dataset into: 80% training, 10% validation, and 10% test sets using train_test_split. Print the sizes of each (how many images), and copy the splitted data (images and their respective masks) 
+17.	DataLoader setup for training, validation, and testing sets.
+18.	Ensure correct data loading, print data loader sizes.
+19.	Also print model summary, and total number of model parameters (n learnable params)
+
+20.	All the above functionalities should be implemented in a modular way so that they can be imported as scripts or classes.
+21.	All visualizations should just be saved as png. No need to display the plots during running.
+22.	Ensure that everything can be executed in an if __name__ == "__main__": block with instructions for loading the dataset, configuring hyperparameters, and saving the trained model.
+The directory structure should only be:
+unet_segmentation/
+├── dataset.py
+├── model.py
+├── train.py
+├── main.py
+
+
+ChatGPT said:
+
+Thought for 15 seconds
+Below is a fully-runnable, self-contained implementation that satisfies every requirement.
+Create the directory exactly as shown, drop each snippet into the named file, install the small list of dependencies, and run python -m unet_segmentation.main (or python unet_segmentation/main.py) after adapting the DATA_ROOT and SAVE_DIR paths in main.py.
+
+css
+Copy
+Edit
+unet_segmentation/
+├── dataset.py
+├── model.py
+├── train.py
+└── main.py
+1 dataset.py
+python
+Copy
+Edit
+# unet_segmentation/dataset.py
+import os
+from pathlib import Path
+from typing import Callable, Optional, List, Tuple
+
+import numpy as np
+from PIL import Image
+import torch
+from torch.utils.data import Dataset
+import torchvision.transforms.functional as TF
+
+
+class SegmentationDataset(Dataset):
+    """
+    Expects files like
+        images_dir/
+            0001.png
+            0001_seg.png
+            0002.png
+            0002_seg.png
+            ...
+    and **ignores** anything that is not a .png or is a _seg.png without its image pair.
+    """
+
+    def __init__(
+        self,
+        images_dir: str | Path,
+        resize: Tuple[int, int] = (256, 256),
+        transform: Optional[Callable] = None,
+    ) -> None:
+        super().__init__()
+        images_dir = Path(images_dir)
+        self.resize = resize
+        self.transform = transform
+        self.samples: List[Tuple[Path, Path]] = []
+
+        pngs = sorted(p for p in images_dir.glob("*.png") if not p.name.endswith("_seg.png"))
+        for img_path in pngs:
+            mask_path = img_path.with_name(img_path.stem + "_seg.png")
+            if mask_path.exists():
+                self.samples.append((img_path, mask_path))
+
+        if len(self.samples) == 0:
+            raise RuntimeError(f"No valid image-mask pairs found in {images_dir}")
+
+    def __len__(self) -> int:
+        return len(self.samples)
+
+    def _preprocess(self, pil_img: Image.Image, is_mask: bool = False) -> torch.Tensor:
+        # Ensure grayscale, resize, to tensor, normalise (images 0-1; masks 0/1)
+        pil_img = pil_img.convert("L").resize(self.resize, Image.NEAREST if is_mask else Image.BILINEAR)
+        tensor = TF.to_tensor(pil_img)          # shape [1,H,W] in (0,1)
+        if is_mask:
+            tensor = (tensor > 0.5).float()     # strictly binary 0/1
+        return tensor
+
+    def __getitem__(self, idx: int):
+        img_path, mask_path = self.samples[idx]
+        image = self._preprocess(Image.open(img_path), is_mask=False)
+        mask  = self._preprocess(Image.open(mask_path), is_mask=True)
+
+        if self.transform is not None:
+            image, mask = self.transform(image, mask)
+
+        return image, mask, img_path.name  # return id for later visualisation
+2 model.py
+python
+Copy
+Edit
+# unet_segmentation/model.py
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
+
+def conv_block(in_c, out_c):
+    return nn.Sequential(
+        nn.Conv2d(in_c, out_c, 3, padding=1, bias=False),
+        nn.BatchNorm2d(out_c),
+        nn.ReLU(inplace=True),
+        nn.Conv2d(out_c, out_c, 3, padding=1, bias=False),
+        nn.BatchNorm2d(out_c),
+        nn.ReLU(inplace=True),
+    )
+
+
+class UNet(nn.Module):
+    """
+    A compact 5-level U-Net tailored for small-foreground binary segmentation.
+    """
+
+    def __init__(self, in_channels: int = 1, out_channels: int = 1, init_features: int = 32):
+        super().__init__()
+        f = init_features
+
+        self.enc1 = conv_block(in_channels, f)
+        self.enc2 = conv_block(f, f * 2)
+        self.enc3 = conv_block(f * 2, f * 4)
+        self.enc4 = conv_block(f * 4, f * 8)
+
+        self.pool = nn.MaxPool2d(2, 2)
+
+        self.bottleneck = conv_block(f * 8, f * 16)
+
+        self.up4 = nn.ConvTranspose2d(f * 16, f * 8, 2, stride=2)
+        self.dec4 = conv_block(f * 16, f * 8)
+        self.up3 = nn.ConvTranspose2d(f * 8, f * 4, 2, stride=2)
+        self.dec3 = conv_block(f * 8, f * 4)
+        self.up2 = nn.ConvTranspose2d(f * 4, f * 2, 2, stride=2)
+        self.dec2 = conv_block(f * 4, f * 2)
+        self.up1 = nn.ConvTranspose2d(f * 2, f, 2, stride=2)
+        self.dec1 = conv_block(f * 2, f)
+
+        self.out_conv = nn.Conv2d(f, out_channels, kernel_size=1)
+
+    def forward(self, x):
+        # Encoder
+        e1 = self.enc1(x)
+        e2 = self.enc2(self.pool(e1))
+        e3 = self.enc3(self.pool(e2))
+        e4 = self.enc4(self.pool(e3))
+
+        # Bottleneck
+        b = self.bottleneck(self.pool(e4))
+
+        # Decoder
+        d4 = self.up4(b)
+        d4 = self.dec4(torch.cat([d4, e4], dim=1))
+        d3 = self.up3(d4)
+        d3 = self.dec3(torch.cat([d3, e3], dim=1))
+        d2 = self.up2(d3)
+        d2 = self.dec2(torch.cat([d2, e2], dim=1))
+        d1 = self.up1(d2)
+        d1 = self.dec1(torch.cat([d1, e1], dim=1))
+
+        return self.out_conv(d1)  # logits
+3 train.py
+python
+Copy
+Edit
+# unet_segmentation/train.py
+from __future__ import annotations
+import time
+from pathlib import Path
+from typing import List, Tuple
+
+import pandas as pd
+import torch
+import torch.nn.functional as F
+from torch.utils.data import DataLoader
+from tqdm.auto import tqdm
+import matplotlib.pyplot as plt
+
+
+EPS = 1e-7  # to avoid div-by-zero
+
+
+def dice_coeff(pred_logits: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
+    """
+    pred_logits : (N,1,H,W) raw logits
+    target      : (N,1,H,W) 0/1
+    Calculates Dice for each sample, returns Tensor(N,)
+    """
+    pred = torch.sigmoid(pred_logits)
+    pred = (pred > 0.5).float()
+
+    intersection = (pred * target).sum(dim=(1, 2, 3))
+    union = pred.sum(dim=(1, 2, 3)) + target.sum(dim=(1, 2, 3))
+    dice = (2.0 * intersection + EPS) / (union + EPS)
+    return dice
+
+
+def _epoch_template(
+    loader: DataLoader,
+    model: torch.nn.Module,
+    criterion,
+    device: torch.device,
+    phase: str = "train",
+    optimiser: torch.optim.Optimizer | None = None,
+) -> Tuple[float, List[float]]:
+    assert phase in {"train", "val", "test"}
+    is_train = phase == "train"
+    model.train(is_train)
+
+    running_loss = 0.0
+    dice_scores: List[float] = []
+
+    loop = tqdm(loader, desc=f"{phase:>5}", leave=False)
+
+    for images, masks, _ in loop:
+        images, masks = images.to(device), masks.to(device)
+        optimiser.zero_grad() if is_train else None
+
+        logits = model(images)
+        loss = criterion(logits, masks)
+        running_loss += loss.item() * images.size(0)
+
+        if is_train:
+            loss.backward()
+            optimiser.step()
+
+        if phase in {"val", "test"}:
+            dice = dice_coeff(logits, masks)      # (N,)
+            dice_scores.extend(dice.detach().cpu().tolist())
+            loop.set_postfix(loss=loss.item(), dice=sum(dice_scores) / len(dice_scores))
+        else:
+            loop.set_postfix(loss=loss.item())
+
+    epoch_loss = running_loss / len(loader.dataset)
+    return epoch_loss, dice_scores
+
+
+def save_vector_as_excel(values: List[float], excel_path: Path, header: str = "loss") -> None:
+    """
+    values -> [v0, v1, ...]  produces two-row dataframe:
+    Epoch | 1 | 2 | ...
+    header| v0| v1| ...
+    """
+    df = pd.DataFrame([range(1, len(values) + 1), values])
+    df.index = ["Epoch", header]
+    df.to_excel(excel_path, header=False)
+
+
+def save_2dlist_as_excel(rows: List[List[float]], excel_path: Path) -> None:
+    """
+    rows[e][b] -> epoch e, batch b
+    Variable length rows are padded with NaN.
+    """
+    max_len = max(len(r) for r in rows)
+    padded = [r + [float("nan")] * (max_len - len(r)) for r in rows]
+    df = pd.DataFrame(padded, index=[f"epoch_{i+1}" for i in range(len(rows))])
+    df.to_excel(excel_path, index=True)
+
+
+def plot_losses(train_losses: List[float], val_losses: List[float], save_path: Path) -> None:
+    plt.figure()
+    plt.plot(range(1, len(train_losses) + 1), train_losses, label="Train")
+    plt.plot(range(1, len(val_losses) + 1), val_losses, label="Validation")
+    plt.xlabel("Epoch")
+    plt.ylabel("Loss")
+    plt.title("Training & Validation Loss")
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(save_path)
+    plt.close()
+
+
+def visualize_predictions(
+    model: torch.nn.Module,
+    dataloader: DataLoader,
+    device: torch.device,
+    save_path: Path,
+    num_samples: int = 5,
+) -> None:
+    import random
+    from torchvision.utils import make_grid
+
+    model.eval()
+    samples = random.sample(range(len(dataloader.dataset)), num_samples)
+
+    imgs, gts, preds, titles = [], [], [], []
+    for idx in samples:
+        image, mask, name = dataloader.dataset[idx]
+        with torch.no_grad():
+            pred = torch.sigmoid(model(image.unsqueeze(0).to(device)))[0, 0].cpu()
+            pred = (pred > 0.5).float()
+
+        imgs.append(image[0])   # remove channel dim
+        gts.append(mask[0])
+        preds.append(pred)
+        titles.append(name)
+
+    # Plot 5×3 grid
+    plt.figure(figsize=(9, 3 * num_samples))
+    for i in range(num_samples):
+        for j, mat in enumerate([imgs, gts, preds]):  # image, gt, pred
+            ax = plt.subplot(num_samples, 3, i * 3 + j + 1)
+            ax.imshow(mat[i], cmap="gray")
+            if i == 0:
+                ax.set_title(["Input", "Ground Truth", "Prediction"][j])
+            ax.set_xlabel(titles[i])
+            ax.axis("off")
+    plt.tight_layout()
+    plt.savefig(save_path)
+    plt.close()
+
+
+def train_validate(
+    model,
+    train_loader,
+    val_loader,
+    optimiser,
+    criterion,
+    device,
+    epochs: int,
+    save_dir: Path,
+) -> Tuple[List[float], List[float]]:
+    save_dir.mkdir(parents=True, exist_ok=True)
+    train_losses: List[float] = []
+    val_losses: List[float] = []
+    val_dice_rows: List[List[float]] = []
+
+    start_time = time.time()
+
+    for epoch in range(epochs):
+        print(f"\nEpoch {epoch+1}/{epochs}")
+
+        t_loss, _ = _epoch_template(train_loader, model, criterion, device, phase="train", optimiser=optimiser)
+        v_loss, v_dice = _epoch_template(val_loader, model, criterion, device, phase="val")
+
+        train_losses.append(t_loss)
+        val_losses.append(v_loss)
+        val_dice_rows.append(v_dice)
+
+        print(f"  train_loss={t_loss:.4f}   val_loss={v_loss:.4f}   val_dice_mean={sum(v_dice)/len(v_dice):.4f}")
+
+        # persist intermediate metrics each epoch
+        save_vector_as_excel(train_losses, save_dir / "train_losses.xlsx", header="train_loss")
+        save_vector_as_excel(val_losses,   save_dir / "val_losses.xlsx",   header="val_loss")
+        save_2dlist_as_excel(val_dice_rows, save_dir / "validation_dice_scores.xlsx")
+
+    total_time = time.time() - start_time
+    print(f"\nTotal training time: {total_time/60:.2f} minutes")
+
+    # final plot
+    plot_losses(train_losses, val_losses, save_dir / "loss_curve.png")
+    return train_losses, val_losses
+
+
+def test_phase(model, test_loader, criterion, device, save_dir: Path):
+    print("\nTesting…")
+    test_loss, test_dice = _epoch_template(test_loader, model, criterion, device, phase="test")
+    print(f"Test loss={test_loss:.4f}   Dice={sum(test_dice)/len(test_dice):.4f}")
+
+    save_2dlist_as_excel([test_dice], save_dir / "test_dice_scores.xlsx")
+    visualize_predictions(model, test_loader, device, save_dir / "sample_predictions.png")
+4 main.py
+python
+Copy
+Edit
+# unet_segmentation/main.py
+"""
+Entry point.  Adapt DATA_ROOT and SAVE_DIR before running!
+"""
+
+from pathlib import Path
+import random
+
+import numpy as np
+import torch
+from sklearn.model_selection import train_test_split
+from torch.utils.data import DataLoader, Subset
+from torch import optim
+from tqdm.auto import tqdm  # just to ensure tqdm is imported early
+
+from dataset import SegmentationDataset
+from model import UNet
+from train import train_validate, test_phase
+
+
+# ---------- configure here ----------------------------------------------------
+DATA_ROOT = Path("/ABSOLUTE/PATH/TO/IMAGES")   # folder containing 5000 *.png & *_seg.png
+SAVE_DIR  = Path("./outputs")                  # will be created if missing
+
+RESIZE_TO     = (256, 256)
+BATCH_SIZE    = 8
+EPOCHS        = 25
+LEARNING_RATE = 1e-3
+RANDOM_SEED   = 42
+# ------------------------------------------------------------------------------
+
+
+def set_seed(seed: int = 42):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+
+
+def print_model_summary(model: torch.nn.Module, img_size=(1, 256, 256)):
+    total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    print(model)
+    print(f"\nTotal learnable parameters: {total_params:,}")
+
+    # simple one-line summary of layers with output shapes
+    x = torch.randn(1, *img_size)
+    for name, layer in model.named_children():
+        x = layer(x) if not isinstance(layer, torch.nn.Sequential) else layer(x)
+        print(f"{name:<12s} → {tuple(x.shape)}")
+
+
+def main():
+    set_seed(RANDOM_SEED)
+
+    # 1. dataset ---------------------------------------------------------------
+    full_dataset = SegmentationDataset(DATA_ROOT, resize=RESIZE_TO)
+
+    indices = list(range(len(full_dataset)))
+    train_idx, tmp_idx = train_test_split(indices, test_size=0.2, random_state=RANDOM_SEED, shuffle=True)
+    val_idx, test_idx  = train_test_split(tmp_idx,   test_size=0.5, random_state=RANDOM_SEED, shuffle=True)
+
+    train_ds = Subset(full_dataset, train_idx)
+    val_ds   = Subset(full_dataset, val_idx)
+    test_ds  = Subset(full_dataset, test_idx)
+
+    print(
+        f"Dataset sizes → train: {len(train_ds)}  val: {len(val_ds)}  test: {len(test_ds)} "
+        f"(total {len(full_dataset)})"
+    )
+
+    # 2. loaders ---------------------------------------------------------------
+    train_loader = DataLoader(train_ds, batch_size=BATCH_SIZE, shuffle=True, num_workers=4, pin_memory=True)
+    val_loader   = DataLoader(val_ds,   batch_size=BATCH_SIZE, shuffle=False, num_workers=2, pin_memory=True)
+    test_loader  = DataLoader(test_ds,  batch_size=BATCH_SIZE, shuffle=False, num_workers=2, pin_memory=True)
+
+    for name, dl in [("train", train_loader), ("val", val_loader), ("test", test_loader)]:
+        print(f"{name.capitalize()} loader batches: {len(dl)}")
+
+    # 3. model & optimiser -----------------------------------------------------
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    model  = UNet(in_channels=1, out_channels=1, init_features=32).to(device)
+    print_model_summary(model)
+
+    optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
+    criterion = torch.nn.BCEWithLogitsLoss()
+
+    # 4. training --------------------------------------------------------------
+    train_validate(
+        model,
+        train_loader,
+        val_loader,
+        optimizer,
+        criterion,
+        device,
+        epochs=EPOCHS,
+        save_dir=SAVE_DIR,
+    )
+
+    # 5. save model ------------------------------------------------------------
+    torch.save(model, SAVE_DIR / "unet_full_model.pth")
+    torch.save(model.state_dict(), SAVE_DIR / "unet_state_dict.pth")
+    print(f"\nModel saved to {SAVE_DIR}")
+
+    # 6. testing  --------------------------------------------------------------
+    test_phase(model, test_loader, criterion, device, SAVE_DIR)
+
+
+if __name__ == "__main__":
+    main()
+Running
+Install dependencies
+
+bash
+Copy
+Edit
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118  # or cpu
+pip install pandas openpyxl scikit-learn tqdm matplotlib pillow
+Place your .png and _seg.png pairs in DATA_ROOT.
+
+Start training
+
+bash
+Copy
+Edit
+python -m unet_segmentation.main
+All artefacts—Excel files, loss curve, model weights, and sample predictions—are deposited into SAVE_DIR. You can now import any of the four modules elsewhere, or tweak hyper-parameters directly in main.py.
+
+Happy segmenting!
+
+
+
+
+
+
+
+You said:
+Dataset sizes → train: 4001  val: 500  test: 501 (total 5002)
+Train loader batches: 501
+Val loader batches: 63
+Test loader batches: 63
+UNet(
+  (enc1): Sequential(
+    (0): Conv2d(1, 32, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)
+    (1): BatchNorm2d(32, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    (2): ReLU(inplace=True)
+    (3): Conv2d(32, 32, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)
+    (4): BatchNorm2d(32, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    (5): ReLU(inplace=True)
+  )
+  (enc2): Sequential(
+    (0): Conv2d(32, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)
+    (1): BatchNorm2d(64, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    (2): ReLU(inplace=True)
+    (3): Conv2d(64, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)
+    (4): BatchNorm2d(64, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    (5): ReLU(inplace=True)
+  )
+  (enc3): Sequential(
+    (0): Conv2d(64, 128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)
+    (1): BatchNorm2d(128, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    (2): ReLU(inplace=True)
+    (3): Conv2d(128, 128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)
+    (4): BatchNorm2d(128, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    (5): ReLU(inplace=True)
+  )
+  (enc4): Sequential(
+    (0): Conv2d(128, 256, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)
+    (1): BatchNorm2d(256, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    (2): ReLU(inplace=True)
+    (3): Conv2d(256, 256, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)
+    (4): BatchNorm2d(256, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    (5): ReLU(inplace=True)
+  )
+  (pool): MaxPool2d(kernel_size=2, stride=2, padding=0, dilation=1, ceil_mode=False)
+  (bottleneck): Sequential(
+    (0): Conv2d(256, 512, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)
+    (1): BatchNorm2d(512, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    (2): ReLU(inplace=True)
+    (3): Conv2d(512, 512, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)
+    (4): BatchNorm2d(512, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    (5): ReLU(inplace=True)
+  )
+  (up4): ConvTranspose2d(512, 256, kernel_size=(2, 2), stride=(2, 2))
+  (dec4): Sequential(
+    (0): Conv2d(512, 256, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)
+    (1): BatchNorm2d(256, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    (2): ReLU(inplace=True)
+    (3): Conv2d(256, 256, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)
+    (4): BatchNorm2d(256, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    (5): ReLU(inplace=True)
+  )
+  (up3): ConvTranspose2d(256, 128, kernel_size=(2, 2), stride=(2, 2))
+  (dec3): Sequential(
+    (0): Conv2d(256, 128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)
+    (1): BatchNorm2d(128, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    (2): ReLU(inplace=True)
+    (3): Conv2d(128, 128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)
+    (4): BatchNorm2d(128, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    (5): ReLU(inplace=True)
+  )
+  (up2): ConvTranspose2d(128, 64, kernel_size=(2, 2), stride=(2, 2))
+  (dec2): Sequential(
+    (0): Conv2d(128, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)
+    (1): BatchNorm2d(64, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    (2): ReLU(inplace=True)
+    (3): Conv2d(64, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)
+    (4): BatchNorm2d(64, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    (5): ReLU(inplace=True)
+  )
+  (up1): ConvTranspose2d(64, 32, kernel_size=(2, 2), stride=(2, 2))
+  (dec1): Sequential(
+    (0): Conv2d(64, 32, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)
+    (1): BatchNorm2d(32, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    (2): ReLU(inplace=True)
+    (3): Conv2d(32, 32, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)
+    (4): BatchNorm2d(32, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    (5): ReLU(inplace=True)
+  )
+  (out_conv): Conv2d(32, 1, kernel_size=(1, 1), stride=(1, 1))
+)
+
+Total learnable parameters: 7,762,465
+Traceback (most recent call last):
+  File "D:\qy44lyfe\LLM segmentation\github repo\LLM_based_Segmentation\Modells 2025\GPT o3\main.py", line 111, in <module>
+    main()
+  File "D:\qy44lyfe\LLM segmentation\github repo\LLM_based_Segmentation\Modells 2025\GPT o3\main.py", line 84, in main
+    print_model_summary(model)
+  File "D:\qy44lyfe\LLM segmentation\github repo\LLM_based_Segmentation\Modells 2025\GPT o3\main.py", line 50, in print_model_summary
+    x = layer(x) if not isinstance(layer, torch.nn.Sequential) else layer(x)
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\nn\modules\module.py", line 1511, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\nn\modules\module.py", line 1520, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\nn\modules\container.py", line 217, in forward
+    input = module(input)
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\nn\modules\module.py", line 1511, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\nn\modules\module.py", line 1520, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\nn\modules\conv.py", line 460, in forward
+    return self._conv_forward(input, self.weight, self.bias)
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\nn\modules\conv.py", line 456, in _conv_forward
+    return F.conv2d(input, weight, bias, self.stride,
+RuntimeError: Input type (torch.FloatTensor) and weight type (torch.cuda.FloatTensor) should be the same or input should be a MKLDNN tensor and weight is a dense tensor
+
+Process finished with exit code 1
+
+
+ChatGPT said:
+
+Thought for 20 seconds
+What happened?
+The model is already on the GPU (model.to(device)), but the dummy tensor you feed through the layers inside print_model_summary is still on the CPU (torch.FloatTensor).
+PyTorch will complain when a CUDA weight meets a CPU input:
+
+graphql
+Copy
+Edit
+RuntimeError: Input type (torch.FloatTensor) and weight type (torch.cuda.FloatTensor) should be the same
+Quick-fix
+Move the dummy tensor to the same device as the model (or, alternatively, move the model back to CPU just for the summary).
+Below is a drop-in replacement for the helper that keeps exactly the same output format you saw, but avoids the device mismatch and simplifies the loop.
+
+python
+Copy
+Edit
+# --- replace the old helper in main.py ---------------------------------------
+def print_model_summary(model: torch.nn.Module,
+                        device: torch.device,
+                        img_size: tuple[int, int, int] = (1, 256, 256)) -> None:
+    """
+    Rudimentary summary: prints children names and the shape they output when
+    fed a single dummy image.  Works on CPU or GPU.
+    """
+    total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    print(model)
+    print(f"\nTotal learnable parameters: {total_params:,}")
+
+    x = torch.randn(1, *img_size, device=device)  # <-- send dummy to *same* device
+    for name, layer in model.named_children():
+        x = layer(x)              # call layer, regardless of its type
+        print(f"{name:<12s} → {tuple(x.shape)}")
+# -----------------------------------------------------------------------------
+
+
+# In main() call it like this:
+print_model_summary(model, device)
+That’s the only change you need—everything else in the pipeline (training, validation, test, Excel export, plots, etc.) stays untouched.
+
+Alternate option (if you prefer to avoid GPU entirely for the summary)
+python
+Copy
+Edit
+cpu_model = UNet(in_channels=1, out_channels=1, init_features=32)  # new clone
+cpu_model.load_state_dict(model.state_dict(), strict=False)
+print_model_summary(cpu_model, torch.device("cpu"))
+…but the simple one-line fix above is cleaner.
+
+Run python -m unet_segmentation.main again and the summary will print without errors, after which training will start normally.
