@@ -10,92 +10,92 @@ from scipy.stats import mannwhitneyu
 # 2024 models
 model_paths = OrderedDict({
     'Bing Copilot': {
-        'validation': r"D:\qy44lyfe\LLM segmentation\Results\Bing Microsoft Copilot\out of the box\BAGLS output\validation_dice_scores.xlsx",
-        'test':       r"D:\qy44lyfe\LLM segmentation\Results\Bing Microsoft Copilot\out of the box\BAGLS output\test_dice_scores.xlsx"
+        'validation': r"D:\qy44lyfe\LLM segmentation\Results\Bing Microsoft Copilot\out of the box\utrine myoma output\validation_dice_scores.xlsx",
+        'test':       r"D:\qy44lyfe\LLM segmentation\Results\Bing Microsoft Copilot\out of the box\utrine myoma output\test_dice_scores.xlsx"
     },
     'Claude 3.5 Sonnet': {
-        'validation': r"D:\qy44lyfe\LLM segmentation\Results\Claude 3.5 Sonnet\out of the box\BAGLS output\validation_dice_scores.xlsx",
-        'test':       r"D:\qy44lyfe\LLM segmentation\Results\Claude 3.5 Sonnet\out of the box\BAGLS output\test_dice_scores.xlsx"
+        'validation': r"D:\qy44lyfe\LLM segmentation\Results\Claude 3.5 Sonnet\out of the box\utrine myoma output\validation_dice_scores.xlsx",
+        'test':       r"D:\qy44lyfe\LLM segmentation\Results\Claude 3.5 Sonnet\out of the box\utrine myoma output\test_dice_scores.xlsx"
     },
     'Copilot': {
-        'validation': r"D:\qy44lyfe\LLM segmentation\Results\Copilot\out of the box\BAGLS output\validation_dice_scores.xlsx",
-        'test':       r"D:\qy44lyfe\LLM segmentation\Results\Copilot\out of the box\BAGLS output\test_dice_scores.xlsx"
+        'validation': r"D:\qy44lyfe\LLM segmentation\Results\Copilot\out of the box\utrine myoma output\validation_dice_scores.xlsx",
+        'test':       r"D:\qy44lyfe\LLM segmentation\Results\Copilot\out of the box\utrine myoma output\test_dice_scores.xlsx"
     },
     'Gemini 1.5 Pro': {
-        'validation': r"D:\qy44lyfe\LLM segmentation\Results\Gemini 1.5 pro\out of the box\BAGLS output\validation_dice_scores.xlsx",
-        'test':       r"D:\qy44lyfe\LLM segmentation\Results\Gemini 1.5 pro\out of the box\BAGLS output\test_dice_scores.xlsx"
+        'validation': r"D:\qy44lyfe\LLM segmentation\Results\Gemini 1.5 pro\out of the box\utrine myoma output\validation_dice_scores.xlsx",
+        'test':       r"D:\qy44lyfe\LLM segmentation\Results\Gemini 1.5 pro\out of the box\utrine myoma output\test_dice_scores.xlsx"
     },
     'GPT 4': {
-        'validation': r"D:\qy44lyfe\LLM segmentation\Results\GPT 4\out of the box\BAGLS output\validation_dice_scores.xlsx",
-        'test':       r"D:\qy44lyfe\LLM segmentation\Results\GPT 4\out of the box\BAGLS output\test_dice_scores.xlsx"
+        'validation': r"D:\qy44lyfe\LLM segmentation\Results\GPT 4\out of the box\Retina output\validation_dice_scores.xlsx",
+        'test':       r"D:\qy44lyfe\LLM segmentation\Results\GPT 4\out of the box\Retina output\test_dice_scores.xlsx"
     },
     'GPT 4o': {
-        'validation': r"D:\qy44lyfe\LLM segmentation\Results\GPT 4o\out of the box\BAGLS output\validation_dice_scores.xlsx",
-        'test':       r"D:\qy44lyfe\LLM segmentation\Results\GPT 4o\out of the box\BAGLS output\test_dice_scores.xlsx"
+        'validation': r"D:\qy44lyfe\LLM segmentation\Results\GPT 4o\out of the box\utrine myoma output\validation_dice_scores.xlsx",
+        'test':       r"D:\qy44lyfe\LLM segmentation\Results\GPT 4o\out of the box\utrine myoma output\test_dice_scores.xlsx"
     },
     'GPT o1 Preview': {
-        'validation': r"D:\qy44lyfe\LLM segmentation\Results\GPT o1 preview\out of the box\BAGLS output\validation_dice_scores.xlsx",
-        'test':       r"D:\qy44lyfe\LLM segmentation\Results\GPT o1 preview\out of the box\BAGLS output\test_dice_scores.xlsx"
+        'validation': r"D:\qy44lyfe\LLM segmentation\Results\GPT o1 preview\out of the box\utrine myoma output\validation_dice_scores.xlsx",
+        'test':       r"D:\qy44lyfe\LLM segmentation\Results\GPT o1 preview\out of the box\utrine myoma output\test_dice_scores.xlsx"
     },
     'Llama 3.1 405B': {
-        'validation': r"D:\qy44lyfe\LLM segmentation\Results\LLAMA 3.1 405B\out of the box\BAGLS output\validation_dice_scores.xlsx",
-        'test':       r"D:\qy44lyfe\LLM segmentation\Results\LLAMA 3.1 405B\out of the box\BAGLS output\test_dice_scores.xlsx"
+        'validation': r"D:\qy44lyfe\LLM segmentation\Results\LLAMA 3.1 405B\out of the box\utrine myoma output\validation_dice_scores.xlsx",
+        'test':       r"D:\qy44lyfe\LLM segmentation\Results\LLAMA 3.1 405B\out of the box\utrine myoma output\test_dice_scores.xlsx"
     },
     'nnU-Net': {
-        'validation': r"D:\qy44lyfe\LLM segmentation\Results\nnUnet Baseline\validation_dice_scores_nnUnet_BAGLS.xlsx",
-        'test':       r"D:\qy44lyfe\LLM segmentation\Results\nnUnet Baseline\test_dice_scores_nnUnet_BAGLS.xlsx"
+        'validation': r"D:\qy44lyfe\LLM segmentation\Results\nnUnet Baseline\validation_dice_scores_nnUnet_Myoma.xlsx",
+        'test':       r"D:\qy44lyfe\LLM segmentation\Results\nnUnet Baseline\test_dice_scores_nnUnet_Myoma.xlsx"
     },
 })
 
 # 2025 Models
 model_paths.update({
     'Claude 4 Sonnet': {
-        'validation': r"D:\qy44lyfe\LLM segmentation\Results\2025\Claude 4 Sonnet\out of the box\BAGLS output\validation_dice_scores.xlsx",
-        'test':       r"D:\qy44lyfe\LLM segmentation\Results\2025\Claude 4 Sonnet\out of the box\BAGLS output\test_dice_scores.xlsx"
+        'validation': r"D:\qy44lyfe\LLM segmentation\Results\2025\Claude 4 Sonnet\out of the box\Myoma output\validation_dice_scores.xlsx",
+        'test':       r"D:\qy44lyfe\LLM segmentation\Results\2025\Claude 4 Sonnet\out of the box\Myoma output\test_dice_scores.xlsx"
     },
     'DeepSeek R1': {
-        'validation': r"D:\qy44lyfe\LLM segmentation\Results\2025\DeepSeek R1\out of the box\BAGLS output\validation_dice_scores.xlsx",
-        'test':       r"D:\qy44lyfe\LLM segmentation\Results\2025\DeepSeek R1\out of the box\BAGLS output\test_dice_scores.xlsx"
+        'validation': r"D:\qy44lyfe\LLM segmentation\Results\2025\DeepSeek R1\out of the box\Myoma output\validation_dice_scores.xlsx",
+        'test':       r"D:\qy44lyfe\LLM segmentation\Results\2025\DeepSeek R1\out of the box\Myoma output\test_dice_scores.xlsx"
     },
     'DeepSeek V3': {
-        'validation': r"D:\qy44lyfe\LLM segmentation\Results\2025\DeepSeek V3\out of the box\BAGLS output\validation_dice_scores.xlsx",
-        'test':       r"D:\qy44lyfe\LLM segmentation\Results\2025\DeepSeek V3\out of the box\BAGLS output\test_dice_scores.xlsx"
+        'validation': r"D:\qy44lyfe\LLM segmentation\Results\2025\DeepSeek V3\out of the box\Myoma output\validation_dice_scores.xlsx",
+        'test':       r"D:\qy44lyfe\LLM segmentation\Results\2025\DeepSeek V3\out of the box\Myoma output\test_dice_scores.xlsx"
     },
     'GPT o3': {
-        'validation': r"D:\qy44lyfe\LLM segmentation\Results\2025\GPT o3\out of the box\BAGLS output\validation_dice_scores.xlsx",
-        'test':       r"D:\qy44lyfe\LLM segmentation\Results\2025\GPT o3\out of the box\BAGLS output\test_dice_scores.xlsx"
+        'validation': r"D:\qy44lyfe\LLM segmentation\Results\2025\GPT o3\out of the box\Myoma output\validation_dice_scores.xlsx",
+        'test':       r"D:\qy44lyfe\LLM segmentation\Results\2025\GPT o3\out of the box\Myoma output\test_dice_scores.xlsx"
     },
     'GPT o4-mini-high': {
-        'validation': r"D:\qy44lyfe\LLM segmentation\Results\2025\GPT o4-mini-high\out of the box\BAGLS output\validation_dice_scores.xlsx",
-        'test':       r"D:\qy44lyfe\LLM segmentation\Results\2025\GPT o4-mini-high\out of the box\BAGLS output\test_dice_scores.xlsx"
+        'validation': r"D:\qy44lyfe\LLM segmentation\Results\2025\GPT o4-mini-high\out of the box\Myoma output\validation_dice_scores.xlsx",
+        'test':       r"D:\qy44lyfe\LLM segmentation\Results\2025\GPT o4-mini-high\out of the box\Myoma output\test_dice_scores.xlsx"
     },
     'Gemini 2.5 pro': {
-        'validation': r"D:\qy44lyfe\LLM segmentation\Results\2025\Gemini 2.5 Pro\out of the box\BAGLS output\validation_dice_scores.xlsx",
-        'test':       r"D:\qy44lyfe\LLM segmentation\Results\2025\Gemini 2.5 Pro\out of the box\BAGLS output\test_dice_scores.xlsx"
+        'validation': r"D:\qy44lyfe\LLM segmentation\Results\2025\Gemini 2.5 Pro\out of the box\Myoma output\validation_dice_scores.xlsx",
+        'test':       r"D:\qy44lyfe\LLM segmentation\Results\2025\Gemini 2.5 Pro\out of the box\Myoma output\test_dice_scores.xlsx"
     },
     'Grok 3 mini': {
-        'validation': r"D:\qy44lyfe\LLM segmentation\Results\2025\Grok 3 mini Reasoning\out of the box\BAGLS output\validation_dice_scores.xlsx",
-        'test':       r"D:\qy44lyfe\LLM segmentation\Results\2025\Grok 3 mini Reasoning\out of the box\BAGLS output\test_dice_scores.xlsx"
+        'validation': r"D:\qy44lyfe\LLM segmentation\Results\2025\Grok 3 mini Reasoning\out of the box\Myoma output\validation_dice_scores.xlsx",
+        'test':       r"D:\qy44lyfe\LLM segmentation\Results\2025\Grok 3 mini Reasoning\out of the box\Myoma output\test_dice_scores.xlsx"
     },
     'Grok 3': {
-        'validation': r"D:\qy44lyfe\LLM segmentation\Results\2025\Grok 3\out of the box\BAGLS output\validation_dice_scores.xlsx",
-        'test':       r"D:\qy44lyfe\LLM segmentation\Results\2025\Grok 3\out of the box\BAGLS output\test_dice_scores.xlsx"
+        'validation': r"D:\qy44lyfe\LLM segmentation\Results\2025\Grok 3\out of the box\Myoma output\validation_dice_scores.xlsx",
+        'test':       r"D:\qy44lyfe\LLM segmentation\Results\2025\Grok 3\out of the box\Myoma output\test_dice_scores.xlsx"
     },
     'Llama 4 Maverick': {
-        'validation': r"D:\qy44lyfe\LLM segmentation\Results\2025\Llama 4 Maverick\out of the box\BAGLS output\validation_dice_scores.xlsx",
-        'test':       r"D:\qy44lyfe\LLM segmentation\Results\2025\Llama 4 Maverick\out of the box\BAGLS output\test_dice_scores.xlsx"
+        'validation': r"D:\qy44lyfe\LLM segmentation\Results\2025\Llama 4 Maverick\out of the box\Myoma output\validation_dice_scores.xlsx",
+        'test':       r"D:\qy44lyfe\LLM segmentation\Results\2025\Llama 4 Maverick\out of the box\Myoma output\test_dice_scores.xlsx"
     },
     'Mistral Medium 3': {
-        'validation': r"D:\qy44lyfe\LLM segmentation\Results\2025\Mistral Medium 3\out of the box\BAGLS output\mask fix\validation_dice_scores.xlsx",
-        'test':       r"D:\qy44lyfe\LLM segmentation\Results\2025\Mistral Medium 3\out of the box\BAGLS output\mask fix\test_dice_scores.xlsx"
+        'validation': r"D:\qy44lyfe\LLM segmentation\Results\2025\Mistral Medium 3\out of the box\Myoma output\mask fix\validation_dice_scores.xlsx",
+        'test':       r"D:\qy44lyfe\LLM segmentation\Results\2025\Mistral Medium 3\out of the box\Myoma output\mask fix\test_dice_scores.xlsx"
     },
     'Qwen 3_235B': {
-        'validation': r"D:\qy44lyfe\LLM segmentation\Results\2025\Qwen 3_235B\out of the box\BAGLS output\validation_dice_scores.xlsx",
-        'test':       r"D:\qy44lyfe\LLM segmentation\Results\2025\Qwen 3_235B\out of the box\BAGLS output\test_dice_scores.xlsx"
+        'validation': r"D:\qy44lyfe\LLM segmentation\Results\2025\Qwen 3_235B\out of the box\Myoma output\validation_dice_scores.xlsx",
+        'test':       r"D:\qy44lyfe\LLM segmentation\Results\2025\Qwen 3_235B\out of the box\Myoma output\test_dice_scores.xlsx"
     },
     'nnU-Net': {
-        'validation': r"D:\qy44lyfe\LLM segmentation\Results\nnUnet Baseline\validation_dice_scores_nnUnet_BAGLS.xlsx",
-        'test':       r"D:\qy44lyfe\LLM segmentation\Results\nnUnet Baseline\test_dice_scores_nnUnet_BAGLS.xlsx"
+        'validation': r"D:\qy44lyfe\LLM segmentation\Results\nnUnet Baseline\validation_dice_scores_nnUnet_Myoma.xlsx",
+        'test':       r"D:\qy44lyfe\LLM segmentation\Results\nnUnet Baseline\test_dice_scores_nnUnet_Myoma.xlsx"
     },
 })
 
@@ -171,6 +171,7 @@ print("Test means Mann–Whitney U test (excluding nnU-Net):")
 print(f"  U = {u_test:.1f}, p = {p_test:.4f} → "
       f"{'significant (p<0.05)' if p_test<0.05 else 'not significant'}")
 
+
 # ===============================================================================================================
 # Color map for all models
 color_map = {
@@ -197,9 +198,9 @@ bp = axes[0].boxplot(val_list, patch_artist=True, vert=False,
                      labels=plot_order, showfliers=False)
 for patch, model in zip(bp['boxes'], plot_order):
     patch.set_facecolor(color_map[model])
-axes[0].set_title('BAGLS Dataset', fontsize=16)
+axes[0].set_title('Uterine Myoma Dataset', fontsize=16)
 axes[0].set_xlabel('Validation Dice Score', fontsize=14)
-axes[0].tick_params(axis='y', labelsize=9)
+axes[0].tick_params(axis='y', labelsize=10)
 axes[0].tick_params(axis='x', labelsize=12)
 axes[0].grid(True)
 axes[0].set_xlim(0, 1)
@@ -212,20 +213,61 @@ bp = axes[1].boxplot(test_list, patch_artist=True, vert=False,
                      labels=plot_order, showfliers=False)
 for patch, model in zip(bp['boxes'], plot_order):
     patch.set_facecolor(color_map[model])
-axes[1].set_title('BAGLS Dataset', fontsize=16)
+axes[1].set_title('Uterine Myoma Dataset', fontsize=16)
 axes[1].set_xlabel('Dice Score', fontsize=14)
-axes[1].tick_params(axis='y', labelsize=9)
+axes[1].tick_params(axis='y', labelsize=10)
 axes[1].tick_params(axis='x', labelsize=12)
 axes[1].grid(True)
 axes[1].set_xlim(0, 1)
 axes[1].set_xticks([0, 0.25, 0.5, 0.75, 1])
 axes[1].invert_yaxis()
 
-fig.suptitle('Model Dice Scores Comparison (BAGLS Dataset)', fontsize=22)
+fig.suptitle('Model Dice Scores Comparison (Uterine Myoma Dataset)', fontsize=22)
 plt.tight_layout(rect=[0,0,1,0.96])
 plt.subplots_adjust(wspace=0.7)
 
 # Save
 save_path = r"D:\qy44lyfe\LLM segmentation\Results\Models Comparison\new plots\combined\\"
-plt.savefig(f"{save_path}all_model_dice_scores_combined_BAGLS.png", dpi=600)
+plt.savefig(f"{save_path}all_model_dice_scores_combined_MYOMA.png", dpi=600)
 # plt.show()
+
+####
+# ===============================================================================================================
+## ===============================================================================================================
+# Overall medians and 25th/75th percentiles for year‐ and reasoning‐based groups
+
+from itertools import chain
+
+# Define your groups
+all_2024         = keys[:n2024]           # first 9 models
+all_2025         = keys[n2024:]           # last 13 models (including nnU-Net)
+reasoning_models = [
+    'GPT o1 Preview',        # 2024
+    'Claude 4 Sonnet',       'DeepSeek R1', 'GPT o3',
+    'GPT o4-mini-high',      'Gemini 2.5 pro','Grok 3 mini',
+    'Llama 4 Maverick',      'Mistral Medium 3','Qwen 3_235B'
+]
+non_reasoning_models = [
+    'GPT 4o', 'GPT 4','Llama 3.1 405B',
+    'Gemini 1.5 Pro','Copilot','Claude 3.5 Sonnet',
+    'Bing Copilot','DeepSeek V3','Grok 3'
+]
+
+def median_q1_q3(group, scores_dict):
+    """Compute median, 25th percentile (Q1), and 75th percentile (Q3) of concatenated arrays."""
+    arr = np.concatenate([scores_dict[m] for m in group])
+    q1, q3 = np.percentile(arr, [25, 75])
+    return np.median(arr), q1, q3
+
+# Compute for test scores (or change to validation_scores if desired)
+groups = {
+    'All 2024':       all_2024,
+    'All 2025':       all_2025,
+    'Reasoning':      reasoning_models,
+    'Non-reasoning':  non_reasoning_models,
+}
+
+print("\nOverall medians and 25th/75th percentiles (test set):")
+for name, group in groups.items():
+    med, q1, q3 = median_q1_q3(group, test_scores)
+    print(f"  {name:14s}: median = {med:.4f}, Q1 = {q1:.4f}, Q3 = {q3:.4f}")
