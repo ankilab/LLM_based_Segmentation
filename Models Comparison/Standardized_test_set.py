@@ -10,16 +10,19 @@ def find_mask(image_path: Path, masks_dir: Path, suffix: str, exts: list):
     First, try same stem. Then, try stem + suffix.
     """
     stem = image_path.stem
+
     # Try same name
     for ext in exts:
         candidate = masks_dir / f"{stem}{ext}"
         if candidate.exists():
             return candidate
+
     # Try with suffix
     for ext in exts:
         candidate = masks_dir / f"{stem}{suffix}{ext}"
         if candidate.exists():
             return candidate
+
     return None
 
 
@@ -32,12 +35,18 @@ def main(images_dir, masks_dir, output_dir, test_ratio, suffix, exts, seed):
     # Gather image-mask pairs
     pairs = []
     for img_path in images_dir.iterdir():
-        if img_path.suffix.lower() in exts:
-            mask_path = find_mask(img_path, masks_dir, suffix, exts)
-            if mask_path is None:
-                print(f"Warning: No mask found for {img_path.name}")
-            else:
-                pairs.append((img_path, mask_path))
+        # Skip non-image files
+        if img_path.suffix.lower() not in exts:
+            continue
+        # If images and masks are in the same folder, skip mask files
+        if images_dir.resolve() == masks_dir.resolve() and img_path.stem.endswith(suffix):
+            continue
+
+        mask_path = find_mask(img_path, masks_dir, suffix, exts)
+        if mask_path is None:
+            print(f"Warning: No mask found for {img_path.name}")
+        else:
+            pairs.append((img_path, mask_path))
 
     if not pairs:
         print("No image-mask pairs found. Exiting.")
@@ -60,17 +69,40 @@ def main(images_dir, masks_dir, output_dir, test_ratio, suffix, exts, seed):
 
     print(f"Saved {len(test_samples)} image-mask pairs to {output_dir}")
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description="Split dataset into test set for image segmentation tasks.")
-    parser.add_argument('--images_dir', type=str, required=True, help='Path to the images directory')
-    parser.add_argument('--masks_dir', type=str, required=True, help='Path to the masks directory')
-    parser.add_argument('--output_dir', type=str, required=True, help='Path where the test set will be saved')
-    parser.add_argument('--test_ratio', type=float, default=0.1, help='Proportion of data to use as test set (e.g., 0.1 for 10%)')
-    parser.add_argument('--suffix', type=str, default='_m', help='Suffix for mask filenames if different from images')
-    parser.add_argument('--exts', nargs='+', default=['.jpg', '.png', '.tif'], help='Allowed image/mask file extensions')
-    parser.add_argument('--seed', type=int, default=42, help='Random seed for reproducibility')
-    args = parser.parse_args()
 
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(
+        description="Split dataset into test set for image segmentation tasks."
+    )
+    parser.add_argument(
+        '--images_dir', type=str, required=True,
+        help='Path to the images directory'
+    )
+    parser.add_argument(
+        '--masks_dir', type=str, required=True,
+        help='Path to the masks directory'
+    )
+    parser.add_argument(
+        '--output_dir', type=str, required=True,
+        help='Path where the test set will be saved'
+    )
+    parser.add_argument(
+        '--test_ratio', type=float, default=0.1,
+        help='Proportion of data to use as test set (e.g., 0.1 for 10%)'
+    )
+    parser.add_argument(
+        '--suffix', type=str, default='_seg',
+        help='Suffix for mask filenames if different from images'
+    )
+    parser.add_argument(
+        '--exts', nargs='+', default=['.jpg', '.png', '.tif'],
+        help='Allowed image/mask file extensions'
+    )
+    parser.add_argument(
+        '--seed', type=int, default=42,
+        help='Random seed for reproducibility'
+    )
+    args = parser.parse_args()
     main(
         args.images_dir,
         args.masks_dir,
