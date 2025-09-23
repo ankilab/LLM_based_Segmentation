@@ -22,12 +22,12 @@ def main():
     os.makedirs(save_path, exist_ok=True)
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    epochs = 2 #50
+    epochs = 50
     batch_size = 8
     lr = 1e-3
 
     # --- Dataset & Split ---
-    full_ds = SegmentationDataset(image_dir, mask_dir, suffix='_seg.png')
+    full_ds = SegmentationDataset(image_dir, mask_dir, mask_suffix='_m', mask_ext='.jpg')
     n = len(full_ds)
     idxs = list(range(n))
     train_idx, test_idx = train_test_split(idxs, test_size=0.2, random_state=42)
