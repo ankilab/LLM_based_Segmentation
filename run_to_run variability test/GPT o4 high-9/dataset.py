@@ -1,28 +1,56 @@
-# dataset.py
+# unet_segmentation/dataset.py
+
 import os
 from PIL import Image
 from torch.utils.data import Dataset
-from torchvision import transforms
+import torchvision.transforms as T
+import torch
 
-class GrayscaleSegmentationDataset(Dataset):
+class SegmentationDataset(Dataset):
     """
-    Loads grayscale images and their binary masks from a single folder or two separate folders.
-    Only .png files are considered; other files are ignored.
+    Dataset for loading grayscale images and their binary masks.
+    Masks are PNG files with the same basename plus an optional suffix.
     """
-    def __init__(self, images_dir, masks_dir=None, suffix="_m.jpg", transform=None):
+
+    def __init__(self,
+                 images_dir: str,
+                 masks_dir: str = None,
+                 mask_suffix: str = "_m.jpg",
+                 image_ext: str = ".jpg",
+                 transform=None,
+                 img_size=(256, 256)):
         """
-        If masks_dir is None, assumes masks are in the same folder as images_dir,
-        with the same base name plus `suffix`.
+        images_dir: folder containing input PNGs
+        masks_dir: if None, masks are in images_dir with suffix
+        mask_suffix: suffix to append to basename to find mask
         """
         self.images_dir = images_dir
         self.masks_dir = masks_dir or images_dir
-        self.suffix = suffix
+        self.mask_suffix = mask_suffix
+        self.image_ext = image_ext
         self.transform = transform
+        self.img_size = img_size
 
-        # gather image files
+        # list all image files
+        all_files = os.listdir(images_dir)
+        # keep only .png files not ending with suffix
         self.image_files = sorted(
-            [f for f in os.listdir(images_dir) if f.lower().endswith(".jpg") and not f.lower().endswith(suffix)]
+            [f for f in all_files
+             if f.endswith(image_ext) and not f.endswith(mask_suffix)]
         )
+
+        # define default transforms if none provided
+        if self.transform is None:
+            self.transform = T.Compose([
+                T.Resize(self.img_size),
+                T.ToTensor(),
+                # image is grayscale -> single channel [0,1]
+            ])
+        # mask transform (resize + to tensor only)
+        self.mask_transform = T.Compose([
+            T.Resize(self.img_size, interpolation=Image.NEAREST),
+            T.ToTensor(),
+        ])
 
     def __len__(self):
         return len(self.image_files)
@@ -30,19 +58,17 @@ class GrayscaleSegmentationDataset(Dataset):
     def __getitem__(self, idx):
         img_name = self.image_files[idx]
         img_path = os.path.join(self.images_dir, img_name)
-        mask_name = img_name if self.masks_dir != self.images_dir else img_name.replace(".jpg", f"{self.suffix}")
+        base, _ = os.path.splitext(img_name)
+        mask_name = base + self.mask_suffix
         mask_path = os.path.join(self.masks_dir, mask_name)
 
+        # load image and mask
         image = Image.open(img_path).convert("L")
-        mask  = Image.open(mask_path).convert("L")
+        mask = Image.open(mask_path).convert("L")
 
-        if self.transform:
-            image, mask = self.transform((image, mask))
-
-        # convert to tensor
-        image = transforms.ToTensor()(image)
-        mask  = transforms.ToTensor()(mask)
-        # ensure binary mask (0 or 1)
-        mask  = (mask > 0.5).float()
+        image = self.transform(image)  # [1,H,W]
+        mask = self.mask_transform(mask)  # [1,H,W]
+        # binarize mask
+        mask = (mask > 0.5).float()
 
         return image, mask, img_name
