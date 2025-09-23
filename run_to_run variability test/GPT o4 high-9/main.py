@@ -144,7 +144,7 @@ if __name__ == "__main__":
                         help="resize images/masks to this size")
     parser.add_argument("--batch_size", type=int, default=8)
     parser.add_argument("--lr", type=float, default=1e-4)
-    parser.add_argument("--epochs", type=int, default=20) 
+    parser.add_argument("--epochs", type=int, default=20)
     parser.add_argument("--save_path", type=str, default="./results",
                         help="where to save models, logs, plots, excels")
     args = parser.parse_args()
