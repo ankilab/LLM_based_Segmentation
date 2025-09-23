@@ -2,66 +2,70 @@
 
 import os
 import torch
-import random
-import numpy as np
+from torch.utils.data import DataLoader, Subset
 from sklearn.model_selection import train_test_split
-from torch.utils.data import Subset, DataLoader
 from torchinfo import summary
+import numpy as np
 
 from dataset import SegmentationDataset
 from model import UNet
-from train import train_model, test_model
+from train import train, validate, test, plot_losses, save_excel
 
 if __name__ == "__main__":
-    # Paths
+    # === CONFIGURATION ===
     image_dir = "D:\qy44lyfe\LLM segmentation\Data sets\Brain Meningioma\images"
-    mask_dir = "D:\qy44lyfe\LLM segmentation\Data sets\Brain Meningioma\Masks"
-    save_path = "D:\qy44lyfe\LLM segmentation\Results\Models Comparison\Models run to run comparison\GPT 4o-5"
+    mask_dir = "D:\qy44lyfe\LLM segmentation\Data sets\Brain Meningioma\Masks"  # or same as image_dir
+    save_path = "D:\qy44lyfe\LLM segmentation\Results\Models Comparison\Models run to run comparison\GPT 4o-7"
     os.makedirs(save_path, exist_ok=True)
 
-    # Hyperparameters
-    image_size = (256, 256)
+    epochs = 25
     batch_size = 8
-    learning_rate = 1e-4
-    num_epochs = 20
-
-    # Prepare file list
-    all_files = [f for f in os.listdir(image_dir) if f.endswith(".jpg")]
-    all_files.sort()
-    random.shuffle(all_files)
-
-    # Split dataset
-    train_idx, test_idx = train_test_split(range(len(all_files)), test_size=0.2, random_state=42)
-    val_idx, test_idx = train_test_split(test_idx, test_size=0.5, random_state=42)
-
-    print(f"Train size: {len(train_idx)}, Val size: {len(val_idx)}, Test size: {len(test_idx)}")
-
-    dataset = SegmentationDataset(image_dir, mask_dir, all_files, image_size=image_size)
-    train_set = Subset(dataset, train_idx)
-    val_set = Subset(dataset, val_idx)
-    test_set = Subset(dataset, test_idx)
-
-    # DataLoaders
-    train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True)
-    val_loader = DataLoader(val_set, batch_size=batch_size, shuffle=False)
-    test_loader = DataLoader(test_set, batch_size=1, shuffle=False)
-
-    print(f"Train batches: {len(train_loader)}, Val batches: {len(val_loader)}, Test batches: {len(test_loader)}")
-
-    # Device
+    lr = 1e-4
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    # Model
+    dataset = SegmentationDataset(image_dir=image_dir, mask_dir=mask_dir)
+
+    indices = list(range(len(dataset)))
+    train_idx, test_idx = train_test_split(indices, test_size=0.2, random_state=42)
+    val_idx, test_idx = train_test_split(test_idx, test_size=0.5, random_state=42)
+
+    train_data = Subset(dataset, train_idx)
+    val_data = Subset(dataset, val_idx)
+    test_data = Subset(dataset, test_idx)
+
+    print(f"Dataset Sizes: Train={len(train_data)}, Val={len(val_data)}, Test={len(test_data)}")
+
+    train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True)
+    val_loader = DataLoader(val_data, batch_size=batch_size, shuffle=False)
+    test_loader = DataLoader(test_data, batch_size=1, shuffle=False)
+
+    print(f"DataLoader Sizes: Train={len(train_loader)}, Val={len(val_loader)}, Test={len(test_loader)}")
+
     model = UNet().to(device)
-    summary(model, input_size=(1, 1, *image_size))
-    print(f"Total trainable parameters: {sum(p.numel() for p in model.parameters() if p.requires_grad)}")
+    summary(model, input_size=(1, 1, 256, 256))
+    print(f"Total parameters: {sum(p.numel() for p in model.parameters() if p.requires_grad)}")
 
-    # Loss and Optimizer
     criterion = torch.nn.BCELoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
 
-    # Training
-    train_model(model, train_loader, val_loader, criterion, optimizer, device, num_epochs, save_path)
+    train_losses, val_losses = [], []
+    import time
+    start_time = time.time()
+    for epoch in range(1, epochs + 1):
+        print(f"\nEpoch {epoch}/{epochs}")
+        train_loss = train(model, train_loader, optimizer, criterion, device)
+        val_loss = validate(model, val_loader, criterion, device, save_path, epoch)
+        train_losses.append(train_loss)
+        val_losses.append(val_loss)
 
-    # Testing
-    test_model(model, test_loader, device, save_path)
+    duration = time.time() - start_time
+    print(f"\nTotal training time: {duration:.2f} seconds")
+
+    save_excel([list(range(1, epochs + 1)), train_losses], os.path.join(save_path, "train_losses.xlsx"))
+    save_excel([list(range(1, epochs + 1)), val_losses], os.path.join(save_path, "val_losses.xlsx"))
+
+    torch.save(model, os.path.join(save_path, "unet_model.pt"))
+    torch.save(model.state_dict(), os.path.join(save_path, "unet_model_state_dict.pth"))
+
+    test(model, test_loader, device, save_path)
+    plot_losses(train_losses, val_losses, save_path)
