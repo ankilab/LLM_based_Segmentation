@@ -1,42 +1,60 @@
-# unet_segmentation/dataset.py
-
+# dataset.py
 import os
 from PIL import Image
 from torch.utils.data import Dataset
-import torchvision.transforms as transforms
+import torchvision.transforms as T
 
-class SegmentationDataset(Dataset):
-    def __init__(self, image_dir, mask_dir, file_list, mask_suffix="_m", image_size=(256, 256)):
+class GrayscaleSegmentationDataset(Dataset):
+    """
+    A Dataset for loading grayscale images and corresponding binary masks.
+    Assumes images are .png files; masks have same basename plus optional suffix.
+    """
+    def __init__(self, image_dir, mask_dir=None, suffix='_m', transform=None):
+        """
+        Args:
+            image_dir (str): path to folder with input images (.png)
+            mask_dir (str): path to folder with masks (.png). If None, uses image_dir + suffix convention.
+            suffix (str): suffix appended before .png in mask filenames
+            transform (callable): transforms to apply to both image and mask
+        """
         self.image_dir = image_dir
-        self.mask_dir = mask_dir
-        self.file_list = file_list
-        self.mask_suffix = mask_suffix
-        self.image_size = image_size
-        self.image_transform = transforms.Compose([
-            transforms.Grayscale(num_output_channels=1),
-            transforms.Resize(self.image_size),
-            transforms.ToTensor(),
-        ])
-        self.mask_transform = transforms.Compose([
-            transforms.Grayscale(num_output_channels=1),
-            transforms.Resize(self.image_size),
-            transforms.ToTensor(),
+        self.mask_dir = mask_dir or image_dir
+        self.suffix = suffix
+        self.transform = transform
+
+        # List all pngs in image_dir
+        self.images = sorted([
+            f for f in os.listdir(image_dir)
+            if f.lower().endswith('.jpg')
         ])
 
     def __len__(self):
-        return len(self.file_list)
+        return len(self.images)
 
     def __getitem__(self, idx):
-        img_name = self.file_list[idx]
-        image_path = os.path.join(self.image_dir, img_name)
-        mask_name = img_name.replace(".jpg", f"{self.mask_suffix}.jpg")
+        img_name = self.images[idx]
+        base, _ = os.path.splitext(img_name)
+
+        img_path = os.path.join(self.image_dir, img_name)
+        if self.mask_dir == self.image_dir:
+            mask_name = f"{base}{self.suffix}.jpg"
+        else:
+            mask_name = img_name
         mask_path = os.path.join(self.mask_dir, mask_name)
 
-        image = Image.open(image_path).convert('L')
-        mask = Image.open(mask_path).convert('L')
+        img = Image.open(img_path).convert('L')      # grayscale
+        mask = Image.open(mask_path).convert('L')    # grayscale mask
 
-        image = self.image_transform(image)
-        mask = self.mask_transform(mask)
-        mask = (mask > 0.5).float()  # Ensure binary mask
+        if self.transform:
+            img, mask = self.transform(img, mask)
 
-        return image, mask, img_name
+        return img, mask, img_name
+
+class PairedTransform:
+    """Top-level class so DataLoader can pickle it."""
+    def __init__(self, resize=(256,256)):
+        self.tf_img  = T.Compose([ T.Resize(resize), T.ToTensor() ])
+        self.tf_mask = T.Compose([ T.Resize(resize), T.ToTensor() ])
+
+    def __call__(self, img, mask):
+        return self.tf_img(img), self.tf_mask(mask)
