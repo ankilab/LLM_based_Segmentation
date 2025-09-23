@@ -1,42 +1,48 @@
-# unet_segmentation/dataset.py
-
+# dataset.py
 import os
 from PIL import Image
 from torch.utils.data import Dataset
-import torchvision.transforms as transforms
+from torchvision import transforms
 
-class SegmentationDataset(Dataset):
-    def __init__(self, image_dir, mask_dir, file_list, mask_suffix="_m", image_size=(256, 256)):
-        self.image_dir = image_dir
-        self.mask_dir = mask_dir
-        self.file_list = file_list
-        self.mask_suffix = mask_suffix
-        self.image_size = image_size
-        self.image_transform = transforms.Compose([
-            transforms.Grayscale(num_output_channels=1),
-            transforms.Resize(self.image_size),
-            transforms.ToTensor(),
-        ])
-        self.mask_transform = transforms.Compose([
-            transforms.Grayscale(num_output_channels=1),
-            transforms.Resize(self.image_size),
-            transforms.ToTensor(),
-        ])
+class GrayscaleSegmentationDataset(Dataset):
+    """
+    Loads grayscale images and their binary masks from a single folder or two separate folders.
+    Only .png files are considered; other files are ignored.
+    """
+    def __init__(self, images_dir, masks_dir=None, suffix="_m.jpg", transform=None):
+        """
+        If masks_dir is None, assumes masks are in the same folder as images_dir,
+        with the same base name plus `suffix`.
+        """
+        self.images_dir = images_dir
+        self.masks_dir = masks_dir or images_dir
+        self.suffix = suffix
+        self.transform = transform
+
+        # gather image files
+        self.image_files = sorted(
+            [f for f in os.listdir(images_dir) if f.lower().endswith(".jpg") and not f.lower().endswith(suffix)]
+        )
 
     def __len__(self):
-        return len(self.file_list)
+        return len(self.image_files)
 
     def __getitem__(self, idx):
-        img_name = self.file_list[idx]
-        image_path = os.path.join(self.image_dir, img_name)
-        mask_name = img_name.replace(".jpg", f"{self.mask_suffix}.jpg")
-        mask_path = os.path.join(self.mask_dir, mask_name)
+        img_name = self.image_files[idx]
+        img_path = os.path.join(self.images_dir, img_name)
+        mask_name = img_name if self.masks_dir != self.images_dir else img_name.replace(".jpg", f"{self.suffix}")
+        mask_path = os.path.join(self.masks_dir, mask_name)
 
-        image = Image.open(image_path).convert('L')
-        mask = Image.open(mask_path).convert('L')
+        image = Image.open(img_path).convert("L")
+        mask  = Image.open(mask_path).convert("L")
 
-        image = self.image_transform(image)
-        mask = self.mask_transform(mask)
-        mask = (mask > 0.5).float()  # Ensure binary mask
+        if self.transform:
+            image, mask = self.transform((image, mask))
+
+        # convert to tensor
+        image = transforms.ToTensor()(image)
+        mask  = transforms.ToTensor()(mask)
+        # ensure binary mask (0 or 1)
+        mask  = (mask > 0.5).float()
 
         return image, mask, img_name
