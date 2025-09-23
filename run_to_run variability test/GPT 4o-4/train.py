@@ -1,208 +1,121 @@
+# unet_segmentation/train.py
+
 import os
 import time
-import random
-import pandas as pd
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
-from tqdm import tqdm
 import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+from tqdm import tqdm
+from sklearn.metrics import jaccard_score
 
 
-def dice_coef_per_sample(preds, targets, eps=1e-6):
-    """
-    Compute Dice coefficient for each sample in the batch.
-    Inputs:
-      preds: tensor of shape [B, 1, H, W], values 0 or 1 (after threshold)
-      targets: tensor of shape [B, 1, H, W], values 0 or 1
-    Returns:
-      list of length B with dice value for each sample
-    """
-    batch_size = preds.size(0)
-    dice_scores = []
-    for i in range(batch_size):
-        pred_flat = preds[i].view(-1)
-        target_flat = targets[i].view(-1)
-        intersection = (pred_flat * target_flat).sum()
-        union = pred_flat.sum() + target_flat.sum()
-        dice = (2.0 * intersection + eps) / (union + eps)
-        dice_scores.append(dice.item())
-    return dice_scores
+def dice_score(pred, target, threshold=0.5):
+    pred = (pred > threshold).float()
+    intersection = (pred * target).sum((1, 2, 3))
+    union = pred.sum((1, 2, 3)) + target.sum((1, 2, 3))
+    dice = (2. * intersection + 1e-8) / (union + 1e-8)
+    return dice.mean().item()
 
 
-def train_one_epoch(model, dataloader, optimizer, criterion, device, epoch):
+def train_one_epoch(model, loader, criterion, optimizer, device):
     model.train()
-    running_loss = 0.0
-    loop = tqdm(dataloader, desc=f"Train Epoch {epoch}", leave=False)
+    epoch_loss = 0
+    loop = tqdm(loader, desc="Training", leave=False)
     for images, masks, _ in loop:
-        images = images.to(device, dtype=torch.float32)
-        masks = masks.to(device, dtype=torch.float32)
+        images, masks = images.to(device), masks.to(device)
+        preds = model(images)
+        loss = criterion(preds, masks)
 
         optimizer.zero_grad()
-        outputs = model(images)
-        loss = criterion(outputs, masks)
         loss.backward()
         optimizer.step()
 
-        running_loss += loss.item()
-        loop.set_postfix(loss=loss.item())
+        epoch_loss += loss.item()
 
-    avg_loss = running_loss / len(dataloader)
-    return avg_loss
+    return epoch_loss / len(loader)
 
 
-def validate(model, dataloader, criterion, device, epoch):
+def validate(model, loader, criterion, device, save_path, epoch):
     model.eval()
-    running_loss = 0.0
-    all_batch_dice = []  # one dice per batch (averaged over samples in batch)
+    epoch_loss = 0
+    dice_scores = []
+    dice_per_batch = []
 
-    loop = tqdm(dataloader, desc=f"Validate Epoch {epoch}", leave=False)
+    loop = tqdm(loader, desc="Validating", leave=False)
     with torch.no_grad():
         for images, masks, _ in loop:
-            images = images.to(device, dtype=torch.float32)
-            masks = masks.to(device, dtype=torch.float32)
+            images, masks = images.to(device), masks.to(device)
+            preds = model(images)
+            loss = criterion(preds, masks)
+            epoch_loss += loss.item()
+            dice = dice_score(preds, masks)
+            dice_scores.append(dice)
+            dice_per_batch.append(dice)
 
-            outputs = model(images)
-            loss = criterion(outputs, masks)
-            running_loss += loss.item()
+    if epoch == 0:
+        df = pd.DataFrame(columns=[f"Batch_{i}" for i in range(len(dice_per_batch))])
+    else:
+        df = pd.read_excel(os.path.join(save_path, "validation_dice_scores.xlsx"), index_col=0)
 
-            # Compute dice: apply sigmoid, threshold
-            probs = torch.sigmoid(outputs)
-            preds = (probs > 0.5).float()
-            batch_dice_list = dice_coef_per_sample(preds, masks)
-            batch_dice = sum(batch_dice_list) / len(batch_dice_list)
-            all_batch_dice.append(batch_dice)
+    df.loc[f"Epoch_{epoch}"] = dice_per_batch
+    df.to_excel(os.path.join(save_path, "validation_dice_scores.xlsx"))
 
-            loop.set_postfix(loss=loss.item(), dice=batch_dice)
-
-    avg_loss = running_loss / len(dataloader)
-    return avg_loss, all_batch_dice
+    return epoch_loss / len(loader)
 
 
-def test(model, dataloader, device):
-    """
-    Similar to validate but without updating weights and without cross-validation.
-    Returns:
-      test_loss_list: average loss per batch
-      test_dice_list: dice score per batch
-    """
+def test(model, loader, device, save_path):
     model.eval()
-    criterion = nn.BCEWithLogitsLoss()
-    all_batch_dice = []
-    running_loss = 0.0
-    loop = tqdm(dataloader, desc="Testing", leave=False)
+    dice_per_batch = []
+    predictions = []
+
+    loop = tqdm(loader, desc="Testing", leave=False)
     with torch.no_grad():
-        for images, masks, _ in loop:
-            images = images.to(device, dtype=torch.float32)
-            masks = masks.to(device, dtype=torch.float32)
+        for images, masks, names in loop:
+            images, masks = images.to(device), masks.to(device)
+            preds = model(images)
+            dice = dice_score(preds, masks)
+            dice_per_batch.append(dice)
+            predictions.append((images.cpu(), masks.cpu(), preds.cpu(), names))
 
-            outputs = model(images)
-            loss = criterion(outputs, masks)
-            running_loss += loss.item()
+    df = pd.DataFrame(columns=[f"Batch_{i}" for i in range(len(dice_per_batch))])
+    df.loc["Dice"] = dice_per_batch
+    df.to_excel(os.path.join(save_path, "test_dice_scores.xlsx"))
 
-            probs = torch.sigmoid(outputs)
-            preds = (probs > 0.5).float()
-            batch_dice_list = dice_coef_per_sample(preds, masks)
-            batch_dice = sum(batch_dice_list) / len(batch_dice_list)
-            all_batch_dice.append(batch_dice)
-
-            loop.set_postfix(loss=loss.item(), dice=batch_dice)
-
-    avg_loss = running_loss / len(dataloader)
-    return avg_loss, all_batch_dice
-
-
-def save_losses_to_excel(loss_list, filepath):
-    """
-    Save a list of per-epoch losses into an Excel file:
-      Row 1: epoch numbers (1..n)
-      Row 2: corresponding loss values
-    """
-    epochs = list(range(1, len(loss_list) + 1))
-    data = [epochs, loss_list]
-    df = pd.DataFrame(data)
-    df.to_excel(filepath, index=False, header=False)
-
-
-def save_dice_scores_to_excel(dice_scores_matrix, filepath):
-    """
-    Save a 2D list or array: rows = epochs, columns = batches.
-    Adds row and column labels (epochs and batch indices) automatically.
-    """
-    df = pd.DataFrame(dice_scores_matrix)
-    # Label rows as Epoch 1, 2, ... and columns as Batch 1, 2, ...
-    df.index = [f"Epoch {i+1}" for i in range(df.shape[0])]
-    df.columns = [f"Batch {j+1}" for j in range(df.shape[1])]
-    df.to_excel(filepath)
+    return predictions
 
 
 def plot_losses(train_losses, val_losses, save_path):
-    """
-    Plot training and validation losses over epochs and save as PNG.
-    """
-    plt.figure(figsize=(8, 6))
-    epochs = list(range(1, len(train_losses) + 1))
-    plt.plot(epochs, train_losses, label='Train Loss')
-    plt.plot(epochs, val_losses, label='Validation Loss')
-    plt.xlabel('Epoch')
-    plt.ylabel('Loss')
-    plt.title('Training vs Validation Loss')
+    plt.figure()
+    plt.plot(train_losses, label="Train Loss")
+    plt.plot(val_losses, label="Val Loss")
+    plt.xlabel("Epoch")
+    plt.ylabel("Loss")
     plt.legend()
-    plt.grid(True)
+    plt.grid()
     plt.tight_layout()
-    plt.savefig(save_path)
+    plt.savefig(os.path.join(save_path, "loss_curve.png"))
     plt.close()
 
 
-def visualize_predictions(model, dataset, device, save_path, num_samples=5):
-    """
-    Visualize `num_samples` random samples from `dataset`:
-      For each sample: input image, ground truth mask, model prediction.
-      Arrange in a figure with `num_samples` rows and 3 columns.
-      Save as PNG to `save_path`.
-    """
-    model.eval()
-    indices = list(range(len(dataset)))
-    selected = random.sample(indices, k=num_samples)
+def visualize_predictions(predictions, save_path):
+    import matplotlib.pyplot as plt
 
-    # Prepare figure
-    fig, axes = plt.subplots(num_samples, 3, figsize=(12, 4 * num_samples))
-    plt.subplots_adjust(top=0.93)
+    samples = predictions[:5]
+    fig, axs = plt.subplots(5, 3, figsize=(12, 15))
+    titles = ["Input Image", "Ground Truth", "Prediction"]
 
-    # Column titles
-    col_titles = ['Input Image', 'Ground Truth', 'Prediction']
-    for col_idx, title in enumerate(col_titles):
-        fig.text((col_idx + 0.5) / 3, 0.97, title, ha='center', va='bottom', fontsize=14)
+    for i, (img, mask, pred, name) in enumerate(samples):
+        axs[i, 0].imshow(img[0][0], cmap='gray')
+        axs[i, 1].imshow(mask[0][0], cmap='gray')
+        axs[i, 2].imshow(pred[0][0] > 0.5, cmap='gray')
+        for j in range(3):
+            axs[i, j].axis("off")
+            axs[i, j].set_title(titles[j])
+            axs[i, j].text(0.5, -0.15, name[0], size=10, ha="center", transform=axs[i, j].transAxes)
 
-    with torch.no_grad():
-        for row_idx, idx in enumerate(selected):
-            image_tensor, mask_tensor, base_name = dataset[idx]
-            img = image_tensor.unsqueeze(0).to(device, dtype=torch.float32)  # [1,1,H,W]
-            gt_mask = mask_tensor.squeeze(0).cpu().numpy()  # [H,W]
-
-            output = model(img)
-            prob = torch.sigmoid(output)
-            pred_mask = (prob > 0.5).float().squeeze(0).squeeze(0).cpu().numpy()  # [H,W]
-
-            # Move original image to numpy for plotting
-            # img_np = image_tensor.squeeze(0).cpu().numpy()  # [H,W]
-            # in case of RGB:
-            # Convert CHW → HWC → gray
-            img_np = image_tensor.permute(1, 2, 0).cpu().numpy()  # (H,W,3)
-            img_np = (img_np[..., 0] * 0.299 + img_np[..., 1] * 0.587 + img_np[..., 2] * 0.114)  # (H,W)
-
-            for col in range(3):
-                ax = axes[row_idx, col]
-                ax.axis('off')
-                if col == 0:
-                    ax.imshow(img_np, cmap='gray')
-                elif col == 1:
-                    ax.imshow(gt_mask, cmap='gray')
-                else:
-                    ax.imshow(pred_mask, cmap='gray')
-                # Filename above each subplot
-                ax.set_title(base_name, fontsize=10, pad=4)
-
-    plt.tight_layout(rect=[0, 0, 1, 0.95])
-    plt.savefig(save_path)
+    plt.tight_layout()
+    plt.savefig(os.path.join(save_path, "test_visualization.png"))
     plt.close()
