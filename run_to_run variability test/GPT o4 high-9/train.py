@@ -39,7 +39,6 @@ def validate_epoch(model, loader, criterion, device, epoch, save_path):
     model.eval()
     running_loss = 0.0
     dice_scores = []
-    batch_idx = 0
     n_batches = len(loader)
     pbar = tqdm(loader, desc=f"Val Epoch {epoch+1}", leave=False)
     for imgs, masks, _ in pbar:
@@ -48,26 +47,30 @@ def validate_epoch(model, loader, criterion, device, epoch, save_path):
             outputs = model(imgs)
             loss = criterion(outputs, masks)
         running_loss += loss.item()
-        # binarize at 0.5
         preds = (outputs > 0.5).float()
         dice_scores.append(dice_coeff(preds, masks))
         pbar.set_postfix({'val_loss': loss.item(), 'dice': dice_scores[-1]})
-        batch_idx += 1
 
     avg_loss = running_loss / n_batches
 
-    # save this epoch's dice scores as a row in Excel
-    # load existing (or start new)
+    # --- FIXED: ensure DataFrame has columns before inserting first row ---
     dice_file = os.path.join(save_path, "validation_dice_scores.xlsx")
+    batch_cols = [f"Batch_{i+1}" for i in range(n_batches)]
     if os.path.exists(dice_file):
         df = pd.read_excel(dice_file, index_col=0)
     else:
-        df = pd.DataFrame()
+        # initialize empty DF with the correct batch columns
+        df = pd.DataFrame(columns=batch_cols)
 
+    # if loaded df has fewer/more columns (e.g. batch count changed), reindex:
+    df = df.reindex(columns=batch_cols)
+
+    # now assign the new row
     df.loc[f"Epoch_{epoch+1}"] = dice_scores
     df.to_excel(dice_file)
 
     return avg_loss
+
 
 def test_model(model, loader, device, save_path):
     model.eval()
