@@ -49,8 +49,8 @@ if __name__ == "__main__":
     print(f"DataLoaders -> Train: {len(train_loader)}, Val: {len(val_loader)}, Test: {len(test_loader)}")
 
     # Model, loss, optimizer
-    model = UNet(n_channels=1, n_classes=1).to(device)
-    print(summary(model, input_size=(batch_size, 1, *img_size)))
+    model = UNet(n_channels=1, n_classes=1, bilinear=True)
+    print(summary(model, input_size=(8, 1, 256, 256)))
     criterion = nn.BCELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
 
