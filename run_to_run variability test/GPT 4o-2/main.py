@@ -18,7 +18,7 @@ if __name__ == "__main__":
     os.makedirs(save_path, exist_ok=True)
     img_size = (256, 256)
     batch_size = 8
-    epochs = 2 #25
+    epochs = 25
     lr = 1e-3
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
