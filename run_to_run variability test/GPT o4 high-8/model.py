@@ -1,53 +1,66 @@
-# unet_segmentation/model.py
+# model.py
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
+
+class DoubleConv(nn.Module):
+    """(conv => ReLU) * 2"""
+    def __init__(self, in_ch, out_ch):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Conv2d(in_ch, out_ch, 3, padding=1),
+            nn.BatchNorm2d(out_ch),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(out_ch, out_ch, 3, padding=1),
+            nn.BatchNorm2d(out_ch),
+            nn.ReLU(inplace=True),
+        )
+    def forward(self, x):
+        return self.net(x)
 
 class UNet(nn.Module):
-    def __init__(self):
-        super(UNet, self).__init__()
+    def __init__(self, in_channels=1, out_channels=1, features=[64, 128, 256, 512]):
+        super().__init__()
+        # Encoder
+        self.downs = nn.ModuleList()
+        for feat in features:
+            self.downs.append(DoubleConv(in_channels, feat))
+            in_channels = feat
+        self.pool = nn.MaxPool2d(2, 2)
 
-        def CBR(in_channels, out_channels):
-            return nn.Sequential(
-                nn.Conv2d(in_channels, out_channels, 3, padding=1),
-                nn.BatchNorm2d(out_channels),
-                nn.ReLU(inplace=True),
-                nn.Conv2d(out_channels, out_channels, 3, padding=1),
-                nn.BatchNorm2d(out_channels),
-                nn.ReLU(inplace=True)
-            )
+        # Decoder
+        self.ups = nn.ModuleList()
+        rev_feats = features[::-1]
+        for feat in rev_feats:
+            self.ups.append(nn.ConvTranspose2d(feat*2, feat, kernel_size=2, stride=2))
+            self.ups.append(DoubleConv(feat*2, feat))
 
-        self.enc1 = CBR(1, 64)
-        self.enc2 = CBR(64, 128)
-        self.enc3 = CBR(128, 256)
-        self.enc4 = CBR(256, 512)
+        # Bottleneck
+        self.bottleneck = DoubleConv(features[-1], features[-1]*2)
 
-        self.pool = nn.MaxPool2d(2)
-
-        self.bottleneck = CBR(512, 1024)
-
-        self.upconv4 = nn.ConvTranspose2d(1024, 512, 2, stride=2)
-        self.dec4 = CBR(1024, 512)
-        self.upconv3 = nn.ConvTranspose2d(512, 256, 2, stride=2)
-        self.dec3 = CBR(512, 256)
-        self.upconv2 = nn.ConvTranspose2d(256, 128, 2, stride=2)
-        self.dec2 = CBR(256, 128)
-        self.upconv1 = nn.ConvTranspose2d(128, 64, 2, stride=2)
-        self.dec1 = CBR(128, 64)
-
-        self.conv_final = nn.Conv2d(64, 1, 1)
+        # Final
+        self.final_conv = nn.Conv2d(features[0], out_channels, kernel_size=1)
 
     def forward(self, x):
-        e1 = self.enc1(x)
-        e2 = self.enc2(self.pool(e1))
-        e3 = self.enc3(self.pool(e2))
-        e4 = self.enc4(self.pool(e3))
+        skip_connections = []
+        for down in self.downs:
+            x = down(x)
+            skip_connections.append(x)
+            x = self.pool(x)
 
-        b = self.bottleneck(self.pool(e4))
+        x = self.bottleneck(x)
+        skip_connections = skip_connections[::-1]
 
-        d4 = self.dec4(torch.cat([self.upconv4(b), e4], dim=1))
-        d3 = self.dec3(torch.cat([self.upconv3(d4), e3], dim=1))
-        d2 = self.dec2(torch.cat([self.upconv2(d3), e2], dim=1))
-        d1 = self.dec1(torch.cat([self.upconv1(d2), e1], dim=1))
+        for idx in range(0, len(self.ups), 2):
+            upconv = self.ups[idx]
+            double_conv = self.ups[idx+1]
+            x = upconv(x)
+            skip = skip_connections[idx//2]
+            # pad if needed
+            if x.shape != skip.shape:
+                x = F.interpolate(x, size=skip.shape[2:])
+            x = torch.cat([skip, x], dim=1)
+            x = double_conv(x)
 
-        return torch.sigmoid(self.conv_final(d1))
+        return torch.sigmoid(self.final_conv(x))

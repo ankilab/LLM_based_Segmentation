@@ -24,7 +24,7 @@ def parse_args():
     p.add_argument('--save_path',   type=str, required=True)
     p.add_argument('--batch_size',  type=int, default=8)
     p.add_argument('--lr',          type=float, default=1e-3)
-    p.add_argument('--epochs',      type=int,   default=20) 
+    p.add_argument('--epochs',      type=int,   default=20)
     p.add_argument('--img_size',    type=int,   nargs=2, default=[256,256])
     return p.parse_args()
 
