@@ -1,53 +1,61 @@
-# unet_segmentation/model.py
-
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
-class UNet(nn.Module):
-    def __init__(self):
-        super(UNet, self).__init__()
 
-        def CBR(in_channels, out_channels):
-            return nn.Sequential(
-                nn.Conv2d(in_channels, out_channels, 3, padding=1),
-                nn.BatchNorm2d(out_channels),
-                nn.ReLU(inplace=True),
-                nn.Conv2d(out_channels, out_channels, 3, padding=1),
-                nn.BatchNorm2d(out_channels),
-                nn.ReLU(inplace=True)
-            )
-
-        self.enc1 = CBR(1, 64)
-        self.enc2 = CBR(64, 128)
-        self.enc3 = CBR(128, 256)
-        self.enc4 = CBR(256, 512)
-
-        self.pool = nn.MaxPool2d(2)
-
-        self.bottleneck = CBR(512, 1024)
-
-        self.upconv4 = nn.ConvTranspose2d(1024, 512, 2, stride=2)
-        self.dec4 = CBR(1024, 512)
-        self.upconv3 = nn.ConvTranspose2d(512, 256, 2, stride=2)
-        self.dec3 = CBR(512, 256)
-        self.upconv2 = nn.ConvTranspose2d(256, 128, 2, stride=2)
-        self.dec2 = CBR(256, 128)
-        self.upconv1 = nn.ConvTranspose2d(128, 64, 2, stride=2)
-        self.dec1 = CBR(128, 64)
-
-        self.conv_final = nn.Conv2d(64, 1, 1)
+class DoubleConv(nn.Module):
+    """(Conv -> BN -> ReLU) * 2"""
+    def __init__(self, in_ch, out_ch):
+        super().__init__()
+        self.double_conv = nn.Sequential(
+            nn.Conv2d(in_ch, out_ch, 3, padding=1, bias=False),
+            nn.BatchNorm2d(out_ch),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(out_ch, out_ch, 3, padding=1, bias=False),
+            nn.BatchNorm2d(out_ch),
+            nn.ReLU(inplace=True),
+        )
 
     def forward(self, x):
-        e1 = self.enc1(x)
-        e2 = self.enc2(self.pool(e1))
-        e3 = self.enc3(self.pool(e2))
-        e4 = self.enc4(self.pool(e3))
+        return self.double_conv(x)
 
-        b = self.bottleneck(self.pool(e4))
 
-        d4 = self.dec4(torch.cat([self.upconv4(b), e4], dim=1))
-        d3 = self.dec3(torch.cat([self.upconv3(d4), e3], dim=1))
-        d2 = self.dec2(torch.cat([self.upconv2(d3), e2], dim=1))
-        d1 = self.dec1(torch.cat([self.upconv1(d2), e1], dim=1))
+class UNet(nn.Module):
+    def __init__(self, in_ch=1, out_ch=1, features=[64, 128, 256, 512]):
+        super().__init__()
+        self.downs = nn.ModuleList()
+        self.ups = nn.ModuleList()
+        # Down path
+        for f in features:
+            self.downs.append(DoubleConv(in_ch, f))
+            in_ch = f
+        # Ups path
+        for f in reversed(features):
+            self.ups.append(
+                nn.ConvTranspose2d(f*2, f, kernel_size=2, stride=2)
+            )
+            self.ups.append(DoubleConv(f*2, f))
+        self.bottleneck = DoubleConv(features[-1], features[-1]*2)
+        self.final_conv = nn.Conv2d(features[0], out_ch, kernel_size=1)
 
-        return torch.sigmoid(self.conv_final(d1))
+        self.pool = nn.MaxPool2d(kernel_size=2, stride=2)
+
+    def forward(self, x):
+        skip_connections = []
+        for down in self.downs:
+            x = down(x)
+            skip_connections.append(x)
+            x = self.pool(x)
+
+        x = self.bottleneck(x)
+        skip_connections = skip_connections[::-1]
+
+        for idx in range(0, len(self.ups), 2):
+            x = self.ups[idx](x)
+            skip = skip_connections[idx//2]
+            if x.shape != skip.shape:
+                x = F.interpolate(x, size=skip.shape[2:])
+            x = torch.cat((skip, x), dim=1)
+            x = self.ups[idx+1](x)
+
+        return self.final_conv(x)

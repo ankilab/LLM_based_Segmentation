@@ -1,42 +1,65 @@
-# unet_segmentation/dataset.py
-
 import os
+from glob import glob
 from PIL import Image
+import torch
 from torch.utils.data import Dataset
-import torchvision.transforms as transforms
+import torchvision.transforms as T
+
 
 class SegmentationDataset(Dataset):
-    def __init__(self, image_dir, mask_dir, file_list, mask_suffix="_m", image_size=(256, 256)):
-        self.image_dir = image_dir
-        self.mask_dir = mask_dir
-        self.file_list = file_list
+    """
+    Loads grayscale images and binary masks from two directories (or same directory with suffix).
+    """
+    def __init__(self, image_dir, mask_dir=None, mask_suffix='_m', transforms=None):
+        """
+        image_dir: path to images
+        mask_dir: path to masks; if None, masks live alongside images
+        mask_suffix: suffix before file extension for mask files, e.g. "_seg"
+        transforms: torchvision transforms to apply to both image and mask
+        """
+        self.image_paths = sorted(glob(os.path.join(image_dir, '*.jpg')))
+        self.mask_dir = mask_dir or image_dir
         self.mask_suffix = mask_suffix
-        self.image_size = image_size
-        self.image_transform = transforms.Compose([
-            transforms.Grayscale(num_output_channels=1),
-            transforms.Resize(self.image_size),
-            transforms.ToTensor(),
-        ])
-        self.mask_transform = transforms.Compose([
-            transforms.Grayscale(num_output_channels=1),
-            transforms.Resize(self.image_size),
-            transforms.ToTensor(),
-        ])
+        self.transforms = transforms
 
     def __len__(self):
-        return len(self.file_list)
+        return len(self.image_paths)
 
     def __getitem__(self, idx):
-        img_name = self.file_list[idx]
-        image_path = os.path.join(self.image_dir, img_name)
-        mask_name = img_name.replace(".jpg", f"{self.mask_suffix}.jpg")
+        img_path = self.image_paths[idx]
+        fname = os.path.basename(img_path)
+        name, ext = os.path.splitext(fname)
+        mask_name = f"{name}{self.mask_suffix}{ext}"
         mask_path = os.path.join(self.mask_dir, mask_name)
 
-        image = Image.open(image_path).convert('L')
-        mask = Image.open(mask_path).convert('L')
+        # Load as grayscale
+        image = Image.open(img_path).convert('L')
+        mask = Image.open(mask_path).convert('L')  # binary mask as 0/255
 
-        image = self.image_transform(image)
+        if self.transforms:
+            image, mask = self.transforms(image, mask)
+
+        # image: [1,H,W], mask: [1,H,W] with values 0 or 1
+        return image, mask, fname
+
+
+class ToTensorNormalize:
+    """
+    Composite transform to resize, to-tensor, and normalize image & mask.
+    """
+    def __init__(self, size):
+        self.img_transform = T.Compose([
+            T.Resize(size),
+            T.ToTensor(),
+            T.Normalize([0.5], [0.5])
+        ])
+        self.mask_transform = T.Compose([
+            T.Resize(size),
+            T.ToTensor()  # will be float [0,1]
+        ])
+
+    def __call__(self, img, mask):
+        img = self.img_transform(img)
         mask = self.mask_transform(mask)
-        mask = (mask > 0.5).float()  # Ensure binary mask
-
-        return image, mask, img_name
+        mask = (mask > 0.5).float()
+        return img, mask
