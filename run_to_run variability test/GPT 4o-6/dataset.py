@@ -1,39 +1,41 @@
-# unet_segmentation/dataset.py
-
+# dataset.py
 import os
 from PIL import Image
 from torch.utils.data import Dataset
-import torch
 import torchvision.transforms as T
 
-class GraySegmentationDataset(Dataset):
-    def __init__(self, image_dir, mask_dir=None, suffix="_m", transform=None):
+class GrayscaleSegmentationDataset(Dataset):
+    def __init__(self, image_dir, mask_dir=None, mask_suffix='_m', transform=None):
         self.image_dir = image_dir
-        self.mask_dir = mask_dir or image_dir
-        self.suffix = suffix
+        self.mask_dir = mask_dir if mask_dir is not None else image_dir
+        self.mask_suffix = mask_suffix
         self.transform = transform
 
-        self.image_files = [f for f in os.listdir(image_dir) if f.endswith(".jpg") and suffix not in f]
-        self.image_files.sort()
+        self.image_files = sorted([
+            f for f in os.listdir(image_dir)
+            if f.endswith('.jpg') and not f.endswith(mask_suffix + '.jpg')
+        ])
 
     def __len__(self):
         return len(self.image_files)
 
     def __getitem__(self, idx):
-        img_name = self.image_files[idx]
-        img_path = os.path.join(self.image_dir, img_name)
-        mask_name = img_name.replace(".jpg", f"{self.suffix}.jpg")
+        image_name = self.image_files[idx]
+        mask_name = image_name.replace('.jpg', f'{self.mask_suffix}.jpg')
+
+        image_path = os.path.join(self.image_dir, image_name)
         mask_path = os.path.join(self.mask_dir, mask_name)
 
-        image = Image.open(img_path).convert("L")  # Grayscale
-        mask = Image.open(mask_path).convert("L")
+        image = Image.open(image_path).convert('L')
+        mask = Image.open(mask_path).convert('L')
 
-        if self.transform:
-            image = self.transform(image)
-            mask = self.transform(mask)
+        # Convert to tensor and normalize to [0,1]
+        transform = T.Compose([
+            T.Resize((256, 256)),
+            T.ToTensor()
+        ])
+        image = transform(image)
+        mask = transform(mask)
+        mask = (mask > 0.5).float()
 
-        # Normalize to [0,1], then binarize mask
-        image = image / 255.0
-        mask = (mask > 127).float()
-
-        return image, mask, img_name
+        return image, mask, image_name
