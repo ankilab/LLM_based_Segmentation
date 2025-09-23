@@ -74,13 +74,21 @@ def test(model, loader, device, save_path):
             predictions.append((img.cpu(), mask.cpu(), pred.cpu()))
             filenames.append(fname)
 
-    # Save Dice scores
-    dice_df = pd.DataFrame([all_dice_scores])
-    dice_df.to_excel(os.path.join(save_path, "test_dice_scores.xlsx"), index=False)
+    # Save Dice scores in same format: each row = 1 epoch/test run
+    df_new_row = pd.DataFrame([all_dice_scores])
+    dice_path = os.path.join(save_path, "test_dice_scores.xlsx")
+    if os.path.exists(dice_path):
+        df_existing = pd.read_excel(dice_path, header=None)
+        df_combined = pd.concat([df_existing, df_new_row], ignore_index=True)
+        df_combined.to_excel(dice_path, header=False, index=False)
+    else:
+        df_new_row.to_excel(dice_path, header=False, index=False)
 
     # Visualize 5 random predictions
     import random
-    random_idx = random.sample(range(len(predictions)), 5)
+    import matplotlib.pyplot as plt
+
+    random_idx = random.sample(range(len(predictions)), min(5, len(predictions)))
     fig, axs = plt.subplots(5, 3, figsize=(12, 15))
     for i, idx in enumerate(random_idx):
         img, mask, pred = predictions[idx]

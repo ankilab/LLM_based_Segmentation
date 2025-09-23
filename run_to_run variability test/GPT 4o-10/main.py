@@ -49,7 +49,7 @@ if __name__ == "__main__":
     criterion = torch.nn.BCELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
 
-    num_epochs = 2 #25
+    num_epochs = 25
     train_losses = []
     val_losses = []
 
