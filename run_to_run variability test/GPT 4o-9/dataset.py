@@ -5,38 +5,47 @@ from PIL import Image
 from torch.utils.data import Dataset
 import torchvision.transforms as transforms
 
+
 class SegmentationDataset(Dataset):
-    def __init__(self, image_dir, mask_dir, file_list, mask_suffix="_m", image_size=(256, 256)):
+    def __init__(self, image_dir, mask_dir=None, same_folder=False, suffix="_m", transform=None):
         self.image_dir = image_dir
-        self.mask_dir = mask_dir
-        self.file_list = file_list
-        self.mask_suffix = mask_suffix
-        self.image_size = image_size
-        self.image_transform = transforms.Compose([
-            transforms.Grayscale(num_output_channels=1),
-            transforms.Resize(self.image_size),
-            transforms.ToTensor(),
-        ])
-        self.mask_transform = transforms.Compose([
-            transforms.Grayscale(num_output_channels=1),
-            transforms.Resize(self.image_size),
-            transforms.ToTensor(),
-        ])
+        self.mask_dir = mask_dir if mask_dir is not None else image_dir
+        self.same_folder = same_folder
+        self.suffix = suffix
+        self.transform = transform
+
+        # Only accept image files
+        valid_ext = [".png", ".jpg", ".jpeg"]
+        self.image_files = [f for f in os.listdir(image_dir) if os.path.splitext(f)[1].lower() in valid_ext and suffix not in f]
 
     def __len__(self):
-        return len(self.file_list)
+        return len(self.image_files)
 
     def __getitem__(self, idx):
-        img_name = self.file_list[idx]
-        image_path = os.path.join(self.image_dir, img_name)
-        mask_name = img_name.replace(".jpg", f"{self.mask_suffix}.jpg")
+        img_name = self.image_files[idx]
+        img_path = os.path.join(self.image_dir, img_name)
+
+        # Load image
+        image = Image.open(img_path).convert("L")
+
+        # Build mask name
+        base_name, ext = os.path.splitext(img_name)
+        mask_name = f"{base_name}{self.suffix}{ext}"
         mask_path = os.path.join(self.mask_dir, mask_name)
 
-        image = Image.open(image_path).convert('L')
-        mask = Image.open(mask_path).convert('L')
+        if not os.path.exists(mask_path):
+            raise FileNotFoundError(f"Mask file not found: {mask_path}")
 
-        image = self.image_transform(image)
-        mask = self.mask_transform(mask)
-        mask = (mask > 0.5).float()  # Ensure binary mask
+        # Load mask
+        mask = Image.open(mask_path).convert("L")
+
+        # Resize and ToTensor
+        resize = transforms.Resize((256, 256))
+        to_tensor = transforms.ToTensor()
+        image = to_tensor(resize(image))
+        mask = to_tensor(resize(mask))
+
+        # Binarize mask
+        mask = (mask > 0.5).float()
 
         return image, mask, img_name
