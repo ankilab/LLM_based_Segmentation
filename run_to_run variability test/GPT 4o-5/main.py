@@ -23,7 +23,7 @@ if __name__ == "__main__":
     image_size = (256, 256)
     batch_size = 8
     learning_rate = 1e-4
-    num_epochs = 2
+    num_epochs = 20
 
     # Prepare file list
     all_files = [f for f in os.listdir(image_dir) if f.endswith(".jpg")]
