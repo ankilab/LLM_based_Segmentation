@@ -1,111 +1,100 @@
-# train.py
+# unet_segmentation/train.py
 import os
 import time
+import random
 import torch
 import numpy as np
 import pandas as pd
-from tqdm import tqdm
 import matplotlib.pyplot as plt
+from tqdm import tqdm
+from torch.utils.data import DataLoader
+from sklearn.model_selection import train_test_split
 
-from sklearn.metrics import jaccard_score  # approximate dice via 2*|A∩B|/(|A|+|B|)
-
-def dice_coeff(pred, target, smooth=1e-6):
-    pred = (pred > 0.5).float().view(-1)
-    target = target.view(-1)
-    intersection = (pred * target).sum()
-    return (2. * intersection + smooth) / (pred.sum() + target.sum() + smooth)
+def dice_coeff(pred, target, eps=1e-6):
+    # pred, target: tensors of shape B×1×H×W, binary {0,1}
+    pred_flat = pred.view(pred.size(0), -1)
+    tgt_flat  = target.view(target.size(0), -1)
+    intersection = (pred_flat * tgt_flat).sum(dim=1)
+    return ((2*intersection + eps) / (pred_flat.sum(1) + tgt_flat.sum(1) + eps)).mean().item()
 
 def train_epoch(model, loader, criterion, optimizer, device):
     model.train()
     running_loss = 0.0
-    for imgs, masks, _ in tqdm(loader, desc='Train', leave=False):
-        imgs = imgs.to(device)
-        masks = masks.to(device)
+    for imgs, masks, _ in tqdm(loader, desc=" Train ", leave=False):
+        imgs, masks = imgs.to(device), masks.to(device)
         preds = model(imgs)
         loss = criterion(preds, masks)
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
-        running_loss += loss.item()
-    return running_loss / len(loader)
+        running_loss += loss.item() * imgs.size(0)
+    return running_loss / len(loader.dataset)
 
-def validate_epoch(model, loader, criterion, device, save_path, epoch):
+def validate_epoch(model, loader, criterion, device, save_path, epoch_idx, all_val_dice):
     model.eval()
-    val_loss = 0.0
+    running_loss = 0.0
     dice_scores = []
     with torch.no_grad():
-        for i, (imgs, masks, _) in enumerate(tqdm(loader, desc='Validate', leave=False)):
-            imgs = imgs.to(device)
-            masks = masks.to(device)
-            preds = model(imgs)
+        for imgs, masks, _ in tqdm(loader, desc=" Val   ", leave=False):
+            imgs, masks = imgs.to(device), masks.to(device)
+            preds = torch.sigmoid(model(imgs))
             loss = criterion(preds, masks)
-            val_loss += loss.item()
-            ds = dice_coeff(torch.sigmoid(preds), masks)
-            dice_scores.append(ds.item())
-    avg_loss = val_loss / len(loader)
-    # Save dice scores per batch to Excel, one row per epoch:
-    df = pd.DataFrame([dice_scores])
-    fname = os.path.join(save_path, 'validation_dice_scores.xlsx')
-    if epoch == 1:
-        df.to_excel(fname, index=False, header=False)
-    else:
-        # append
-        existing = pd.read_excel(fname, header=None)
-        combined = pd.concat([existing, df], ignore_index=True)
-        combined.to_excel(fname, index=False, header=False)
+            running_loss += loss.item() * imgs.size(0)
+            bin_preds = (preds > 0.5).float()
+            batch_dice = dice_coeff(bin_preds, masks)
+            dice_scores.append(batch_dice)
+    avg_loss = running_loss / len(loader.dataset)
+    all_val_dice.append(dice_scores)
+    # after epoch, save dice scores so far
+    df = pd.DataFrame(all_val_dice,
+                      index=[f"Epoch_{i+1}" for i in range(len(all_val_dice))])
+    df.to_excel(os.path.join(save_path, "validation_dice_scores.xlsx"))
     return avg_loss
 
 def test_epoch(model, loader, device, save_path):
     model.eval()
     dice_scores = []
+    all_preds = []
     img_names = []
-    preds_all = []
-    imgs_all = []
-    masks_all = []
     with torch.no_grad():
-        for imgs, masks, names in tqdm(loader, desc='Test', leave=False):
-            imgs = imgs.to(device)
-            masks = masks.to(device)
-            logits = model(imgs)
-            ds = dice_coeff(torch.sigmoid(logits), masks)
-            dice_scores.append(ds.item())
+        for imgs, masks, names in tqdm(loader, desc=" Test  ", leave=False):
+            imgs, masks = imgs.to(device), masks.to(device)
+            preds = torch.sigmoid(model(imgs))
+            bin_preds = (preds > 0.5).float()
+            dice_scores.append(dice_coeff(bin_preds, masks))
+            all_preds.extend(bin_preds.cpu())
             img_names.extend(names)
-            imgs_all.append(imgs.cpu())
-            masks_all.append(masks.cpu())
-            preds_all.append(torch.sigmoid(logits).cpu())
     # save dice scores
-    df = pd.DataFrame([dice_scores])
-    df.to_excel(os.path.join(save_path, 'test_dice_scores.xlsx'), index=False, header=False)
-    return imgs_all, masks_all, preds_all, img_names
+    df = pd.DataFrame([dice_scores], index=["Test"])
+    df.to_excel(os.path.join(save_path, "test_dice_scores.xlsx"))
+    return all_preds, img_names
 
 def plot_losses(train_losses, val_losses, save_path):
-    epochs = range(1, len(train_losses) + 1)
     plt.figure()
-    plt.plot(epochs, train_losses)
-    plt.plot(epochs, val_losses)
-    plt.xlabel('Epoch')
-    plt.ylabel('Loss')
-    plt.legend(['Train', 'Validation'])
-    plt.title('Loss over epochs')
-    plt.savefig(os.path.join(save_path, 'loss_curve.png'))
+    plt.plot(range(1, len(train_losses)+1), train_losses, label="Train Loss")
+    plt.plot(range(1, len(val_losses)+1),   val_losses,   label="Val Loss")
+    plt.xlabel("Epoch")
+    plt.ylabel("Loss")
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(os.path.join(save_path, "loss_curve.png"))
     plt.close()
 
-def visualize_predictions(imgs_all, masks_all, preds_all, img_names, save_path):
-    import random
-    idxs = random.sample(range(len(img_names)), k=5)
+def visualize_predictions(all_preds, test_dataset, img_names, save_path):
+    import matplotlib.pyplot as plt
+    # randomly pick 5
+    idxs = random.sample(range(len(all_preds)), 5)
     fig, axes = plt.subplots(5, 3, figsize=(9,15))
-    for row, i in enumerate(idxs):
-        img = imgs_all[i][0].numpy()
-        mask = masks_all[i][0].numpy()
-        pred = (preds_all[i][0].numpy() > 0.5).astype(np.uint8)
-        for col, data in enumerate([img, mask, pred]):
-            ax = axes[row, col]
-            ax.imshow(data, cmap='gray')
-            if row == 0:
-                ax.set_title(['Input Image','Ground Truth','Prediction'][col])
-            ax.axis('off')
-            if col == 0:
-                ax.set_ylabel(img_names[i], rotation=0, labelpad=50, va='center')
-    plt.tight_layout()
-    plt.savefig(os.path.join(save_path, 'predictions.png'))
+    for i, ax_row in enumerate(axes):
+        img, mask, _ = test_dataset[idxs[i]]
+        pred = all_preds[idxs[i]][0]
+        ax_row[0].imshow(img.squeeze(), cmap="gray");    ax_row[0].set_title("Input")
+        ax_row[1].imshow(mask.squeeze(), cmap="gray");   ax_row[1].set_title("Ground Truth")
+        ax_row[2].imshow(pred, cmap="gray");             ax_row[2].set_title("Prediction")
+        for ax in ax_row:
+            ax.axis("off")
+        # file name above row
+        fig.suptitle("Input Image      Ground Truth      Prediction", fontsize=16)
+    plt.tight_layout(rect=[0,0,1,0.97])
+    plt.savefig(os.path.join(save_path, "test_predictions.png"))
     plt.close()
