@@ -46,7 +46,7 @@ if __name__ == "__main__":
     # Training settings
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
     criterion = nn.BCELoss()
-    epochs = 2 #20
+    epochs = 20
 
     train_losses, val_losses = [], []
     start_time = time.time()

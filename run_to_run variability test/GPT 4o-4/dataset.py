@@ -9,13 +9,25 @@ from torchvision import transforms
 
 
 class GrayscaleSegmentationDataset(Dataset):
-    def __init__(self, image_dir, mask_dir=None, suffix="_m", transform=None):
+    def __init__(self, image_dir, mask_dir=None, suffix="_m", target_size=(256, 256)):
         self.image_dir = image_dir
         self.mask_dir = mask_dir if mask_dir else image_dir
         self.suffix = suffix
-        self.transform = transform
+        self.target_size = target_size
 
         self.image_paths = sorted([p for p in glob.glob(os.path.join(self.image_dir, "*.jpg")) if self.suffix not in os.path.basename(p)])
+
+        self.image_transform = transforms.Compose([
+            transforms.Grayscale(num_output_channels=1),
+            transforms.Resize(self.target_size),
+            transforms.ToTensor()
+        ])
+
+        self.mask_transform = transforms.Compose([
+            transforms.Grayscale(num_output_channels=1),
+            transforms.Resize(self.target_size),
+            transforms.ToTensor()
+        ])
 
     def __len__(self):
         return len(self.image_paths)
@@ -26,14 +38,11 @@ class GrayscaleSegmentationDataset(Dataset):
         mask_name = image_name.replace(".jpg", f"{self.suffix}.jpg")
         mask_path = os.path.join(self.mask_dir, mask_name)
 
-        image = Image.open(image_path).convert("L")
-        mask = Image.open(mask_path).convert("L")
+        image = Image.open(image_path)
+        mask = Image.open(mask_path)
 
-        # Convert to tensors and normalize
-        image = transforms.ToTensor()(image)  # [1, H, W]
-        mask = transforms.ToTensor()(mask)    # [1, H, W]
-
-        # Ensure binary mask
-        mask = (mask > 0.5).float()
+        image = self.image_transform(image)
+        mask = self.mask_transform(mask)
+        mask = (mask > 0.5).float()  # Ensure binary mask
 
         return image, mask, image_name
