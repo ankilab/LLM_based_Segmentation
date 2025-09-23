@@ -1,67 +1,91 @@
 # unet_segmentation/main.py
 
-import os
 import torch
-import random
-import numpy as np
+import torchvision.transforms as T
+from torch.utils.data import DataLoader, Subset
 from sklearn.model_selection import train_test_split
-from torch.utils.data import Subset, DataLoader
 from torchinfo import summary
+import os
 
-from dataset import SegmentationDataset
+from dataset import GraySegmentationDataset
 from model import UNet
-from train import train_model, test_model
+from train import *
 
 if __name__ == "__main__":
-    # Paths
-    image_dir = "D:\qy44lyfe\LLM segmentation\Data sets\Brain Meningioma\images"
-    mask_dir = "D:\qy44lyfe\LLM segmentation\Data sets\Brain Meningioma\Masks"
-    save_path = "D:\qy44lyfe\LLM segmentation\Results\Models Comparison\Models run to run comparison\GPT 4o-5"
+    # === Config ===
+    image_path = "D:\qy44lyfe\LLM segmentation\Data sets\Brain Meningioma\images"
+    mask_path = "D:\qy44lyfe\LLM segmentation\Data sets\Brain Meningioma\Masks"
+    save_path = "D:\qy44lyfe\LLM segmentation\Results\Models Comparison\Models run to run comparison\GPT 4o-6"
     os.makedirs(save_path, exist_ok=True)
 
-    # Hyperparameters
-    image_size = (256, 256)
     batch_size = 8
-    learning_rate = 1e-4
-    num_epochs = 20
-
-    # Prepare file list
-    all_files = [f for f in os.listdir(image_dir) if f.endswith(".jpg")]
-    all_files.sort()
-    random.shuffle(all_files)
-
-    # Split dataset
-    train_idx, test_idx = train_test_split(range(len(all_files)), test_size=0.2, random_state=42)
-    val_idx, test_idx = train_test_split(test_idx, test_size=0.5, random_state=42)
-
-    print(f"Train size: {len(train_idx)}, Val size: {len(val_idx)}, Test size: {len(test_idx)}")
-
-    dataset = SegmentationDataset(image_dir, mask_dir, all_files, image_size=image_size)
-    train_set = Subset(dataset, train_idx)
-    val_set = Subset(dataset, val_idx)
-    test_set = Subset(dataset, test_idx)
-
-    # DataLoaders
-    train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True)
-    val_loader = DataLoader(val_set, batch_size=batch_size, shuffle=False)
-    test_loader = DataLoader(test_set, batch_size=1, shuffle=False)
-
-    print(f"Train batches: {len(train_loader)}, Val batches: {len(val_loader)}, Test batches: {len(test_loader)}")
-
-    # Device
+    lr = 1e-4
+    epochs = 2 #25
+    img_size = (256, 256)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    # Model
+    transform = T.Compose([T.Resize(img_size), T.ToTensor()])
+
+    # === Dataset & Splits ===
+    full_dataset = GraySegmentationDataset(image_path, mask_path, transform=transform)
+    indices = list(range(len(full_dataset)))
+    train_idx, temp_idx = train_test_split(indices, test_size=0.2, random_state=42)
+    val_idx, test_idx = train_test_split(temp_idx, test_size=0.5, random_state=42)
+
+    train_set = Subset(full_dataset, train_idx)
+    val_set = Subset(full_dataset, val_idx)
+    test_set = Subset(full_dataset, test_idx)
+
+    print(f"Train: {len(train_set)}, Val: {len(val_set)}, Test: {len(test_set)}")
+
+    train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True)
+    val_loader = DataLoader(val_set, batch_size=batch_size)
+    test_loader = DataLoader(test_set, batch_size=batch_size)
+
+    print(f"Train Loader: {len(train_loader)} batches")
+    print(f"Val Loader: {len(val_loader)} batches")
+    print(f"Test Loader: {len(test_loader)} batches")
+
+    # === Model ===
     model = UNet().to(device)
-    summary(model, input_size=(1, 1, *image_size))
-    print(f"Total trainable parameters: {sum(p.numel() for p in model.parameters() if p.requires_grad)}")
+    summary(model, input_size=(1, 1, *img_size))
 
-    # Loss and Optimizer
-    criterion = torch.nn.BCELoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+    # === Optimizer, Loss ===
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+    criterion = nn.BCELoss()
 
-    # Training
-    train_model(model, train_loader, val_loader, criterion, optimizer, device, num_epochs, save_path)
+    train_losses, val_losses = [], []
+    val_dice_all = []
 
-    # Testing
-    test_model(model, test_loader, device, save_path)
+    start_time = time.time()
+
+    for epoch in range(epochs):
+        print(f"\nEpoch {epoch+1}/{epochs}")
+        train_loss = train_one_epoch(model, train_loader, optimizer, criterion, device)
+        val_loss, val_dice = validate(model, val_loader, criterion, device)
+
+        train_losses.append(train_loss)
+        val_losses.append(val_loss)
+        val_dice_all.append(val_dice)
+
+        print(f"Train Loss: {train_loss:.4f}, Val Loss: {val_loss:.4f}, Dice: {sum(val_dice)/len(val_dice):.4f}")
+
+    end_time = time.time()
+    print(f"\nTraining completed in {(end_time - start_time)/60:.2f} minutes")
+
+    # Save model
+    torch.save(model, os.path.join(save_path, "model_full.pth"))
+    torch.save(model.state_dict(), os.path.join(save_path, "model_state_dict.pth"))
+
+    # Save logs
+    save_loss_excel(train_losses, os.path.join(save_path, "train_losses.xlsx"))
+    save_loss_excel(val_losses, os.path.join(save_path, "val_losses.xlsx"))
+    save_dice_scores_excel(val_dice_all, os.path.join(save_path, "validation_dice_scores.xlsx"))
+    visualize_losses(train_losses, val_losses, os.path.join(save_path, "loss_plot.png"))
+
+    # Test & Save test dice
+    test_dice = test(model, test_loader, device)
+    save_dice_scores_excel([test_dice], os.path.join(save_path, "test_dice_scores.xlsx"))
+
+    # Visualize prediction
+    visualize_predictions(model, full_dataset, device, os.path.join(save_path, "sample_predictions.png"))
