@@ -39,7 +39,7 @@ if __name__ == "__main__":
 
     batch_size = 8
     lr = 1e-4
-    epochs = 2 #25
+    epochs = 25
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # Load Dataset

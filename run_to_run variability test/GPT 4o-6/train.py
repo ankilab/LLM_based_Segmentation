@@ -37,7 +37,7 @@ def validate(model, dataloader, loss_fn, device, save_path, epoch):
     dice_scores = []
     with torch.no_grad():
         loop = tqdm(dataloader, desc="Validation", leave=False)
-        for i, (x, y, _) in enumerate(loop):
+        for _, (x, y, _) in enumerate(loop):
             x, y = x.to(device), y.to(device)
             preds = model(x)
             loss = loss_fn(preds, y)
@@ -45,14 +45,20 @@ def validate(model, dataloader, loss_fn, device, save_path, epoch):
             dice = dice_score(preds, y).item()
             dice_scores.append(dice)
 
-    # Save Dice scores as row in Excel
+    # Save Dice scores row-wise: epochs as rows, batches as columns
     dice_excel_path = os.path.join(save_path, 'validation_dice_scores.xlsx')
-    df = pd.DataFrame([dice_scores])
-    with pd.ExcelWriter(dice_excel_path, mode='a' if os.path.exists(dice_excel_path) else 'w',
-                        engine='openpyxl') as writer:
-        df.to_excel(writer, header=False, index=False)
+    new_row = pd.DataFrame([dice_scores])
+
+    if os.path.exists(dice_excel_path):
+        existing = pd.read_excel(dice_excel_path, header=None)
+        updated = pd.concat([existing, new_row], ignore_index=True)
+    else:
+        updated = new_row
+
+    updated.to_excel(dice_excel_path, header=False, index=False)
 
     return val_loss / len(dataloader.dataset)
+
 
 
 def test(model, dataloader, device, save_path):
@@ -69,13 +75,22 @@ def test(model, dataloader, device, save_path):
                 dice_scores.append(dice)
                 all_samples.append((x[i].cpu(), y[i].cpu(), preds[i].cpu(), names[i]))
 
-    # Save Dice scores
-    df = pd.DataFrame([dice_scores])
-    df.to_excel(os.path.join(save_path, 'test_dice_scores.xlsx'), index=False, header=False)
+    # Save Dice scores in rows (only one row for test set)
+    test_excel_path = os.path.join(save_path, 'test_dice_scores.xlsx')
+    new_row = pd.DataFrame([dice_scores])
 
-    # Visualization of 5 random samples
+    if os.path.exists(test_excel_path):
+        existing = pd.read_excel(test_excel_path, header=None)
+        updated = pd.concat([existing, new_row], ignore_index=True)
+    else:
+        updated = new_row
+
+    updated.to_excel(test_excel_path, header=False, index=False)
+
+    # Visualize 5 random predictions
     import random
     samples = random.sample(all_samples, 5)
+    import matplotlib.pyplot as plt
     fig, axs = plt.subplots(5, 3, figsize=(12, 20))
     for i, (img, gt, pred, name) in enumerate(samples):
         axs[i, 0].imshow(img.squeeze(), cmap='gray')
@@ -88,3 +103,4 @@ def test(model, dataloader, device, save_path):
             axs[i, j].axis('off')
     plt.tight_layout()
     plt.savefig(os.path.join(save_path, "test_predictions.png"))
+
