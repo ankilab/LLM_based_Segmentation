@@ -3,40 +3,36 @@
 import os
 from PIL import Image
 from torch.utils.data import Dataset
-import torchvision.transforms as transforms
+from torchvision import transforms
 
 class SegmentationDataset(Dataset):
-    def __init__(self, image_dir, mask_dir, file_list, mask_suffix="_m", image_size=(256, 256)):
+    def __init__(self, image_dir, mask_dir=None, suffix='_m', transform=None):
         self.image_dir = image_dir
-        self.mask_dir = mask_dir
-        self.file_list = file_list
-        self.mask_suffix = mask_suffix
-        self.image_size = image_size
-        self.image_transform = transforms.Compose([
-            transforms.Grayscale(num_output_channels=1),
-            transforms.Resize(self.image_size),
-            transforms.ToTensor(),
-        ])
-        self.mask_transform = transforms.Compose([
-            transforms.Grayscale(num_output_channels=1),
-            transforms.Resize(self.image_size),
-            transforms.ToTensor(),
-        ])
+        self.mask_dir = mask_dir if mask_dir else image_dir
+        self.suffix = suffix
+        self.transform = transform
+        self.image_files = [f for f in os.listdir(image_dir) if f.endswith('.jpg') and not f.endswith(f'{suffix}.jpg')]
 
     def __len__(self):
-        return len(self.file_list)
+        return len(self.image_files)
 
     def __getitem__(self, idx):
-        img_name = self.file_list[idx]
-        image_path = os.path.join(self.image_dir, img_name)
-        mask_name = img_name.replace(".jpg", f"{self.mask_suffix}.jpg")
-        mask_path = os.path.join(self.mask_dir, mask_name)
+        img_name = self.image_files[idx]
+        img_path = os.path.join(self.image_dir, img_name)
 
-        image = Image.open(image_path).convert('L')
+        if self.mask_dir:
+            mask_name = img_name.replace('.jpg', f'{self.suffix}.jpg')
+            mask_path = os.path.join(self.mask_dir, mask_name)
+        else:
+            raise ValueError("mask_dir must be provided or be the same as image_dir")
+
+        image = Image.open(img_path).convert('L')
         mask = Image.open(mask_path).convert('L')
 
-        image = self.image_transform(image)
-        mask = self.mask_transform(mask)
-        mask = (mask > 0.5).float()  # Ensure binary mask
+        if self.transform:
+            image = self.transform(image)
+            mask = self.transform(mask)
+
+        mask = (mask > 0.5).float()  # binary mask
 
         return image, mask, img_name
