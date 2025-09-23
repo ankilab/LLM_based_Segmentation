@@ -73,11 +73,11 @@ def train_model(model, train_loader, val_loader, criterion, optimizer, device, n
                 loss = criterion(outputs, masks)
                 val_loss += loss.item() * images.size(0)
                 val_dice = dice_score(outputs, masks)
-                val_dice_scores.append(val_dice.cpu().numpy())
+                val_dice_scores.append(val_dice.mean().item())
 
         avg_val_loss = val_loss / len(val_loader.dataset)
         val_losses.append(avg_val_loss)
-        validation_dice_scores.append(np.mean(val_dice_scores, axis=0))
+        validation_dice_scores.append(val_dice_scores)
 
     duration = time.time() - start_time
     print(f"Training completed in {duration:.2f} seconds.")
