@@ -39,42 +39,35 @@ def train_epoch(model, loader, optimizer, device):
     avg_loss = running_loss / len(loader.dataset)
     return avg_loss
 
-def validate_epoch(model, loader, device, save_path, epoch):
+def validate_epoch(model, loader, device):
     model.eval()
     running_loss = 0.0
-    all_dices = []
-    batch_idx = []
+    per_batch_means = []
     with torch.no_grad():
-        for i, (images, masks, _) in enumerate(tqdm(loader, desc='Val', leave=False)):
-            images = images.to(device)
-            masks  = masks.to(device)
+        for images, masks, _ in tqdm(loader, desc='Val', leave=False):
+            images, masks = images.to(device), masks.to(device)
             outputs = model(images)
             loss = F.binary_cross_entropy_with_logits(outputs, masks)
             running_loss += loss.item() * images.size(0)
-            dices = dice_coeff_batch(outputs, masks)
-            all_dices.append(dices)
-            batch_idx.append(i)
-    avg_loss = running_loss / len(loader.dataset)
-    # save dice for this epoch
-    df = pd.DataFrame(all_dices).T  # rows=epoch? we'll stack later
-    dice_file = os.path.join(save_path, 'validation_dice_scores.xlsx')
-    with pd.ExcelWriter(dice_file, mode='a' if os.path.exists(dice_file) else 'w') as writer:
-        df.to_excel(writer, sheet_name=f'epoch_{epoch}', index=False)
-    return avg_loss
 
-def test_epoch(model, loader, device, save_path):
+            # compute mean dice for this batch
+            dices = dice_coeff_batch(outputs, masks)  # list of dice per sample
+            per_batch_means.append(sum(dices) / len(dices))
+
+    avg_loss = running_loss / len(loader.dataset)
+    # return both avg loss and list of per-batch mean dice
+    return avg_loss, per_batch_means
+
+def test_epoch(model, loader, device):
     model.eval()
-    all_dices = []
+    per_batch_means = []
     with torch.no_grad():
-        for i, (images, masks, _) in enumerate(tqdm(loader, desc='Test', leave=False)):
-            images = images.to(device)
-            masks  = masks.to(device)
+        for images, masks, _ in tqdm(loader, desc='Test', leave=False):
+            images, masks = images.to(device), masks.to(device)
             outputs = model(images)
             dices = dice_coeff_batch(outputs, masks)
-            all_dices.append(dices)
-    df = pd.DataFrame(all_dices).T
-    df.to_excel(os.path.join(save_path, 'test_dice_scores.xlsx'), index=False)
-    return
+            per_batch_means.append(sum(dices) / len(dices))
+    return per_batch_means
 
 def plot_losses(train_losses, val_losses, save_path):
     plt.figure()

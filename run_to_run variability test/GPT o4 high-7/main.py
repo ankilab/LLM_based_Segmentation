@@ -32,7 +32,7 @@ if __name__ == "__main__":
     save_path    = 'D:\qy44lyfe\LLM segmentation\Results\Models Comparison\Models run to run comparison\GPT o4 high-7'
     batch_size   = 8
     lr           = 1e-4
-    num_epochs   = 2 #50
+    num_epochs   = 50
     device       = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     os.makedirs(save_path, exist_ok=True)
 
@@ -62,23 +62,30 @@ if __name__ == "__main__":
     print(f"Total learnable parameters: {total_params}")
 
     # --- training loop ---
+    val_dice_per_epoch = []  # will be list of lists
     train_losses, val_losses = [], []
+
     t0 = time.time()
-    for epoch in range(1, num_epochs+1):
+    for epoch in range(1, num_epochs + 1):
         print(f"\nEpoch {epoch}/{num_epochs}")
+
         tr_loss = train_epoch(model, train_loader, optimizer, device)
-        val_loss = validate_epoch(model, val_loader, device, save_path, epoch)
+        val_loss, val_dice_means = validate_epoch(model, val_loader, device)
+
         train_losses.append(tr_loss)
         val_losses.append(val_loss)
+        val_dice_per_epoch.append(val_dice_means)
 
-        # save epoch losses to excel
-        pd.DataFrame([list(range(1, epoch+1)), train_losses])\
-          .to_excel(os.path.join(save_path, 'train_losses.xlsx'), index=False, header=False)
-        pd.DataFrame([list(range(1, epoch+1)), val_losses])\
-          .to_excel(os.path.join(save_path, 'val_losses.xlsx'),   index=False, header=False)
+        # save per‐epoch losses as before
+        pd.DataFrame([list(range(1, epoch + 1)), train_losses]) \
+            .to_excel(os.path.join(save_path, 'train_losses.xlsx'),
+                      index=False, header=False)
+        pd.DataFrame([list(range(1, epoch + 1)), val_losses]) \
+            .to_excel(os.path.join(save_path, 'val_losses.xlsx'),
+                      index=False, header=False)
 
     total_time = time.time() - t0
-    print(f"\nTotal training time: {total_time/60:.2f} minutes")
+    print(f"\nTotal training time: {total_time / 60:.2f} minutes")
 
     # --- save model ---
     torch.save(model, os.path.join(save_path, 'unet_model_full.pth'))
@@ -87,8 +94,21 @@ if __name__ == "__main__":
     # --- plot losses ---
     plot_losses(train_losses, val_losses, save_path)
 
-    # --- testing & visualization ---
-    test_epoch(model, test_loader, device, save_path)
+    # --- after training: write the **single** validation‐dice sheet ---
+    df_val = pd.DataFrame(
+        val_dice_per_epoch,
+        index=[f"epoch_{i}" for i in range(1, len(val_dice_per_epoch) + 1)]
+    )
+    df_val.to_excel(os.path.join(save_path, 'validation_dice_scores.xlsx'),
+                    index_label='Epoch')
+
+    # --- run testing and save its dice‐score sheet ---
+    test_dice_means = test_epoch(model, test_loader, device)
+    df_test = pd.DataFrame(test_dice_means, index=["batch_" + str(i) for i in range(len(test_dice_means))]).T
+    # if you prefer one row per epoch, batch per column: wrap in list:
+    # df_test = pd.DataFrame([test_dice_means], index=['test'])
+    df_test.to_excel(os.path.join(save_path, 'test_dice_scores.xlsx'),
+                     index_label='Epoch')
 
     # visualize 5 random samples
     import random
