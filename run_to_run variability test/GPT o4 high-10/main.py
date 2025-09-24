@@ -1,91 +1,118 @@
-# unet_segmentation/main.py
+# main.py
+
 import os
+import random
 import time
-import torch
-import pandas as pd
 from torch.utils.data import DataLoader, Subset
 from sklearn.model_selection import train_test_split
-from torch import optim
+import torch
+import torch.optim as optim
+from torchvision import transforms
 from torchinfo import summary
 
-from dataset import SegmentationDataset
+from dataset import GrayscaleSegmentationDataset
 from model import UNet
-from train import (train_epoch, validate_epoch, test_epoch,
-                   plot_losses, visualize_predictions)
-
-def save_losses_excel(losses, filename):
-    # losses: list of floats
-    df = pd.DataFrame([list(range(1, len(losses)+1)), losses])
-    df.to_excel(filename, index=False, header=False)
+from train import (
+    train_epoch, validate_epoch, test_model,
+    plot_losses
+)
 
 if __name__ == "__main__":
-    # paths & hyperparams
-    data_dir  = "D:\qy44lyfe\LLM segmentation\Data sets\Brain Meningioma\images"    # <-- change
-    masks_dir = "D:\qy44lyfe\LLM segmentation\Data sets\Brain Meningioma\Masks"              # same dir or separate
-    SAVE_PATH = "D:\qy44lyfe\LLM segmentation\Results\Models Comparison\Models run to run comparison\GPT o4 high-10"
-    os.makedirs(SAVE_PATH, exist_ok=True)
+    # --- Config ---
+    images_dir = 'D:\qy44lyfe\LLM segmentation\Data sets\Brain Meningioma\images'
+    masks_dir = 'D:\qy44lyfe\LLM segmentation\Data sets\Brain Meningioma\Masks'      # or None if same folder
+    save_path = 'D:\qy44lyfe\LLM segmentation\Results\Models Comparison\Models run to run comparison\GPT o4 high-10'
+    os.makedirs(save_path, exist_ok=True)
+    img_size = (256, 256)
+    batch_size = 8
+    lr = 1e-4
+    num_epochs = 50
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-    lr          = 1e-4
-    batch_size  = 8
-    num_epochs  = 50
-    img_size    = (256,256)
-    device      = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    # --- Transforms ---
+    img_transform = transforms.Compose([
+        transforms.Resize(img_size),
+        transforms.ToTensor(),
+        transforms.Normalize([0.5], [0.5])
+    ])
+    mask_transform = transforms.Compose([
+        transforms.Resize(img_size),
+        transforms.ToTensor()
+    ])
 
-    # dataset
-    full_ds = SegmentationDataset(data_dir, masks_dir, mask_suffix="_m", img_size=img_size)
+    # --- Dataset ---
+    full_ds = GrayscaleSegmentationDataset(images_dir, masks_dir,
+                                           transform=img_transform,
+                                           mask_transform=mask_transform)
     N = len(full_ds)
     idxs = list(range(N))
-    # 80/10/10 split
-    idx_train, idx_temp = train_test_split(idxs, test_size=0.2, random_state=42, shuffle=True)
-    idx_val, idx_test    = train_test_split(idx_temp, test_size=0.5, random_state=42, shuffle=True)
-    print(f"Train/Val/Test sizes: {len(idx_train)}/{len(idx_val)}/{len(idx_test)}")
+    train_idx, temp_idx = train_test_split(idxs, test_size=0.2, random_state=42)
+    val_idx, test_idx = train_test_split(temp_idx, test_size=0.5, random_state=42)
 
-    ds_train = Subset(full_ds, idx_train)
-    ds_val   = Subset(full_ds, idx_val)
-    ds_test  = Subset(full_ds, idx_test)
-    print("Subsets created.")
+    print(f"Total: {N}, Train: {len(train_idx)}, Val: {len(val_idx)}, Test: {len(test_idx)}")
 
-    dl_train = DataLoader(ds_train, batch_size=batch_size, shuffle=True,  num_workers=4)
-    dl_val   = DataLoader(ds_val,   batch_size=batch_size, shuffle=False, num_workers=4)
-    dl_test  = DataLoader(ds_test,  batch_size=batch_size, shuffle=False, num_workers=4)
-    print("DataLoaders ready.")
+    train_ds = Subset(full_ds, train_idx)
+    val_ds = Subset(full_ds, val_idx)
+    test_ds = Subset(full_ds, test_idx)
 
-    # model
-    model = UNet(in_channels=1, out_channels=1).to(device)
-    print(summary(model, input_size=(batch_size,1,*img_size)))
-    total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-    print(f"Total learnable parameters: {total_params}")
+    train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True)
+    val_loader   = DataLoader(val_ds, batch_size=batch_size, shuffle=False)
+    test_loader  = DataLoader(test_ds, batch_size=batch_size, shuffle=False)
 
-    # criterion & optimizer
-    criterion = torch.nn.BCEWithLogitsLoss()
+    print(f"Loaders -> Train batches: {len(train_loader)}, Val batches: {len(val_loader)}, Test batches: {len(test_loader)}")
+
+    # --- Model, Optimizer, Loss ---
+    model = UNet(n_channels=1, n_classes=1).to(device)
+    summary(model, input_size=(batch_size,1,*img_size))
     optimizer = optim.Adam(model.parameters(), lr=lr)
+    criterion = torch.nn.BCEWithLogitsLoss()
 
-    # training loop
-    train_losses, val_losses, all_val_dice = [], [], []
-    start_t = time.time()
-    for epoch in range(num_epochs):
-        print(f"\n=== Epoch {epoch+1}/{num_epochs} ===")
-        tr_loss = train_epoch(model, dl_train, criterion, optimizer, device)
-        train_losses.append(tr_loss)
-        save_losses_excel(train_losses, os.path.join(SAVE_PATH, "train_losses.xlsx"))
+    # --- Training Loop ---
+    train_losses, val_losses = [], []
+    start_time = time.time()
+    for epoch in range(1, num_epochs+1):
+        print(f"\nEpoch {epoch}/{num_epochs}")
+        tl = train_epoch(model, train_loader, criterion, optimizer, device)
+        vl = validate_epoch(model, val_loader, criterion, device, save_path, epoch)
+        train_losses.append(tl)
+        val_losses.append(vl)
+        # save epoch losses to Excel
+        import pandas as pd
+        pd.DataFrame([train_losses], index=['train']).to_excel(os.path.join(save_path,'train_losses.xlsx'))
+        pd.DataFrame([val_losses],   index=['val']).to_excel(os.path.join(save_path,'val_losses.xlsx'))
+        print(f"Train Loss: {tl:.4f} | Val Loss: {vl:.4f}")
 
-        val_loss = validate_epoch(model, dl_val, criterion, device,
-                                  SAVE_PATH, epoch, all_val_dice)
-        val_losses.append(val_loss)
-        save_losses_excel(val_losses, os.path.join(SAVE_PATH, "val_losses.xlsx"))
+    total_time = time.time() - start_time
+    print(f"\nTotal training time: {total_time/60:.2f} minutes")
 
-        print(f"Epoch {epoch+1} ▶ Train Loss: {tr_loss:.4f}, Val Loss: {val_loss:.4f}")
+    # --- Save model ---
+    torch.save(model, os.path.join(save_path, 'unet_model.pth'))
+    torch.save(model.state_dict(), os.path.join(save_path, 'unet_state_dict.pth'))
 
-    total_time = time.time() - start_t
-    print(f"\nTraining completed in {total_time/60:.2f} minutes")
+    # --- Plot losses ---
+    plot_losses(train_losses, val_losses, save_path)
 
-    # save model
-    torch.save(model, os.path.join(SAVE_PATH, "unet_model.pth"))
-    torch.save(model.state_dict(), os.path.join(SAVE_PATH, "unet_model_state.pth"))
+    # --- Testing ---
+    _ = test_model(model, test_loader, device, save_path)
 
-    # final plots
-    plot_losses(train_losses, val_losses, SAVE_PATH)
+    # --- Visualization of 5 samples ---
+    import matplotlib.pyplot as plt
+    import random
 
-    # testing
-    all_preds, img_names = test_epoch(model, dl_test, device, SAVE_PATH)
-    visualize_predictions(all_preds, ds_test.dataset, img_names, SAVE_PATH)
+    model.eval()
+    samples = random.sample(range(len(test_ds)), k=5)
+    fig, axes = plt.subplots(5, 3, figsize=(9, 15))
+    for i, idx in enumerate(samples):
+        img, mask, name = test_ds[idx]
+        inp = img.unsqueeze(0).to(device)
+        with torch.no_grad():
+            pred = torch.sigmoid(model(inp)).cpu().squeeze()
+        axes[i,0].imshow(img.squeeze(), cmap='gray');   axes[i,0].set_title('Input')
+        axes[i,1].imshow(mask.squeeze(), cmap='gray');  axes[i,1].set_title('GT')
+        axes[i,2].imshow((pred>0.5).float(), cmap='gray'); axes[i,2].set_title('Pred')
+        for ax in axes[i]:
+            ax.axis('off')
+        axes[i,0].text(0, -5, name, fontsize=8)
+    plt.tight_layout()
+    plt.savefig(os.path.join(save_path, 'test_visuals.png'))
+    plt.close()
