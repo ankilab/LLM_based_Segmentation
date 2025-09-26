@@ -1,0 +1,307 @@
+Skip to content
+Chat history
+
+You said:
+ in separate scripts below, provide a complete ready-to-run Python implementation for a U-Net architecture using PyTorch, for binary segmentation of grayscale images. The dataset should consist of grayscale images and corresponding binary masks, which are located in 2 different folders, OR in the same path (the masks have the same name as the images, or with a suffix, like: "number.png" and the masks "number_seg.png", around 5000 samples in total. access and split directly using train_test_split on the index list and Subset, and do NOT duplicate or copy to new directory). It should work and provide correct predictions, and save the losses and dice scores as instructed below. write in separate scripts. The code should be structured into importable scripts with the following: 1. A custom Dataset class for loading the grayscale images and corresponding binary masks. (only the png files, ignore meta files or additional files in the directory) 2. A UNet model class definition using PyTorch, optimized for binary segmentation (with small foreground, mostly background) 3. Functions for the training procedure, validation procedure, and Testing procedure. Considerations for each part: 4. Ensure needed transforms on input image and mask pairs (Re-size images correctly, ensure gray scale and binary…) 5. Avoid overfitting and data leakage (without using augmentations), choose appropriate hyperparameters, learning rate, batch size, etc • For Training and Validation: 6. Compute training and validation losses. 7. Track and save the average training loss for each epoch in a separate Excel file (train_losses.xlsx) in a given save path. The first row should contain the epoch numbers, and the second row should contain the corresponding average training loss for each epoch. 8. Similarly, save the validation loss for each epoch in an Excel file (val_losses.xlsx) with the same structure. 9. At the end of training, save both the entire model and the model's state dictionary (.pth files) in the save path 10. Calculate total training time from start to end, and print at the end of training 11. The progress, phase (train/validation), and all info should be shown epoch by epoch using tqdm progress bars during training, validation, and testing. 12. A function to visualize training losses and validation losses over epochs afterwards, on the same plot. Save plot in a specified save path as png. 13. During Validation: mean Dice scores should be calculated over each batch, for each epoch, and stored in an Excel file (epochs as rows and batches as columns). The Excel file (named “validation_dice_scores” should be saved at the specified save path after validation is done. 14. Do the same for the Testing and store dice the Dice scores the same way and save the excel file as “test_dice_scores” after testing is done. • For Testing: 15. A function to visualize the predicted masks, the input image, and the ground truth, for 5 random samples, after testing is done. (subplots for 5 random samples in one plot, in 5 rows and 3 columns (title at top: Input Image, Ground Truth, Prediction). Also display image file name string above each image and mask. save the plot as .png). • For Main: 16. Shuffle the data, split the dataset into: 80% training, 10% validation, and 10% test sets using train_test_split. Print the sizes of each (how many images), and copy the splitted data (images and their respective masks) 17. DataLoader setup for training, validation, and testing sets. 18. Ensure correct data loading, print data loader sizes. 19. Also usig torchinfo, print model summary, and total number of model parameters (n learnable params) 20. All the above functionalities should be implemented in a modular way so that they can be imported as scripts or classes. 21. All visualizations should just be saved as png. No need to display the plots during running. 22. Ensure that everything can be executed in an if __name__ == "__main__": block with instructions for loading the dataset, configuring hyperparameters, and saving the trained model. The directory structure should only be: unet_segmentation/ ├── dataset.py ├── model.py ├── train.py ├── main.py
+ChatGPT said:
+
+Here's a complete, modular PyTorch project for binary segmentation of grayscale images using U-Net, following your requirements. The structure will look like this:
+
+unet_segmentation/
+├── dataset.py
+├── model.py
+├── train.py
+├── main.py
+✅ dataset.py
+# unet_segmentation/dataset.py
+
+import os
+from PIL import Image
+from torch.utils.data import Dataset
+import torch
+from torchvision import transforms
+
+class SegmentationDataset(Dataset):
+    def __init__(self, image_dir, mask_dir=None, suffix="_seg", transform=None):
+        self.image_dir = image_dir
+        self.mask_dir = mask_dir if mask_dir else image_dir
+        self.suffix = suffix
+        self.transform = transform
+
+        self.image_filenames = [
+            f for f in os.listdir(image_dir)
+            if f.endswith(".png") and not f.endswith(f"{self.suffix}.png")
+        ]
+
+    def __len__(self):
+        return len(self.image_filenames)
+
+    def __getitem__(self, idx):
+        image_name = self.image_filenames[idx]
+        mask_name = image_name.replace(".png", f"{self.suffix}.png")
+
+        image_path = os.path.join(self.image_dir, image_name)
+        mask_path = os.path.join(self.mask_dir, mask_name)
+
+        image = Image.open(image_path).convert("L")
+        mask = Image.open(mask_path).convert("L")
+
+        image = image.resize((256, 256))
+        mask = mask.resize((256, 256))
+
+        image = transforms.ToTensor()(image)
+        mask = transforms.ToTensor()(mask)
+        mask = (mask > 0.5).float()  # Ensure binary
+
+        return image, mask, image_name
+✅ model.py
+# unet_segmentation/model.py
+
+import torch
+import torch.nn as nn
+
+class UNet(nn.Module):
+    def __init__(self):
+        super(UNet, self).__init__()
+        def conv_block(in_channels, out_channels):
+            return nn.Sequential(
+                nn.Conv2d(in_channels, out_channels, 3, padding=1),
+                nn.ReLU(inplace=True),
+                nn.Conv2d(out_channels, out_channels, 3, padding=1),
+                nn.ReLU(inplace=True)
+            )
+
+        self.down1 = conv_block(1, 64)
+        self.pool1 = nn.MaxPool2d(2)
+
+        self.down2 = conv_block(64, 128)
+        self.pool2 = nn.MaxPool2d(2)
+
+        self.down3 = conv_block(128, 256)
+        self.pool3 = nn.MaxPool2d(2)
+
+        self.down4 = conv_block(256, 512)
+        self.pool4 = nn.MaxPool2d(2)
+
+        self.bottleneck = conv_block(512, 1024)
+
+        self.up4 = nn.ConvTranspose2d(1024, 512, 2, stride=2)
+        self.conv4 = conv_block(1024, 512)
+
+        self.up3 = nn.ConvTranspose2d(512, 256, 2, stride=2)
+        self.conv3 = conv_block(512, 256)
+
+        self.up2 = nn.ConvTranspose2d(256, 128, 2, stride=2)
+        self.conv2 = conv_block(256, 128)
+
+        self.up1 = nn.ConvTranspose2d(128, 64, 2, stride=2)
+        self.conv1 = conv_block(128, 64)
+
+        self.final = nn.Conv2d(64, 1, kernel_size=1)
+        self.sigmoid = nn.Sigmoid()
+
+    def forward(self, x):
+        d1 = self.down1(x)
+        p1 = self.pool1(d1)
+
+        d2 = self.down2(p1)
+        p2 = self.pool2(d2)
+
+        d3 = self.down3(p2)
+        p3 = self.pool3(d3)
+
+        d4 = self.down4(p3)
+        p4 = self.pool4(d4)
+
+        bn = self.bottleneck(p4)
+
+        up4 = self.up4(bn)
+        merge4 = torch.cat([up4, d4], dim=1)
+        up4 = self.conv4(merge4)
+
+        up3 = self.up3(up4)
+        merge3 = torch.cat([up3, d3], dim=1)
+        up3 = self.conv3(merge3)
+
+        up2 = self.up2(up3)
+        merge2 = torch.cat([up2, d2], dim=1)
+        up2 = self.conv2(merge2)
+
+        up1 = self.up1(up2)
+        merge1 = torch.cat([up1, d1], dim=1)
+        up1 = self.conv1(merge1)
+
+        return self.sigmoid(self.final(up1))
+✅ train.py
+# unet_segmentation/train.py
+
+import torch
+import torch.nn as nn
+from tqdm import tqdm
+import numpy as np
+import matplotlib.pyplot as plt
+import random
+import openpyxl
+import os
+
+def dice_score(preds, targets, threshold=0.5):
+    preds = (preds > threshold).float()
+    intersection = (preds * targets).sum(dim=(1, 2, 3))
+    union = preds.sum(dim=(1, 2, 3)) + targets.sum(dim=(1, 2, 3))
+    dice = (2. * intersection + 1e-7) / (union + 1e-7)
+    return dice.mean().item()
+
+def save_excel(data, filename):
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    for row in data:
+        ws.append(row)
+    wb.save(filename)
+
+def visualize_losses(train_losses, val_losses, save_path):
+    plt.figure()
+    plt.plot(train_losses, label="Train Loss")
+    plt.plot(val_losses, label="Validation Loss")
+    plt.xlabel("Epoch")
+    plt.ylabel("Loss")
+    plt.legend()
+    plt.title("Loss over Epochs")
+    plt.savefig(save_path)
+    plt.close()
+
+def train(model, train_loader, val_loader, device, save_dir, epochs=30, lr=1e-4):
+    os.makedirs(save_dir, exist_ok=True)
+    criterion = nn.BCELoss()
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+
+    train_loss_history = []
+    val_loss_history = []
+    val_dice_all = []
+
+    for epoch in range(epochs):
+        model.train()
+        train_loss = 0
+        for images, masks, _ in tqdm(train_loader, desc=f"Epoch {epoch+1} - Training"):
+            images, masks = images.to(device), masks.to(device)
+            preds = model(images)
+            loss = criterion(preds, masks)
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+            train_loss += loss.item()
+
+        avg_train_loss = train_loss / len(train_loader)
+        train_loss_history.append(avg_train_loss)
+
+        model.eval()
+        val_loss = 0
+        dice_scores = []
+        with torch.no_grad():
+            for images, masks, _ in tqdm(val_loader, desc=f"Epoch {epoch+1} - Validation"):
+                images, masks = images.to(device), masks.to(device)
+                preds = model(images)
+                loss = criterion(preds, masks)
+                val_loss += loss.item()
+                dice = dice_score(preds, masks)
+                dice_scores.append(dice)
+
+        avg_val_loss = val_loss / len(val_loader)
+        val_loss_history.append(avg_val_loss)
+        val_dice_all.append(dice_scores)
+
+    save_excel([["Epoch"] + list(range(1, epochs+1)), ["Loss"] + train_loss_history], os.path.join(save_dir, "train_losses.xlsx"))
+    save_excel([["Epoch"] + list(range(1, epochs+1)), ["Loss"] + val_loss_history], os.path.join(save_dir, "val_losses.xlsx"))
+    save_excel(val_dice_all, os.path.join(save_dir, "validation_dice_scores.xlsx"))
+
+    torch.save(model, os.path.join(save_dir, "model_full.pth"))
+    torch.save(model.state_dict(), os.path.join(save_dir, "model_state_dict.pth"))
+
+    visualize_losses(train_loss_history, val_loss_history, os.path.join(save_dir, "loss_plot.png"))
+
+def test(model, test_loader, device, save_dir):
+    model.eval()
+    dice_scores = []
+    predictions = []
+    inputs = []
+    targets = []
+    filenames = []
+
+    with torch.no_grad():
+        for images, masks, names in tqdm(test_loader, desc="Testing"):
+            images, masks = images.to(device), masks.to(device)
+            preds = model(images)
+            dice = dice_score(preds, masks)
+            dice_scores.append(dice)
+            predictions.extend(preds.cpu())
+            inputs.extend(images.cpu())
+            targets.extend(masks.cpu())
+            filenames.extend(names)
+
+    save_excel([dice_scores], os.path.join(save_dir, "test_dice_scores.xlsx"))
+
+    indices = random.sample(range(len(inputs)), 5)
+    fig, axes = plt.subplots(5, 3, figsize=(12, 20))
+    for i, idx in enumerate(indices):
+        axes[i, 0].imshow(inputs[idx][0], cmap='gray')
+        axes[i, 0].set_title(f"Input\n{filenames[idx]}")
+        axes[i, 1].imshow(targets[idx][0], cmap='gray')
+        axes[i, 1].set_title("Ground Truth")
+        axes[i, 2].imshow(predictions[idx][0] > 0.5, cmap='gray')
+        axes[i, 2].set_title("Prediction")
+        for j in range(3):
+            axes[i, j].axis('off')
+    plt.tight_layout()
+    plt.savefig(os.path.join(save_dir, "test_predictions.png"))
+    plt.close()
+✅ main.py
+# unet_segmentation/main.py
+
+import os
+import torch
+from torch.utils.data import DataLoader, Subset
+from sklearn.model_selection import train_test_split
+from dataset import SegmentationDataset
+from model import UNet
+from train import train, test
+from torchinfo import summary
+
+if __name__ == "__main__":
+    image_dir = "./images"  # Path to images
+    mask_dir = "./images"   # Same directory
+    save_dir = "./results"
+    batch_size = 8
+    epochs = 30
+    lr = 1e-4
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    full_dataset = SegmentationDataset(image_dir=image_dir, mask_dir=mask_dir)
+    indices = list(range(len(full_dataset)))
+    train_idx, testval_idx = train_test_split(indices, test_size=0.2, random_state=42)
+    val_idx, test_idx = train_test_split(testval_idx, test_size=0.5, random_state=42)
+
+    print(f"Total: {len(full_dataset)}, Train: {len(train_idx)}, Val: {len(val_idx)}, Test: {len(test_idx)}")
+
+    train_loader = DataLoader(Subset(full_dataset, train_idx), batch_size=batch_size, shuffle=True)
+    val_loader = DataLoader(Subset(full_dataset, val_idx), batch_size=batch_size, shuffle=False)
+    test_loader = DataLoader(Subset(full_dataset, test_idx), batch_size=1, shuffle=False)
+
+    print(f"Train loader: {len(train_loader)} batches")
+    print(f"Val loader: {len(val_loader)} batches")
+    print(f"Test loader: {len(test_loader)} batches")
+
+    model = UNet().to(device)
+    summary(model, input_size=(1, 1, 256, 256), device=str(device))
+
+    import time
+    start_time = time.time()
+    train(model, train_loader, val_loader, device, save_dir, epochs, lr)
+    total_time = time.time() - start_time
+    print(f"Total training time: {total_time / 60:.2f} minutes")
+
+    test(model, test_loader, device, save_dir)
+Let me know if you'd like this zipped up or want a requirements.txt file.
+
+
+
+No file chosenNo file chosen
+ChatGPT can make mistakes. Check important info. See Cookie Preferences.

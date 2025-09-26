@@ -1,0 +1,589 @@
+Skip to content
+Chat history
+
+You said:
+	in separate scrips below, provide a complete ready-to-run Python implementation for a U-Net architecture using PyTorch, for binary segmentation of grayscale images. The dataset should consist of grayscale images and corresponding binary masks, which are located in 2 different folders, OR in the same path (the masks have the same name as the images, or with a suffix, like: "number.png" and the masks "number_seg.png", around 5000 samples in total. access and split directly using train_test_split on the index list and Subset, and do NOT duplicate or copy to new directory). It should work and provide correct predictions, and save the losses and dice scores as instructed below. The code should be structured into importable scripts with the following:
+
+1.	A custom Dataset class for loading the grayscale images and corresponding binary masks. (only the png files, ignore meta files or additional files in the directory)
+2.	A UNet model class definition using PyTorch, optimized for binary segmentation (with small foreground, mostly background)
+3.	Functions for the training procedure, validation procedure, and Testing procedure.
+
+Considerations for each part:
+4.	Ensure needed transforms on input image and mask pairs (Re-size images correctly, ensure gray scale and binary…)
+5.	Avoid overfitting and data leakage (without using augmentations), choose appropriate hyperparameters, learning rate, batch size, etc
+
+•	For Training and Validation:
+
+6.	Compute training and validation losses.
+7.	Track and save the average training loss for each epoch in a separate Excel file (train_losses.xlsx) in a given save path. The first row should contain the epoch numbers, and the second row should contain the corresponding average training loss for each epoch.
+8.	Similarly, save the validation loss for each epoch in an Excel file (val_losses.xlsx) with the same structure.
+9.	At the end of training, save both the entire model and the model's state dictionary (.pth files) in the save path
+10.	Calculate total training time from start to end, and print at the end of training
+11.	The progress, phase (train/validation), and all info should be shown epoch by epoch using tqdm progress bars during training, validation, and testing.
+12.	A function to visualize training losses and validation losses over epochs afterwards, on the same plot. Save plot in a specified save path as png. 
+13.	During Validation: mean Dice scores should be calculated over each batch, for each epoch, and stored in one Excel file (epochs as rows and batches as columns). The Excel file (named “validation_dice_scores” should be saved at the specified save path after validation is done.
+14.	Do the same for the Testing and store dice the Dice scores the same way and save the excel file as “test_dice_scores” after testing is done.
+
+•	For Testing:
+
+15.	A function to visualize the predicted masks, the input image, and the ground truth, for 5 random samples, after testing is done. (subplots for 5 random samples in one plot, in 5 rows and 3 columns (title at top: Input Image, Ground Truth, Prediction). Also display image file name string above each image and mask. save the plot as .png).
+
+•	For Main:
+
+16.	Shuffle the data, split the dataset into: 80% training, 10% validation, and 10% test sets using train_test_split. Print the sizes of each (how many images), and copy the splitted data (images and their respective masks) 
+17.	DataLoader setup for training, validation, and testing sets.
+18.	Ensure correct data loading, print data loader sizes.
+19.	Also usig torchinfo, print model summary, and total number of model parameters (n learnable params)
+
+20.	All the above functionalities should be implemented in a modular way so that they can be imported as scripts or classes.
+21.	All visualizations should just be saved as png. No need to display the plots during running.
+22.	Ensure that everything can be executed in an if __name__ == "__main__": block with instructions for loading the dataset, configuring hyperparameters, and saving the trained model.
+The directory structure should only be:
+unet_segmentation/
+├── dataset.py
+├── model.py
+├── train.py
+├── main.py
+ChatGPT said:
+Great! Below is a complete modular implementation of a U-Net pipeline for binary segmentation of grayscale images, adhering strictly to your specifications. The code is split into the required four files under the unet_segmentation/ directory.
+
+✅ Directory Structure
+unet_segmentation/
+├── dataset.py
+├── model.py
+├── train.py
+├── main.py
+🔹 1. dataset.py
+# unet_segmentation/dataset.py
+
+import os
+from PIL import Image
+from torch.utils.data import Dataset
+from torchvision import transforms
+
+class SegmentationDataset(Dataset):
+    def __init__(self, image_dir, mask_dir=None, suffix='_seg', transform=None):
+        self.image_dir = image_dir
+        self.mask_dir = mask_dir if mask_dir else image_dir
+        self.suffix = suffix
+        self.transform = transform
+        self.image_files = [f for f in os.listdir(image_dir) if f.endswith('.png') and not f.endswith(f'{suffix}.png')]
+
+    def __len__(self):
+        return len(self.image_files)
+
+    def __getitem__(self, idx):
+        img_name = self.image_files[idx]
+        img_path = os.path.join(self.image_dir, img_name)
+
+        if self.mask_dir:
+            mask_name = img_name.replace('.png', f'{self.suffix}.png')
+            mask_path = os.path.join(self.mask_dir, mask_name)
+        else:
+            raise ValueError("mask_dir must be provided or be the same as image_dir")
+
+        image = Image.open(img_path).convert('L')
+        mask = Image.open(mask_path).convert('L')
+
+        if self.transform:
+            image = self.transform(image)
+            mask = self.transform(mask)
+
+        mask = (mask > 0.5).float()  # binary mask
+
+        return image, mask, img_name
+🔹 2. model.py
+# unet_segmentation/model.py
+
+import torch
+import torch.nn as nn
+
+class DoubleConv(nn.Module):
+    def __init__(self, in_channels, out_channels):
+        super().__init__()
+        self.block = nn.Sequential(
+            nn.Conv2d(in_channels, out_channels, 3, padding=1),
+            nn.BatchNorm2d(out_channels),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(out_channels, out_channels, 3, padding=1),
+            nn.BatchNorm2d(out_channels),
+            nn.ReLU(inplace=True)
+        )
+
+    def forward(self, x):
+        return self.block(x)
+
+class UNet(nn.Module):
+    def __init__(self, in_channels=1, out_channels=1):
+        super().__init__()
+        self.encoder1 = DoubleConv(in_channels, 64)
+        self.encoder2 = DoubleConv(64, 128)
+        self.encoder3 = DoubleConv(128, 256)
+        self.encoder4 = DoubleConv(256, 512)
+
+        self.pool = nn.MaxPool2d(2)
+
+        self.bottleneck = DoubleConv(512, 1024)
+
+        self.upconv4 = nn.ConvTranspose2d(1024, 512, 2, stride=2)
+        self.decoder4 = DoubleConv(1024, 512)
+        self.upconv3 = nn.ConvTranspose2d(512, 256, 2, stride=2)
+        self.decoder3 = DoubleConv(512, 256)
+        self.upconv2 = nn.ConvTranspose2d(256, 128, 2, stride=2)
+        self.decoder2 = DoubleConv(256, 128)
+        self.upconv1 = nn.ConvTranspose2d(128, 64, 2, stride=2)
+        self.decoder1 = DoubleConv(128, 64)
+
+        self.final = nn.Conv2d(64, out_channels, 1)
+
+    def forward(self, x):
+        enc1 = self.encoder1(x)
+        enc2 = self.encoder2(self.pool(enc1))
+        enc3 = self.encoder3(self.pool(enc2))
+        enc4 = self.encoder4(self.pool(enc3))
+        bottleneck = self.bottleneck(self.pool(enc4))
+
+        dec4 = self.upconv4(bottleneck)
+        dec4 = self.decoder4(torch.cat([dec4, enc4], dim=1))
+        dec3 = self.upconv3(dec4)
+        dec3 = self.decoder3(torch.cat([dec3, enc3], dim=1))
+        dec2 = self.upconv2(dec3)
+        dec2 = self.decoder2(torch.cat([dec2, enc2], dim=1))
+        dec1 = self.upconv1(dec2)
+        dec1 = self.decoder1(torch.cat([dec1, enc1], dim=1))
+
+        return torch.sigmoid(self.final(dec1))
+🔹 3. train.py
+# unet_segmentation/train.py
+
+import os
+import time
+import torch
+import torch.nn as nn
+import torch.optim as optim
+import pandas as pd
+import matplotlib.pyplot as plt
+from tqdm import tqdm
+
+def dice_score(pred, target, epsilon=1e-6):
+    pred = (pred > 0.5).float()
+    intersection = (pred * target).sum(dim=(1, 2, 3))
+    union = pred.sum(dim=(1, 2, 3)) + target.sum(dim=(1, 2, 3))
+    return ((2. * intersection + epsilon) / (union + epsilon)).mean().item()
+
+def train_epoch(model, loader, criterion, optimizer, device):
+    model.train()
+    epoch_loss = 0
+    pbar = tqdm(loader, desc="Training", leave=False)
+    for img, mask, _ in pbar:
+        img, mask = img.to(device), mask.to(device)
+        pred = model(img)
+        loss = criterion(pred, mask)
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+        epoch_loss += loss.item()
+        pbar.set_postfix(loss=loss.item())
+    return epoch_loss / len(loader)
+
+def validate_epoch(model, loader, criterion, device, save_path, epoch):
+    model.eval()
+    epoch_loss = 0
+    all_dice_scores = []
+    pbar = tqdm(loader, desc="Validation", leave=False)
+    with torch.no_grad():
+        for i, (img, mask, _) in enumerate(pbar):
+            img, mask = img.to(device), mask.to(device)
+            pred = model(img)
+            loss = criterion(pred, mask)
+            dice = dice_score(pred, mask)
+            epoch_loss += loss.item()
+            all_dice_scores.append(dice)
+            pbar.set_postfix(val_loss=loss.item(), dice=dice)
+
+    dice_df = pd.DataFrame([all_dice_scores])
+    dice_file = os.path.join(save_path, "validation_dice_scores.xlsx")
+    with pd.ExcelWriter(dice_file, mode='a' if os.path.exists(dice_file) else 'w') as writer:
+        dice_df.to_excel(writer, index=False, header=not writer.sheets)
+
+    return epoch_loss / len(loader)
+
+def test(model, loader, device, save_path):
+    model.eval()
+    all_dice_scores = []
+    predictions = []
+    filenames = []
+    with torch.no_grad():
+        pbar = tqdm(loader, desc="Testing")
+        for img, mask, fname in pbar:
+            img, mask = img.to(device), mask.to(device)
+            pred = model(img)
+            dice = dice_score(pred, mask)
+            all_dice_scores.append(dice)
+            predictions.append((img.cpu(), mask.cpu(), pred.cpu()))
+            filenames.append(fname)
+
+    # Save Dice scores
+    dice_df = pd.DataFrame([all_dice_scores])
+    dice_df.to_excel(os.path.join(save_path, "test_dice_scores.xlsx"), index=False)
+
+    # Visualize 5 random predictions
+    import random
+    random_idx = random.sample(range(len(predictions)), 5)
+    fig, axs = plt.subplots(5, 3, figsize=(12, 15))
+    for i, idx in enumerate(random_idx):
+        img, mask, pred = predictions[idx]
+        axs[i, 0].imshow(img.squeeze(), cmap='gray')
+        axs[i, 0].set_title("Input Image")
+        axs[i, 1].imshow(mask.squeeze(), cmap='gray')
+        axs[i, 1].set_title("Ground Truth")
+        axs[i, 2].imshow(pred.squeeze(), cmap='gray')
+        axs[i, 2].set_title("Prediction")
+
+        for j in range(3):
+            axs[i, j].axis('off')
+            axs[i, j].text(0.5, -0.15, filenames[idx][0], transform=axs[i, j].transAxes,
+                           fontsize=8, ha='center')
+
+    plt.tight_layout()
+    plt.savefig(os.path.join(save_path, 'predictions.png'))
+    plt.close()
+
+def plot_losses(train_losses, val_losses, save_path):
+    plt.figure(figsize=(8,6))
+    plt.plot(train_losses, label='Train Loss')
+    plt.plot(val_losses, label='Validation Loss')
+    plt.xlabel('Epochs')
+    plt.ylabel('Loss')
+    plt.legend()
+    plt.title('Loss over Epochs')
+    plt.savefig(os.path.join(save_path, 'loss_plot.png'))
+    plt.close()
+🔹 4. main.py
+# unet_segmentation/main.py
+
+import os
+import torch
+from torch.utils.data import DataLoader, Subset
+from torchvision import transforms
+from sklearn.model_selection import train_test_split
+from torchinfo import summary
+from dataset import SegmentationDataset
+from model import UNet
+from train import train_epoch, validate_epoch, test, plot_losses
+import pandas as pd
+
+if __name__ == "__main__":
+    # Setup
+    image_dir = 'path/to/images'
+    mask_dir = 'path/to/masks'
+    save_path = './results'
+    os.makedirs(save_path, exist_ok=True)
+
+    transform = transforms.Compose([
+        transforms.Resize((256, 256)),
+        transforms.ToTensor(),
+    ])
+
+    dataset = SegmentationDataset(image_dir=image_dir, mask_dir=mask_dir, transform=transform)
+    indices = list(range(len(dataset)))
+    train_idx, test_idx = train_test_split(indices, test_size=0.2, random_state=42)
+    val_idx, test_idx = train_test_split(test_idx, test_size=0.5, random_state=42)
+
+    print(f"Train: {len(train_idx)} | Val: {len(val_idx)} | Test: {len(test_idx)}")
+
+    train_set = Subset(dataset, train_idx)
+    val_set = Subset(dataset, val_idx)
+    test_set = Subset(dataset, test_idx)
+
+    train_loader = DataLoader(train_set, batch_size=8, shuffle=True)
+    val_loader = DataLoader(val_set, batch_size=8, shuffle=False)
+    test_loader = DataLoader(test_set, batch_size=1, shuffle=False)
+
+    print(f"Train loader: {len(train_loader)} batches")
+    print(f"Val loader: {len(val_loader)} batches")
+    print(f"Test loader: {len(test_loader)} batches")
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model = UNet().to(device)
+    summary(model, input_size=(1, 1, 256, 256))
+
+    criterion = torch.nn.BCELoss()
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
+
+    num_epochs = 25
+    train_losses = []
+    val_losses = []
+
+    import time
+    start_time = time.time()
+
+    for epoch in range(num_epochs):
+        print(f"\nEpoch {epoch+1}/{num_epochs}")
+        train_loss = train_epoch(model, train_loader, criterion, optimizer, device)
+        val_loss = validate_epoch(model, val_loader, criterion, device, save_path, epoch)
+        train_losses.append(train_loss)
+        val_losses.append(val_loss)
+
+    end_time = time.time()
+    print(f"\nTotal Training Time: {end_time - start_time:.2f} seconds")
+
+    # Save losses
+    pd.DataFrame([list(range(1, num_epochs+1)), train_losses]).to_excel(os.path.join(save_path, "train_losses.xlsx"), index=False, header=False)
+    pd.DataFrame([list(range(1, num_epochs+1)), val_losses]).to_excel(os.path.join(save_path, "val_losses.xlsx"), index=False, header=False)
+
+    # Save model
+    torch.save(model, os.path.join(save_path, "model_full.pth"))
+    torch.save(model.state_dict(), os.path.join(save_path, "model_state.pth"))
+
+    # Plot
+    plot_losses(train_losses, val_losses, save_path)
+
+    # Testing
+    test(model, test_loader, device, save_path)
+If you'd like, I can zip this as a ready-to-download folder or walk you through customization (e.g. for different input sizes or loss functions). Let me know!
+
+You said:
+C:\Users\qy44lyfe\.conda\envs\Swallowenv\python.exe "D:/qy44lyfe/LLM segmentation/github repo/LLM_based_Segmentation/run_to_run variability test/GPT 4o-10/main.py"
+Train: 799 | Val: 100 | Test: 100
+Train loader: 100 batches
+Val loader: 13 batches
+Test loader: 100 batches
+==========================================================================================
+Layer (type:depth-idx)                   Output Shape              Param #
+==========================================================================================
+UNet                                     [1, 1, 256, 256]          --
+├─DoubleConv: 1-1                        [1, 64, 256, 256]         --
+│    └─Sequential: 2-1                   [1, 64, 256, 256]         --
+│    │    └─Conv2d: 3-1                  [1, 64, 256, 256]         640
+│    │    └─BatchNorm2d: 3-2             [1, 64, 256, 256]         128
+│    │    └─ReLU: 3-3                    [1, 64, 256, 256]         --
+│    │    └─Conv2d: 3-4                  [1, 64, 256, 256]         36,928
+│    │    └─BatchNorm2d: 3-5             [1, 64, 256, 256]         128
+│    │    └─ReLU: 3-6                    [1, 64, 256, 256]         --
+├─MaxPool2d: 1-2                         [1, 64, 128, 128]         --
+├─DoubleConv: 1-3                        [1, 128, 128, 128]        --
+│    └─Sequential: 2-2                   [1, 128, 128, 128]        --
+│    │    └─Conv2d: 3-7                  [1, 128, 128, 128]        73,856
+│    │    └─BatchNorm2d: 3-8             [1, 128, 128, 128]        256
+│    │    └─ReLU: 3-9                    [1, 128, 128, 128]        --
+│    │    └─Conv2d: 3-10                 [1, 128, 128, 128]        147,584
+│    │    └─BatchNorm2d: 3-11            [1, 128, 128, 128]        256
+│    │    └─ReLU: 3-12                   [1, 128, 128, 128]        --
+├─MaxPool2d: 1-4                         [1, 128, 64, 64]          --
+├─DoubleConv: 1-5                        [1, 256, 64, 64]          --
+│    └─Sequential: 2-3                   [1, 256, 64, 64]          --
+│    │    └─Conv2d: 3-13                 [1, 256, 64, 64]          295,168
+│    │    └─BatchNorm2d: 3-14            [1, 256, 64, 64]          512
+│    │    └─ReLU: 3-15                   [1, 256, 64, 64]          --
+│    │    └─Conv2d: 3-16                 [1, 256, 64, 64]          590,080
+│    │    └─BatchNorm2d: 3-17            [1, 256, 64, 64]          512
+│    │    └─ReLU: 3-18                   [1, 256, 64, 64]          --
+├─MaxPool2d: 1-6                         [1, 256, 32, 32]          --
+├─DoubleConv: 1-7                        [1, 512, 32, 32]          --
+│    └─Sequential: 2-4                   [1, 512, 32, 32]          --
+│    │    └─Conv2d: 3-19                 [1, 512, 32, 32]          1,180,160
+│    │    └─BatchNorm2d: 3-20            [1, 512, 32, 32]          1,024
+│    │    └─ReLU: 3-21                   [1, 512, 32, 32]          --
+│    │    └─Conv2d: 3-22                 [1, 512, 32, 32]          2,359,808
+│    │    └─BatchNorm2d: 3-23            [1, 512, 32, 32]          1,024
+│    │    └─ReLU: 3-24                   [1, 512, 32, 32]          --
+├─MaxPool2d: 1-8                         [1, 512, 16, 16]          --
+├─DoubleConv: 1-9                        [1, 1024, 16, 16]         --
+│    └─Sequential: 2-5                   [1, 1024, 16, 16]         --
+│    │    └─Conv2d: 3-25                 [1, 1024, 16, 16]         4,719,616
+│    │    └─BatchNorm2d: 3-26            [1, 1024, 16, 16]         2,048
+│    │    └─ReLU: 3-27                   [1, 1024, 16, 16]         --
+│    │    └─Conv2d: 3-28                 [1, 1024, 16, 16]         9,438,208
+│    │    └─BatchNorm2d: 3-29            [1, 1024, 16, 16]         2,048
+│    │    └─ReLU: 3-30                   [1, 1024, 16, 16]         --
+├─ConvTranspose2d: 1-10                  [1, 512, 32, 32]          2,097,664
+├─DoubleConv: 1-11                       [1, 512, 32, 32]          --
+│    └─Sequential: 2-6                   [1, 512, 32, 32]          --
+│    │    └─Conv2d: 3-31                 [1, 512, 32, 32]          4,719,104
+│    │    └─BatchNorm2d: 3-32            [1, 512, 32, 32]          1,024
+│    │    └─ReLU: 3-33                   [1, 512, 32, 32]          --
+│    │    └─Conv2d: 3-34                 [1, 512, 32, 32]          2,359,808
+│    │    └─BatchNorm2d: 3-35            [1, 512, 32, 32]          1,024
+│    │    └─ReLU: 3-36                   [1, 512, 32, 32]          --
+├─ConvTranspose2d: 1-12                  [1, 256, 64, 64]          524,544
+├─DoubleConv: 1-13                       [1, 256, 64, 64]          --
+│    └─Sequential: 2-7                   [1, 256, 64, 64]          --
+│    │    └─Conv2d: 3-37                 [1, 256, 64, 64]          1,179,904
+│    │    └─BatchNorm2d: 3-38            [1, 256, 64, 64]          512
+│    │    └─ReLU: 3-39                   [1, 256, 64, 64]          --
+│    │    └─Conv2d: 3-40                 [1, 256, 64, 64]          590,080
+│    │    └─BatchNorm2d: 3-41            [1, 256, 64, 64]          512
+│    │    └─ReLU: 3-42                   [1, 256, 64, 64]          --
+├─ConvTranspose2d: 1-14                  [1, 128, 128, 128]        131,200
+├─DoubleConv: 1-15                       [1, 128, 128, 128]        --
+│    └─Sequential: 2-8                   [1, 128, 128, 128]        --
+│    │    └─Conv2d: 3-43                 [1, 128, 128, 128]        295,040
+│    │    └─BatchNorm2d: 3-44            [1, 128, 128, 128]        256
+│    │    └─ReLU: 3-45                   [1, 128, 128, 128]        --
+│    │    └─Conv2d: 3-46                 [1, 128, 128, 128]        147,584
+│    │    └─BatchNorm2d: 3-47            [1, 128, 128, 128]        256
+│    │    └─ReLU: 3-48                   [1, 128, 128, 128]        --
+├─ConvTranspose2d: 1-16                  [1, 64, 256, 256]         32,832
+├─DoubleConv: 1-17                       [1, 64, 256, 256]         --
+│    └─Sequential: 2-9                   [1, 64, 256, 256]         --
+│    │    └─Conv2d: 3-49                 [1, 64, 256, 256]         73,792
+│    │    └─BatchNorm2d: 3-50            [1, 64, 256, 256]         128
+│    │    └─ReLU: 3-51                   [1, 64, 256, 256]         --
+│    │    └─Conv2d: 3-52                 [1, 64, 256, 256]         36,928
+│    │    └─BatchNorm2d: 3-53            [1, 64, 256, 256]         128
+│    │    └─ReLU: 3-54                   [1, 64, 256, 256]         --
+├─Conv2d: 1-18                           [1, 1, 256, 256]          65
+==========================================================================================
+Total params: 31,042,369
+Trainable params: 31,042,369
+Non-trainable params: 0
+Total mult-adds (G): 54.57
+==========================================================================================
+Input size (MB): 0.26
+Forward/backward pass size (MB): 575.14
+Params size (MB): 124.17
+Estimated Total Size (MB): 699.58
+==========================================================================================
+
+Epoch 1/2
+Training:   0%|          | 0/100 [00:00<?, ?it/s]
+Epoch 2/2
+Traceback (most recent call last):
+  File "D:\qy44lyfe\LLM segmentation\github repo\LLM_based_Segmentation\run_to_run variability test\GPT 4o-10\main.py", line 62, in <module>
+    val_loss = validate_epoch(model, val_loader, criterion, device, save_path, epoch)
+  File "D:\qy44lyfe\LLM segmentation\github repo\LLM_based_Segmentation\run_to_run variability test\GPT 4o-10\train.py", line 51, in validate_epoch
+    dice_df.to_excel(writer, index=False, header=not writer.sheets)
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\pandas\util\_decorators.py", line 333, in wrapper
+    return func(*args, **kwargs)
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\pandas\core\generic.py", line 2414, in to_excel
+    formatter.write(
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\pandas\io\formats\excel.py", line 952, in write
+    writer._write_cells(
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\pandas\io\excel\_openpyxl.py", line 463, in _write_cells
+    raise ValueError(
+ValueError: Sheet 'Sheet1' already exists and if_sheet_exists is set to 'error'.
+
+Process finished with exit code 1 . I want to save the mean dice score per batch (column), per epoch (row) in the one same excel sheet for validation dices. the same goes for test dices   
+ChatGPT said:
+Thanks for the clear error and intention. The issue is:
+
+ValueError: Sheet 'Sheet1' already exists and if_sheet_exists is set to 'error'
+
+This happens because:
+
+You’re trying to append a new row to an existing Excel file, but pandas.ExcelWriter defaults to raising an error if the sheet already exists.
+
+✅ Solution
+You should:
+
+Check if the file exists.
+
+If it does, read the existing Excel file, append a new row, then overwrite the file.
+
+If it doesn't exist, create it with the current row.
+
+🔧 Modified validate_epoch() and test() Functions (for correct Excel saving)
+Update this in your train.py:
+
+🔁 Replace validate_epoch() with:
+def validate_epoch(model, loader, criterion, device, save_path, epoch):
+    model.eval()
+    epoch_loss = 0
+    dice_scores = []
+    pbar = tqdm(loader, desc="Validation", leave=False)
+    with torch.no_grad():
+        for i, (img, mask, _) in enumerate(pbar):
+            img, mask = img.to(device), mask.to(device)
+            pred = model(img)
+            loss = criterion(pred, mask)
+            dice = dice_score(pred, mask)
+            epoch_loss += loss.item()
+            dice_scores.append(dice)
+            pbar.set_postfix(val_loss=loss.item(), dice=dice)
+
+    # Convert to DataFrame: each epoch is a row, each batch is a column
+    df_new_row = pd.DataFrame([dice_scores])
+
+    dice_path = os.path.join(save_path, "validation_dice_scores.xlsx")
+    if os.path.exists(dice_path):
+        df_existing = pd.read_excel(dice_path, header=None)
+        df_combined = pd.concat([df_existing, df_new_row], ignore_index=True)
+        df_combined.to_excel(dice_path, header=False, index=False)
+    else:
+        df_new_row.to_excel(dice_path, header=False, index=False)
+
+    return epoch_loss / len(loader)
+🔁 Replace test() function ending with:
+def test(model, loader, device, save_path):
+    model.eval()
+    all_dice_scores = []
+    predictions = []
+    filenames = []
+    with torch.no_grad():
+        pbar = tqdm(loader, desc="Testing")
+        for img, mask, fname in pbar:
+            img, mask = img.to(device), mask.to(device)
+            pred = model(img)
+            dice = dice_score(pred, mask)
+            all_dice_scores.append(dice)
+            predictions.append((img.cpu(), mask.cpu(), pred.cpu()))
+            filenames.append(fname)
+
+    # Save Dice scores in same format: each row = 1 epoch/test run
+    df_new_row = pd.DataFrame([all_dice_scores])
+    dice_path = os.path.join(save_path, "test_dice_scores.xlsx")
+    if os.path.exists(dice_path):
+        df_existing = pd.read_excel(dice_path, header=None)
+        df_combined = pd.concat([df_existing, df_new_row], ignore_index=True)
+        df_combined.to_excel(dice_path, header=False, index=False)
+    else:
+        df_new_row.to_excel(dice_path, header=False, index=False)
+
+    # Visualize 5 random predictions
+    import random
+    import matplotlib.pyplot as plt
+
+    random_idx = random.sample(range(len(predictions)), min(5, len(predictions)))
+    fig, axs = plt.subplots(5, 3, figsize=(12, 15))
+    for i, idx in enumerate(random_idx):
+        img, mask, pred = predictions[idx]
+        axs[i, 0].imshow(img.squeeze(), cmap='gray')
+        axs[i, 0].set_title("Input Image")
+        axs[i, 1].imshow(mask.squeeze(), cmap='gray')
+        axs[i, 1].set_title("Ground Truth")
+        axs[i, 2].imshow(pred.squeeze(), cmap='gray')
+        axs[i, 2].set_title("Prediction")
+
+        for j in range(3):
+            axs[i, j].axis('off')
+            axs[i, j].text(0.5, -0.15, filenames[idx][0], transform=axs[i, j].transAxes,
+                           fontsize=8, ha='center')
+
+    plt.tight_layout()
+    plt.savefig(os.path.join(save_path, 'predictions.png'))
+    plt.close()
+📊 What You'll Get in the Excel
+validation_dice_scores.xlsx:
+
+Rows = epochs, Columns = batches.
+
+test_dice_scores.xlsx:
+
+One row per test run (if you run test multiple times).
+
+Let me know if you want:
+
+Per-sample (instead of batch-average) Dice scores.
+
+Sheet name support.
+
+CSV alternative.
+
+Would you also like to include headers with batch indices, or leave the Excel files without headers as currently implemented?
+
+
+
+
+No file chosenNo file chosen
+ChatGPT can make mistakes. Check important info. See Cookie Preferences.

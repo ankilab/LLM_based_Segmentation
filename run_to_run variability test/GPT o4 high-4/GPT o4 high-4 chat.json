@@ -1,0 +1,1687 @@
+Skip to content
+Chat history
+
+You said:
+ in separate scripts below, provide a complete ready-to-run Python implementation for a U-Net architecture using PyTorch, for binary segmentation of grayscale images. The dataset should consist of grayscale images and corresponding binary masks, which are located in 2 different folders, OR in the same path (the masks have the same name as the images, or with a suffix, like: "number.png" and the masks "number_seg.png", around 5000 samples in total. access and split directly using train_test_split on the index list and Subset, and do NOT duplicate or copy to new directory). It should work and provide correct predictions, and save the losses and dice scores as instructed below. write in separate scripts. The code should be structured into importable scripts with the following: 1. A custom Dataset class for loading the grayscale images and corresponding binary masks. (only the png files, ignore meta files or additional files in the directory) 2. A UNet model class definition using PyTorch, optimized for binary segmentation (with small foreground, mostly background) 3. Functions for the training procedure, validation procedure, and Testing procedure. Considerations for each part: 4. Ensure needed transforms on input image and mask pairs (Re-size images correctly, ensure gray scale and binary…) 5. Avoid overfitting and data leakage (without using augmentations), choose appropriate hyperparameters, learning rate, batch size, etc • For Training and Validation: 6. Compute training and validation losses. 7. Track and save the average training loss for each epoch in a separate Excel file (train_losses.xlsx) in a given save path. The first row should contain the epoch numbers, and the second row should contain the corresponding average training loss for each epoch. 8. Similarly, save the validation loss for each epoch in an Excel file (val_losses.xlsx) with the same structure. 9. At the end of training, save both the entire model and the model's state dictionary (.pth files) in the save path 10. Calculate total training time from start to end, and print at the end of training 11. The progress, phase (train/validation), and all info should be shown epoch by epoch using tqdm progress bars during training, validation, and testing. 12. A function to visualize training losses and validation losses over epochs afterwards, on the same plot. Save plot in a specified save path as png. 13. During Validation: mean Dice scores should be calculated over each batch, for each epoch, and stored in an Excel file (epochs as rows and batches as columns). The Excel file (named “validation_dice_scores” should be saved at the specified save path after validation is done. 14. Do the same for the Testing and store dice the Dice scores the same way and save the excel file as “test_dice_scores” after testing is done. • For Testing: 15. A function to visualize the predicted masks, the input image, and the ground truth, for 5 random samples, after testing is done. (subplots for 5 random samples in one plot, in 5 rows and 3 columns (title at top: Input Image, Ground Truth, Prediction). Also display image file name string above each image and mask. save the plot as .png). • For Main: 16. Shuffle the data, split the dataset into: 80% training, 10% validation, and 10% test sets using train_test_split. Print the sizes of each (how many images), and copy the splitted data (images and their respective masks) 17. DataLoader setup for training, validation, and testing sets. 18. Ensure correct data loading, print data loader sizes. 19. Also usig torchinfo, print model summary, and total number of model parameters (n learnable params) 20. All the above functionalities should be implemented in a modular way so that they can be imported as scripts or classes. 21. All visualizations should just be saved as png. No need to display the plots during running. 22. Ensure that everything can be executed in an if __name__ == "__main__": block with instructions for loading the dataset, configuring hyperparameters, and saving the trained model. The directory structure should only be: unet_segmentation/ ├── dataset.py ├── model.py ├── train.py ├── main.py
+ChatGPT said:
+
+Thought for 5s
+
+The user wants a Python solution with four separate scripts: dataset.py, model.py, train.py, and main.py. The task includes saving to Excel with pandas or openpyxl, using train/test split, Subset, tqdm, torchinfo, and calculating dice scores. I'll build code for these scripts, focusing on modularity and appropriate imports. I'll break down each part for clarity, starting with dataset handling and file structure.
+
+For the dataset, I'll implement a filter to fetch *.png images while excluding *_seg.png masks using os.listdir. We'll support either a combined or separate folder setup for masks. The dataset will include __len__ and __getitem__ for loading grayscale images as tensors. For model.py, I'll define a U-Net class with a binary segmentation setup. The training script will follow basic binary cross-entropy loss combined with Dice score metrics during validation/testing.
+
+During training, I'll accumulate losses per batch and compute the average per epoch, which I’ll then store in a train_losses.xlsx file using pandas. For validation, I'll calculate the validation loss and Dice score per batch, saving the Dice score matrix by epoch. Visualization of losses will be plotted with Matplotlib.
+
+Done
+
+Below are the four scripts you need. Place them under unet_segmentation/ as shown:
+
+unet_segmentation/
+├── dataset.py
+├── model.py
+├── train.py
+└── main.py
+# dataset.py
+import os
+from PIL import Image
+from torch.utils.data import Dataset
+import torchvision.transforms.functional as TF
+
+class SegmentationDataset(Dataset):
+    """
+    A Dataset for paired grayscale images and binary masks.
+    Supports:
+      - images_dir & masks_dir separate
+      - or single root_dir with masks having a suffix (e.g. '_seg.png')
+    """
+    def __init__(self,
+                 images_dir: str,
+                 masks_dir: str = None,
+                 suffix: str = '_seg.png',
+                 img_ext: str = '.png',
+                 transform=None):
+        """
+        images_dir: path to folder with input images
+        masks_dir: path to folder with masks (if separate). If None, masks must be in images_dir with suffix.
+        suffix: suffix to add to image basename to get mask filename
+        transform: optional joint transform on (img, mask) pairs
+        """
+        self.images_dir = images_dir
+        self.masks_dir = masks_dir or images_dir
+        self.suffix = suffix
+        self.img_ext = img_ext
+        self.transform = transform
+
+        # list all image files
+        self.img_names = [
+            f for f in os.listdir(images_dir)
+            if f.lower().endswith(img_ext) and not f.lower().endswith(suffix)
+        ]
+        self.img_names.sort()
+
+    def __len__(self):
+        return len(self.img_names)
+
+    def __getitem__(self, idx):
+        img_name = self.img_names[idx]
+        img_path = os.path.join(self.images_dir, img_name)
+
+        # derive mask filename
+        if self.masks_dir != self.images_dir:
+            mask_name = img_name
+        else:
+            base = img_name[:-len(self.img_ext)]
+            mask_name = base + self.suffix
+        mask_path = os.path.join(self.masks_dir, mask_name)
+
+        # open
+        img = Image.open(img_path).convert('L')  # grayscale
+        mask = Image.open(mask_path).convert('L')  # grayscale, but binary
+
+        # to tensor [0,1]
+        img = TF.to_tensor(img)  # (1,H,W)
+        mask = TF.to_tensor(mask)
+        # binarize mask
+        mask = (mask > 0.5).float()
+
+        if self.transform:
+            img, mask = self.transform(img, mask)
+
+        return img, mask, img_name
+# model.py
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
+class DoubleConv(nn.Module):
+    def __init__(self, in_ch, out_ch):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Conv2d(in_ch, out_ch, 3, padding=1, bias=False),
+            nn.BatchNorm2d(out_ch),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(out_ch, out_ch, 3, padding=1, bias=False),
+            nn.BatchNorm2d(out_ch),
+            nn.ReLU(inplace=True),
+        )
+
+    def forward(self, x):
+        return self.net(x)
+
+class Down(nn.Module):
+    def __init__(self, in_ch, out_ch):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.MaxPool2d(2),
+            DoubleConv(in_ch, out_ch)
+        )
+    def forward(self, x):
+        return self.net(x)
+
+class Up(nn.Module):
+    def __init__(self, in_ch, out_ch, bilinear=True):
+        super().__init__()
+        if bilinear:
+            self.up = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
+        else:
+            self.up = nn.ConvTranspose2d(in_ch//2, in_ch//2, 2, stride=2)
+        self.conv = DoubleConv(in_ch, out_ch)
+
+    def forward(self, x1, x2):
+        x1 = self.up(x1)
+        # pad if needed
+        diffY = x2.size()[2] - x1.size()[2]
+        diffX = x2.size()[3] - x1.size()[3]
+        x1 = F.pad(x1, [diffX//2, diffX - diffX//2,
+                        diffY//2, diffY - diffY//2])
+        x = torch.cat([x2, x1], dim=1)
+        return self.conv(x)
+
+class UNet(nn.Module):
+    def __init__(self, in_channels=1, out_channels=1, features=[64,128,256,512], bilinear=True):
+        super().__init__()
+        self.inc = DoubleConv(in_channels, features[0])
+        self.down1 = Down(features[0], features[1])
+        self.down2 = Down(features[1], features[2])
+        self.down3 = Down(features[2], features[3])
+        self.bottleneck = DoubleConv(features[3], features[3]*2)
+        self.up3 = Up(features[3]*2 + features[3], features[2], bilinear)
+        self.up2 = Up(features[2]*2, features[1], bilinear)
+        self.up1 = Up(features[1]*2, features[0], bilinear)
+        self.final = nn.Conv2d(features[0], out_channels, 1)
+
+    def forward(self, x):
+        x1 = self.inc(x)
+        x2 = self.down1(x1)
+        x3 = self.down2(x2)
+        x4 = self.down3(x3)
+        x5 = self.bottleneck(x4)
+        x = self.up3(x5, x4)
+        x = self.up2(x, x3)
+        x = self.up1(x, x2)
+        logits = self.final(x)
+        return logits
+# train.py
+import time
+import torch
+import torch.nn as nn
+import pandas as pd
+import numpy as np
+from tqdm import tqdm
+from torch.utils.data import DataLoader
+import matplotlib.pyplot as plt
+
+def dice_coef(pred: torch.Tensor, target: torch.Tensor, eps=1e-6):
+    # pred: after sigmoid, binary [B,1,H,W], target binary
+    pred = (pred > 0.5).float()
+    num = 2 * (pred * target).sum(dim=[1,2,3])
+    den = pred.sum(dim=[1,2,3]) + target.sum(dim=[1,2,3]) + eps
+    return (num / den)
+
+def train_epoch(model, loader, criterion, optimizer, device):
+    model.train()
+    running_loss = 0.0
+    pbar = tqdm(loader, desc='Train', leave=False)
+    for imgs, masks, _ in pbar:
+        imgs, masks = imgs.to(device), masks.to(device)
+        optimizer.zero_grad()
+        logits = model(imgs)
+        loss = criterion(logits, masks)
+        loss.backward()
+        optimizer.step()
+        running_loss += loss.item() * imgs.size(0)
+        pbar.set_postfix(loss=loss.item())
+    return running_loss / len(loader.dataset)
+
+def validate_epoch(model, loader, criterion, device):
+    model.eval()
+    running_loss = 0.0
+    all_dice = []
+    pbar = tqdm(loader, desc='Validate', leave=False)
+    for imgs, masks, _ in pbar:
+        imgs, masks = imgs.to(device), masks.to(device)
+        with torch.no_grad():
+            logits = model(imgs)
+            loss = criterion(logits, masks)
+            running_loss += loss.item() * imgs.size(0)
+            probs = torch.sigmoid(logits)
+            dice = dice_coef(probs, masks)
+            all_dice.append(dice.cpu().numpy())
+        pbar.set_postfix(loss=loss.item(), dice=float(dice.mean()))
+    avg_loss = running_loss / len(loader.dataset)
+    dice_matrix = np.stack(all_dice, axis=1)  # shape (batch_count, batch_size) -> (epochs, batches)
+    return avg_loss, dice_matrix
+
+def test_model(model, loader, device):
+    model.eval()
+    all_dice = []
+    pbar = tqdm(loader, desc='Test', leave=False)
+    for imgs, masks, _ in pbar:
+        imgs, masks = imgs.to(device), masks.to(device)
+        with torch.no_grad():
+            logits = model(imgs)
+            probs = torch.sigmoid(logits)
+            dice = dice_coef(probs, masks)
+            all_dice.append(dice.cpu().numpy())
+        pbar.set_postfix(dice=float(dice.mean()))
+    dice_matrix = np.stack(all_dice, axis=1)
+    return dice_matrix
+
+def save_losses_to_excel(losses: list, epochs: list, path: str, filename: str):
+    df = pd.DataFrame([losses], index=['loss'], columns=[f'Epoch_{e}' for e in epochs])
+    df.to_excel(f'{path}/{filename}', index=True)
+
+def save_dice_excel(dice_matrix: np.ndarray, path: str, filename: str):
+    # rows=epoch or test (1 if single), cols=batches
+    df = pd.DataFrame(dice_matrix, index=[f'Epoch_{i+1}' for i in range(dice_matrix.shape[0])])
+    df.to_excel(f'{path}/{filename}', index=True)
+
+def plot_losses(train_losses, val_losses, path, filename='loss_curve.png'):
+    plt.figure()
+    plt.plot(range(1, len(train_losses)+1), train_losses, label='Train')
+    plt.plot(range(1, len(val_losses)+1), val_losses, label='Val')
+    plt.xlabel('Epoch')
+    plt.ylabel('Loss')
+    plt.legend()
+    plt.savefig(f'{path}/{filename}')
+    plt.close()
+# main.py
+import os
+import time
+import torch
+import torch.optim as optim
+from torch.utils.data import Subset, DataLoader
+from sklearn.model_selection import train_test_split
+from torchinfo import summary
+
+from dataset import SegmentationDataset
+from model import UNet
+from train import (
+    train_epoch, validate_epoch, test_model,
+    save_losses_to_excel, save_dice_excel, plot_losses
+)
+
+if __name__ == "__main__":
+    # Settings
+    images_dir = '/path/to/images'
+    masks_dir = '/path/to/masks'        # or same as images_dir
+    save_path = '/path/to/save/outputs'
+    os.makedirs(save_path, exist_ok=True)
+
+    # Hyperparams
+    lr = 1e-3
+    batch_size = 8
+    num_epochs = 25
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+    # Dataset & Splits
+    full_ds = SegmentationDataset(images_dir, masks_dir)
+    idx = list(range(len(full_ds)))
+    train_idx, temp_idx = train_test_split(idx, test_size=0.2, random_state=42, shuffle=True)
+    val_idx, test_idx = train_test_split(temp_idx, test_size=0.5, random_state=42, shuffle=True)
+
+    print(f'Train: {len(train_idx)}, Val: {len(val_idx)}, Test: {len(test_idx)}')
+
+    train_ds = Subset(full_ds, train_idx)
+    val_ds   = Subset(full_ds, val_idx)
+    test_ds  = Subset(full_ds, test_idx)
+
+    train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True, num_workers=4)
+    val_loader   = DataLoader(val_ds, batch_size=batch_size, shuffle=False, num_workers=4)
+    test_loader  = DataLoader(test_ds, batch_size=batch_size, shuffle=False, num_workers=4)
+
+    print(f'Dataloaders -> Train: {len(train_loader)}, Val: {len(val_loader)}, Test: {len(test_loader)}')
+
+    # Model
+    model = UNet(in_channels=1, out_channels=1).to(device)
+    summary(model, input_size=(batch_size,1,256,256))  # adjust H,W accordingly
+
+    # Optimizer & Loss
+    optimizer = optim.Adam(model.parameters(), lr=lr)
+    criterion = torch.nn.BCEWithLogitsLoss()
+
+    # Training loop
+    train_losses, val_losses = [], []
+    val_dice_all = []
+    start_time = time.time()
+    for epoch in range(1, num_epochs+1):
+        print(f'=== Epoch {epoch}/{num_epochs} ===')
+        tr_loss = train_epoch(model, train_loader, criterion, optimizer, device)
+        vl_loss, vl_dice = validate_epoch(model, val_loader, criterion, device)
+
+        train_losses.append(tr_loss)
+        val_losses.append(vl_loss)
+        val_dice_all.append(vl_dice.mean(axis=0))  # per-batch dice averaged across epochs for Excel
+
+        print(f'Epoch {epoch}: Train Loss={tr_loss:.4f}, Val Loss={vl_loss:.4f}, Val Dice={vl_dice.mean():.4f}')
+
+    total_time = time.time() - start_time
+    print(f'Total training time: {total_time/60:.2f} minutes')
+
+    # Save model
+    torch.save(model, f'{save_path}/unet_full.pth')
+    torch.save(model.state_dict(), f'{save_path}/unet_state.pth')
+
+    # Save losses
+    epochs = list(range(1, num_epochs+1))
+    save_losses_to_excel(train_losses, epochs, save_path, 'train_losses.xlsx')
+    save_losses_to_excel(val_losses,   epochs, save_path, 'val_losses.xlsx')
+
+    # Save val dice scores
+    val_dice_matrix = torch.stack([torch.tensor(row) for row in val_dice_all]).numpy()
+    save_dice_excel(val_dice_matrix, save_path, 'validation_dice_scores.xlsx')
+
+    # Plot loss curve
+    plot_losses(train_losses, val_losses, save_path)
+
+    # Testing
+    test_dice = test_model(model, test_loader, device)
+    save_dice_excel(test_dice, save_path, 'test_dice_scores.xlsx')
+
+    # Visualize 5 random test predictions
+    import random
+    import matplotlib.pyplot as plt
+    from train import dice_coef
+
+    sample_idxs = random.sample(test_idx, 5)
+    fig, axes = plt.subplots(5, 3, figsize=(9,15))
+    for i, idx in enumerate(sample_idxs):
+        img, mask, name = full_ds[idx]
+        img_input = img.unsqueeze(0).to(device)
+        with torch.no_grad():
+            pred = torch.sigmoid(model(img_input)).cpu()[0,0]
+        axes[i,0].imshow(img[0], cmap='gray');    axes[i,0].set_title(f'Input\n{name}'); axes[i,0].axis('off')
+        axes[i,1].imshow(mask[0], cmap='gray');   axes[i,1].set_title('Ground Truth'); axes[i,1].axis('off')
+        axes[i,2].imshow((pred>0.5).float(), cmap='gray'); axes[i,2].set_title('Prediction'); axes[i,2].axis('off')
+    plt.tight_layout()
+    plt.savefig(f'{save_path}/test_predictions.png')
+    plt.close()
+Notes & Usage
+
+Update the images_dir, masks_dir, and save_path in main.py before running.
+
+The model summary assumes input size 256×256; adjust in torchinfo.summary if your images differ.
+
+Install requirements:
+
+pip install torch torchvision torchinfo tqdm pandas openpyxl scikit-learn matplotlib
+Run:
+
+cd unet_segmentation
+python main.py
+All losses, dice scores, model files, and plots will be saved under your specified save_path.
+
+You said:
+Train:   0%|          | 0/100 [00:00<?, ?it/s]=== Epoch 1/2 ===
+Traceback (most recent call last):
+  File "D:\qy44lyfe\LLM segmentation\github repo\LLM_based_Segmentation\run_to_run variability test\GPT o4 high-4\main.py", line 63, in <module>
+    tr_loss = train_epoch(model, train_loader, criterion, optimizer, device)
+  File "D:\qy44lyfe\LLM segmentation\github repo\LLM_based_Segmentation\run_to_run variability test\GPT o4 high-4\train.py", line 22, in train_epoch
+    for imgs, masks, _ in pbar:
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\tqdm\std.py", line 1182, in __iter__
+    for obj in iterable:
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\utils\data\dataloader.py", line 631, in __next__
+    data = self._next_data()
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\utils\data\dataloader.py", line 1346, in _next_data
+    return self._process_data(data)
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\utils\data\dataloader.py", line 1372, in _process_data
+    data.reraise()
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\_utils.py", line 722, in reraise
+    raise exception
+FileNotFoundError: Caught FileNotFoundError in DataLoader worker process 0.
+Original Traceback (most recent call last):
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\utils\data\_utils\worker.py", line 308, in _worker_loop
+    data = fetcher.fetch(index)
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\utils\data\_utils\fetch.py", line 49, in fetch
+    data = self.dataset.__getitems__(possibly_batched_index)
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\utils\data\dataset.py", line 399, in __getitems__
+    return [self.dataset[self.indices[idx]] for idx in indices]
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\utils\data\dataset.py", line 399, in <listcomp>
+    return [self.dataset[self.indices[idx]] for idx in indices]
+  File "D:\qy44lyfe\LLM segmentation\github repo\LLM_based_Segmentation\run_to_run variability test\GPT o4 high-4\dataset.py", line 56, in __getitem__
+    mask = Image.open(mask_path).convert('L')  # grayscale, but binary
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\PIL\Image.py", line 3131, in open
+    fp = builtins.open(filename, "rb")
+FileNotFoundError: [Errno 2] No such file or directory: 'D:\\qy44lyfe\\LLM segmentation\\Data sets\\Brain Meningioma\\Masks\\Tr-me_0708.jpg'
+
+
+Process finished with exit code 1
+ChatGPT said:
+
+Thought for a few seconds
+Here’s an updated dataset.py that will correctly pair images and masks even when they share names but have different extensions (e.g. .jpg), or when masks live in the same folder with a suffix. Just replace your old dataset.py with this:
+
+# dataset.py
+import os
+from PIL import Image
+from torch.utils.data import Dataset
+import torchvision.transforms.functional as TF
+
+class SegmentationDataset(Dataset):
+    """
+    A Dataset for paired grayscale images and binary masks.
+    Supports:
+      - images_dir & masks_dir separate (same basename, any extension)
+      - or single root_dir with masks having a suffix before the extension
+        (e.g. img_0001.png  -->  img_0001_seg.png)
+    Only image files are listed; ignores other files.
+    """
+    IMG_EXTS = {'.png', '.jpg', '.jpeg', '.tif', '.bmp'}
+    
+    def __init__(self,
+                 images_dir: str,
+                 masks_dir: str = None,
+                 mask_suffix: str = '_seg',
+                 transform=None):
+        """
+        images_dir: path to folder with input images
+        masks_dir: path to folder with masks (if separate). If None, masks are in images_dir.
+        mask_suffix: suffix inserted before extension for mask filenames in single-dir mode
+        transform: optional callable(img, mask) -> (img, mask)
+        """
+        self.images_dir = images_dir
+        self.masks_dir = masks_dir or images_dir
+        self.mask_suffix = mask_suffix
+        self.transform = transform
+
+        # list all image files by extension
+        self.img_names = [
+            f for f in os.listdir(images_dir)
+            if os.path.splitext(f)[1].lower() in self.IMG_EXTS
+            # ignore mask files in single-dir mode
+            and not (masks_dir is None and os.path.splitext(f)[0].endswith(mask_suffix))
+        ]
+        self.img_names.sort()
+        if not self.img_names:
+            raise RuntimeError(f"No images found in {images_dir}")
+
+    def __len__(self):
+        return len(self.img_names)
+
+    def __getitem__(self, idx):
+        img_name = self.img_names[idx]
+        img_path = os.path.join(self.images_dir, img_name)
+
+        # derive mask filename
+        if self.masks_dir != self.images_dir:
+            # same basename, any extension
+            base, _ = os.path.splitext(img_name)
+            # find a file in masks_dir that starts with base + '.' and valid ext
+            candidates = [
+                f for f in os.listdir(self.masks_dir)
+                if os.path.splitext(f)[1].lower() in self.IMG_EXTS
+                and os.path.splitext(f)[0] == base
+            ]
+            if not candidates:
+                raise FileNotFoundError(f"No mask found for {img_name} in {self.masks_dir}")
+            mask_name = candidates[0]
+        else:
+            base, ext = os.path.splitext(img_name)
+            mask_name = base + self.mask_suffix + ext
+
+        mask_path = os.path.join(self.masks_dir, mask_name)
+
+        # load
+        img = Image.open(img_path).convert('L')   # grayscale
+        mask = Image.open(mask_path).convert('L') # grayscale, but binary
+
+        # to tensor [0,1]
+        img = TF.to_tensor(img)
+        mask = TF.to_tensor(mask)
+        # binarize mask
+        mask = (mask > 0.5).float()
+
+        if self.transform:
+            img, mask = self.transform(img, mask)
+
+        return img, mask, img_name
+What changed?
+
+Extension agnostic: now recognizes common image extensions (.png, .jpg, etc.) for both images and masks.
+
+Separate-dir mode: matches masks by basename regardless of extension.
+
+Single-dir + suffix: inserts mask_suffix before the original extension.
+
+Raises a clear FileNotFoundError if no matching mask is found.
+
+You shouldn’t see the “file not found” error anymore as long as your mask filenames share the same basename (with or without a suffix) and live in the specified folder.
+
+You said:
+Train:   0%|          | 0/100 [00:00<?, ?it/s]=== Epoch 1/2 ===
+Traceback (most recent call last):
+  File "D:\qy44lyfe\LLM segmentation\github repo\LLM_based_Segmentation\run_to_run variability test\GPT o4 high-4\main.py", line 63, in <module>
+    tr_loss = train_epoch(model, train_loader, criterion, optimizer, device)
+  File "D:\qy44lyfe\LLM segmentation\github repo\LLM_based_Segmentation\run_to_run variability test\GPT o4 high-4\train.py", line 22, in train_epoch
+    for imgs, masks, _ in pbar:
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\tqdm\std.py", line 1182, in __iter__
+    for obj in iterable:
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\utils\data\dataloader.py", line 631, in __next__
+    data = self._next_data()
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\utils\data\dataloader.py", line 1346, in _next_data
+    return self._process_data(data)
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\utils\data\dataloader.py", line 1372, in _process_data
+    data.reraise()
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\_utils.py", line 722, in reraise
+    raise exception
+RuntimeError: Caught RuntimeError in DataLoader worker process 0.
+Original Traceback (most recent call last):
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\utils\data\_utils\worker.py", line 308, in _worker_loop
+    data = fetcher.fetch(index)
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\utils\data\_utils\fetch.py", line 54, in fetch
+    return self.collate_fn(data)
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\utils\data\_utils\collate.py", line 277, in default_collate
+    return collate(batch, collate_fn_map=default_collate_fn_map)
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\utils\data\_utils\collate.py", line 144, in collate
+    return [collate(samples, collate_fn_map=collate_fn_map) for samples in transposed]  # Backwards compatibility.
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\utils\data\_utils\collate.py", line 144, in <listcomp>
+    return [collate(samples, collate_fn_map=collate_fn_map) for samples in transposed]  # Backwards compatibility.
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\utils\data\_utils\collate.py", line 121, in collate
+    return collate_fn_map[elem_type](batch, collate_fn_map=collate_fn_map)
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\utils\data\_utils\collate.py", line 173, in collate_tensor_fn
+    out = elem.new(storage).resize_(len(batch), *list(elem.size()))
+RuntimeError: Trying to resize storage that is not resizable
+
+
+Process finished with exit code 1
+ChatGPT said:
+
+Thought for a couple of seconds
+Here’s an updated dataset.py that enforces a fixed output size (so all tensors in a batch are the same shape) by resizing both image and mask before converting to tensors. Replace your existing dataset.py with this:
+
+# dataset.py
+import os
+from PIL import Image
+from torch.utils.data import Dataset
+import torchvision.transforms.functional as TF
+
+class SegmentationDataset(Dataset):
+    """
+    A Dataset for paired grayscale images and binary masks,
+    resizing both to a fixed size so batches stack correctly.
+    Supports:
+      - separate images_dir & masks_dir (matching basenames, any ext)
+      - or single-dir with masks using a suffix before the extension.
+    """
+    IMG_EXTS = {'.png', '.jpg', '.jpeg', '.tif', '.bmp'}
+    
+    def __init__(self,
+                 images_dir: str,
+                 masks_dir: str = None,
+                 mask_suffix: str = '_seg',
+                 resize: tuple = (256, 256),
+                 transform=None):
+        """
+        images_dir: folder with inputs
+        masks_dir: folder with masks (if None, assumed same as images_dir)
+        mask_suffix: in single-dir mode, suffix inserted before extension
+        resize: (H, W) to which both img & mask are resized
+        transform: optional callable(img_tensor, mask_tensor) -> (img, mask)
+        """
+        self.images_dir = images_dir
+        self.masks_dir = masks_dir or images_dir
+        self.mask_suffix = mask_suffix
+        self.resize = resize
+        self.transform = transform
+
+        # list all image files by extension, ignoring mask files in single-dir
+        self.img_names = [
+            f for f in os.listdir(images_dir)
+            if os.path.splitext(f)[1].lower() in self.IMG_EXTS
+            and not (masks_dir is None
+                     and os.path.splitext(f)[0].endswith(mask_suffix))
+        ]
+        self.img_names.sort()
+        if not self.img_names:
+            raise RuntimeError(f"No images found in {images_dir}")
+
+    def __len__(self):
+        return len(self.img_names)
+
+    def __getitem__(self, idx):
+        img_name = self.img_names[idx]
+        img_path = os.path.join(self.images_dir, img_name)
+
+        # derive mask filename
+        if self.masks_dir != self.images_dir:
+            base, _ = os.path.splitext(img_name)
+            # look for exact basename in masks_dir
+            candidates = [
+                f for f in os.listdir(self.masks_dir)
+                if os.path.splitext(f)[0] == base
+                and os.path.splitext(f)[1].lower() in self.IMG_EXTS
+            ]
+            if not candidates:
+                raise FileNotFoundError(f"No mask for '{img_name}' in {self.masks_dir}")
+            mask_name = candidates[0]
+        else:
+            base, ext = os.path.splitext(img_name)
+            mask_name = base + self.mask_suffix + ext
+
+        mask_path = os.path.join(self.masks_dir, mask_name)
+
+        # load & resize with PIL
+        img = Image.open(img_path).convert('L')
+        mask = Image.open(mask_path).convert('L')
+        img = img.resize(self.resize, Image.BILINEAR)
+        mask = mask.resize(self.resize, Image.NEAREST)
+
+        # to tensor
+        img = TF.to_tensor(img)   # [1,H,W]
+        mask = TF.to_tensor(mask)
+        mask = (mask > 0.5).float()
+
+        if self.transform:
+            img, mask = self.transform(img, mask)
+
+        return img, mask, img_name
+What this fixes:
+
+Resizing: both image and mask are resized to the same (H,W) before tensor conversion (defaults to 256×256).
+
+Consistent shapes: ensures every sample tensor is identical in shape, so DataLoader can collate without error.
+
+You can adjust the resize=(height, width) in main.py when you create the dataset:
+
+# main.py (snippet)
+full_ds = SegmentationDataset(
+    images_dir, masks_dir,
+    mask_suffix='_seg',
+    resize=(256,256),   # <-- match your torchinfo summary
+)
+Re-run and the “storage not resizable” error should disappear.
+
+You said:
+=== Epoch 1/2 ===
+Traceback (most recent call last):
+  File "D:\qy44lyfe\LLM segmentation\github repo\LLM_based_Segmentation\run_to_run variability test\GPT o4 high-4\main.py", line 63, in <module>
+    tr_loss = train_epoch(model, train_loader, criterion, optimizer, device)
+  File "D:\qy44lyfe\LLM segmentation\github repo\LLM_based_Segmentation\run_to_run variability test\GPT o4 high-4\train.py", line 22, in train_epoch
+    for imgs, masks, _ in pbar:
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\tqdm\std.py", line 1182, in __iter__
+    for obj in iterable:
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\utils\data\dataloader.py", line 631, in __next__
+    data = self._next_data()
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\utils\data\dataloader.py", line 1346, in _next_data
+    return self._process_data(data)
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\utils\data\dataloader.py", line 1372, in _process_data
+    data.reraise()
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\_utils.py", line 722, in reraise
+    raise exception
+FileNotFoundError: Caught FileNotFoundError in DataLoader worker process 0.
+Original Traceback (most recent call last):
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\utils\data\_utils\worker.py", line 308, in _worker_loop
+    data = fetcher.fetch(index)
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\utils\data\_utils\fetch.py", line 49, in fetch
+    data = self.dataset.__getitems__(possibly_batched_index)
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\utils\data\dataset.py", line 399, in __getitems__
+    return [self.dataset[self.indices[idx]] for idx in indices]
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\utils\data\dataset.py", line 399, in <listcomp>
+    return [self.dataset[self.indices[idx]] for idx in indices]
+  File "D:\qy44lyfe\LLM segmentation\github repo\LLM_based_Segmentation\run_to_run variability test\GPT o4 high-4\dataset.py", line 65, in __getitem__
+    raise FileNotFoundError(f"No mask for '{img_name}' in {self.masks_dir}")
+FileNotFoundError: No mask for 'Tr-me_0808.jpg' in D:\qy44lyfe\LLM segmentation\Data sets\Brain Meningioma\Masks
+
+
+Process finished with exit code 1. there is a mask. with _m
+ChatGPT said:
+You still need to tell the dataset what suffix your masks use (“_m” instead of “_seg”), and in “separate-dir” mode we now also try matching basename + suffix. Replace your __getitem__ mask lookup in dataset.py with this version:
+
+    def __getitem__(self, idx):
+        img_name = self.img_names[idx]
+        img_path = os.path.join(self.images_dir, img_name)
+        base, ext = os.path.splitext(img_name)
+
+        # derive mask filename
+        if self.masks_dir != self.images_dir:
+            # 1) look for exact match
+            candidates = [
+                f for f in os.listdir(self.masks_dir)
+                if os.path.splitext(f)[0] == base
+            ]
+            # 2) if none, try basename + mask_suffix
+            if not candidates:
+                candidates = [
+                    f for f in os.listdir(self.masks_dir)
+                    if os.path.splitext(f)[0] == base + self.mask_suffix
+                ]
+            if not candidates:
+                raise FileNotFoundError(f"No mask for '{img_name}' in {self.masks_dir}")
+            mask_name = candidates[0]
+        else:
+            # single‐dir: basename + mask_suffix + same ext
+            mask_name = base + self.mask_suffix + ext
+
+        mask_path = os.path.join(self.masks_dir, mask_name)
+        # ... (rest is unchanged)
+And when you construct your dataset in main.py, pass mask_suffix='_m':
+
+full_ds = SegmentationDataset(
+    images_dir,
+    masks_dir,
+    mask_suffix='_m',    # <-- your actual mask suffix here
+    resize=(256,256)
+)
+With that change, the loader will first look for Tr-me_0808.* and—if not found—for Tr-me_0808_m.*, matching your mask names. No more missing-file errors.
+
+You said:
+Traceback (most recent call last):
+  File "D:\qy44lyfe\LLM segmentation\github repo\LLM_based_Segmentation\run_to_run variability test\GPT o4 high-4\main.py", line 63, in <module>
+    tr_loss = train_epoch(model, train_loader, criterion, optimizer, device)
+  File "D:\qy44lyfe\LLM segmentation\github repo\LLM_based_Segmentation\run_to_run variability test\GPT o4 high-4\train.py", line 22, in train_epoch
+    for imgs, masks, _ in pbar:
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\tqdm\std.py", line 1182, in __iter__
+    for obj in iterable:
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\utils\data\dataloader.py", line 631, in __next__
+    data = self._next_data()
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\utils\data\dataloader.py", line 1346, in _next_data
+    return self._process_data(data)
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\utils\data\dataloader.py", line 1372, in _process_data
+    data.reraise()
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\_utils.py", line 722, in reraise
+    raise exception
+FileNotFoundError: Caught FileNotFoundError in DataLoader worker process 0.
+Original Traceback (most recent call last):
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\utils\data\_utils\worker.py", line 308, in _worker_loop
+    data = fetcher.fetch(index)
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\utils\data\_utils\fetch.py", line 49, in fetch
+    data = self.dataset.__getitems__(possibly_batched_index)
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\utils\data\dataset.py", line 399, in __getitems__
+    return [self.dataset[self.indices[idx]] for idx in indices]
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\utils\data\dataset.py", line 399, in <listcomp>
+    return [self.dataset[self.indices[idx]] for idx in indices]
+  File "D:\qy44lyfe\LLM segmentation\github repo\LLM_based_Segmentation\run_to_run variability test\GPT o4 high-4\dataset.py", line 65, in __getitem__
+    raise FileNotFoundError(f"No mask for '{img_name}' in {self.masks_dir}")
+FileNotFoundError: No mask for 'Tr-me_0711.jpg' in D:\qy44lyfe\LLM segmentation\Data sets\Brain Meningioma\Masks
+
+
+Process finished with exit code 1. fix dataset.py
+ChatGPT said:
+Here’s a more robust dataset.py that will match masks in a variety of naming schemes (exact basename, basename+suffix, or any filename containing the basename and the suffix). It also pre-scans your mask directory once for speed:
+
+# dataset.py
+import os
+from PIL import Image
+from torch.utils.data import Dataset
+import torchvision.transforms.functional as TF
+
+class SegmentationDataset(Dataset):
+    """
+    A Dataset for paired grayscale images and binary masks,
+    with flexible mask-name matching (exact, suffix, or partial).
+    Resizes all samples to a fixed size so batches collate cleanly.
+    """
+    IMG_EXTS = {'.png', '.jpg', '.jpeg', '.tif', '.bmp'}
+    
+    def __init__(self,
+                 images_dir: str,
+                 masks_dir: str = None,
+                 mask_suffix: str = '_m',
+                 resize: tuple = (256, 256),
+                 transform=None):
+        """
+        images_dir: folder with inputs
+        masks_dir: folder with masks (if None, assumed same as images_dir)
+        mask_suffix: appended to basename for mask names in single-dir mode
+        resize:  (H, W) for PIL resizing both images & masks
+        transform: optional callable(img_tensor, mask_tensor) -> (img, mask)
+        """
+        self.images_dir = images_dir
+        self.masks_dir = masks_dir or images_dir
+        self.mask_suffix = mask_suffix
+        self.resize = resize
+        self.transform = transform
+
+        # collect image filenames
+        self.img_names = [
+            f for f in os.listdir(images_dir)
+            if os.path.splitext(f)[1].lower() in self.IMG_EXTS
+            and not (masks_dir is None
+                     and os.path.splitext(f)[0].endswith(mask_suffix))
+        ]
+        if not self.img_names:
+            raise RuntimeError(f"No images found in {images_dir}")
+        self.img_names.sort()
+
+        # pre-scan mask directory once
+        self.mask_names = [
+            f for f in os.listdir(self.masks_dir)
+            if os.path.splitext(f)[1].lower() in self.IMG_EXTS
+        ]
+        if not self.mask_names:
+            raise RuntimeError(f"No masks found in {self.masks_dir}")
+
+    def __len__(self):
+        return len(self.img_names)
+
+    def __getitem__(self, idx):
+        img_name = self.img_names[idx]
+        img_path = os.path.join(self.images_dir, img_name)
+        base, ext = os.path.splitext(img_name)
+
+        # find matching mask
+        if self.masks_dir != self.images_dir:
+            # 1) exact basename match
+            candidates = [m for m in self.mask_names
+                          if os.path.splitext(m)[0] == base]
+            # 2) basename + suffix
+            if not candidates:
+                candidates = [m for m in self.mask_names
+                              if os.path.splitext(m)[0] == base + self.mask_suffix]
+            # 3) any mask containing both base and suffix
+            if not candidates:
+                candidates = [m for m in self.mask_names
+                              if base in m and self.mask_suffix in m]
+            # 4) any mask containing base at all
+            if not candidates:
+                candidates = [m for m in self.mask_names
+                              if base in os.path.splitext(m)[0]]
+            if not candidates:
+                raise FileNotFoundError(f"No mask for '{img_name}' in {self.masks_dir}")
+            # pick first
+            mask_name = candidates[0]
+
+        else:
+            # same-dir: base + suffix + ext
+            mask_name = base + self.mask_suffix + ext
+            if mask_name not in self.mask_names:
+                raise FileNotFoundError(f"No mask '{mask_name}' for '{img_name}'")
+
+        mask_path = os.path.join(self.masks_dir, mask_name)
+
+        # load & resize
+        img = Image.open(img_path).convert('L')
+        mask = Image.open(mask_path).convert('L')
+        img = img.resize(self.resize, Image.BILINEAR)
+        mask = mask.resize(self.resize, Image.NEAREST)
+
+        # to tensor
+        img = TF.to_tensor(img)   # shape [1,H,W]
+        mask = TF.to_tensor(mask)
+        mask = (mask > 0.5).float()
+
+        if self.transform:
+            img, mask = self.transform(img, mask)
+
+        return img, mask, img_name
+Usage reminder: in your main.py, be sure to pass the correct mask_suffix you actually use. For example, if your mask files are named Tr-me_0711_m.jpg, then:
+
+full_ds = SegmentationDataset(
+    images_dir='/path/to/images',
+    masks_dir='/path/to/masks',
+    mask_suffix='_m',
+    resize=(256,256),
+)
+This more flexible matching should eliminate the “No mask for …” errors.
+
+You said:
+Train:   0%|          | 0/100 [00:00<?, ?it/s]=== Epoch 1/2 ===
+Traceback (most recent call last):
+  File "D:\qy44lyfe\LLM segmentation\github repo\LLM_based_Segmentation\run_to_run variability test\GPT o4 high-4\main.py", line 63, in <module>
+    tr_loss = train_epoch(model, train_loader, criterion, optimizer, device)
+  File "D:\qy44lyfe\LLM segmentation\github repo\LLM_based_Segmentation\run_to_run variability test\GPT o4 high-4\train.py", line 26, in train_epoch
+    loss = criterion(logits, masks)
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\nn\modules\module.py", line 1511, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\nn\modules\module.py", line 1520, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\nn\modules\loss.py", line 725, in forward
+    return F.binary_cross_entropy_with_logits(input, target,
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\nn\functional.py", line 3197, in binary_cross_entropy_with_logits
+    raise ValueError(f"Target size ({target.size()}) must be the same as input size ({input.size()})")
+ValueError: Target size (torch.Size([8, 1, 256, 256])) must be the same as input size (torch.Size([8, 1, 128, 128]))
+
+Process finished with exit code 1
+ChatGPT said:
+It turned out that the U-Net you’re using only upsamples three times (so it halves the resolution overall), but you’re feeding it 256×256 and expecting a 256×256 output. You have two choices:
+
+Match your data to the network by resizing everything to 128×128.
+
+Fix the model so it upsamples four times and returns a full-resolution 256×256 mask.
+
+Below is an updated model.py that adds the missing down/up stage so your 256×256 inputs produce 256×256 outputs:
+
+# model.py
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
+class DoubleConv(nn.Module):
+    def __init__(self, in_ch, out_ch):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Conv2d(in_ch, out_ch, 3, padding=1, bias=False),
+            nn.BatchNorm2d(out_ch),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(out_ch, out_ch, 3, padding=1, bias=False),
+            nn.BatchNorm2d(out_ch),
+            nn.ReLU(inplace=True),
+        )
+
+    def forward(self, x):
+        return self.net(x)
+
+class Down(nn.Module):
+    def __init__(self, in_ch, out_ch):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.MaxPool2d(2),
+            DoubleConv(in_ch, out_ch)
+        )
+    def forward(self, x):
+        return self.net(x)
+
+class Up(nn.Module):
+    def __init__(self, in_ch, out_ch, bilinear=True):
+        super().__init__()
+        if bilinear:
+            self.up = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
+        else:
+            # when using convtranspose, in_ch should be twice out_ch
+            self.up = nn.ConvTranspose2d(in_ch//2, in_ch//2, 2, stride=2)
+        self.conv = DoubleConv(in_ch, out_ch)
+
+    def forward(self, x1, x2):
+        x1 = self.up(x1)
+        # pad to match
+        diffY = x2.size()[2] - x1.size()[2]
+        diffX = x2.size()[3] - x1.size()[3]
+        x1 = F.pad(x1, [diffX//2, diffX-diffX//2,
+                        diffY//2, diffY-diffY//2])
+        x = torch.cat([x2, x1], dim=1)
+        return self.conv(x)
+
+class UNet(nn.Module):
+    def __init__(self, in_channels=1, out_channels=1, features=[64, 128, 256, 512, 1024], bilinear=True):
+        super().__init__()
+        # Encoder path
+        self.inc   = DoubleConv(in_channels, features[0])
+        self.down1 = Down(features[0], features[1])
+        self.down2 = Down(features[1], features[2])
+        self.down3 = Down(features[2], features[3])
+        self.down4 = Down(features[3], features[4])
+        # Bottleneck
+        self.bottleneck = DoubleConv(features[4], features[4]*2)
+        # Decoder path (reverse order)
+        self.up4 = Up(features[4]*2 + features[4], features[4], bilinear)
+        self.up3 = Up(features[4]   + features[3], features[3], bilinear)
+        self.up2 = Up(features[3]   + features[2], features[2], bilinear)
+        self.up1 = Up(features[2]   + features[1], features[1], bilinear)
+        self.up0 = Up(features[1]   + features[0], features[0], bilinear)
+        # Final conv
+        self.final = nn.Conv2d(features[0], out_channels, kernel_size=1)
+
+    def forward(self, x):
+        x0 = self.inc(x)       # 256→256
+        x1 = self.down1(x0)    # 256→128
+        x2 = self.down2(x1)    # 128→ 64
+        x3 = self.down3(x2)    #  64→ 32
+        x4 = self.down4(x3)    #  32→ 16
+        x5 = self.bottleneck(x4)  # 16→16
+        # Upsample path
+        x  = self.up4(x5, x4)  # 16→32
+        x  = self.up3(x,  x3)  # 32→64
+        x  = self.up2(x,  x2)  # 64→128
+        x  = self.up1(x,  x1)  #128→256
+        x  = self.up0(x,  x0)  #256→256
+        return self.final(x)
+What changed?
+
+Added one more Down/Up block so there are now five encoder levels and five decoder levels.
+
+The spatial pipeline:
+256→128→64→32→16 (bottleneck) →16→32→64→128→256.
+
+With this, if you still resize=(256,256) in your dataset, the network’s output logits will be 256×256 and will match your masks. No more size mismatch in BCEWithLogitsLoss.
+
+Reminder: after swapping in this model.py, re-run:
+
+python main.py
+and the training should proceed without the size‐mismatch error.
+
+You said:
+
+===============================================================================================
+Input size (MB): 2.10
+Forward/backward pass size (MB): 4299.16
+Params size (MB): 503.07
+Estimated Total Size (MB): 4804.33
+===============================================================================================
+Train:   0%|          | 0/100 [00:00<?, ?it/s]=== Epoch 1/2 ===
+Traceback (most recent call last):
+  File "D:\qy44lyfe\LLM segmentation\github repo\LLM_based_Segmentation\run_to_run variability test\GPT o4 high-4\main.py", line 64, in <module>
+    vl_loss, vl_dice = validate_epoch(model, val_loader, criterion, device)
+  File "D:\qy44lyfe\LLM segmentation\github repo\LLM_based_Segmentation\run_to_run variability test\GPT o4 high-4\train.py", line 49, in validate_epoch
+    dice_matrix = np.stack(all_dice, axis=1)  # shape (batch_count, batch_size) -> (epochs, batches)
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\numpy\core\shape_base.py", line 449, in stack
+    raise ValueError('all input arrays must have the same shape')
+ValueError: all input arrays must have the same shape
+
+Process finished with exit code 1
+ChatGPT said:
+
+Thought for 6s
+You’re hitting the variable‐batch‐size problem when stacking per‐batch dice arrays (the last batch is usually smaller). The easiest fix is to record a single mean‐dice per batch (a float) instead of the full per‐sample vector. Then each epoch produces a fixed‐length array of size num_val_batches, and stacking works cleanly.
+
+Here’s the patch for train.py:
+
+--- a/train.py
++++ b/train.py
+@@ def validate_epoch(model, loader, criterion, device):
+-    all_dice = []
++    dice_per_batch = []
+     pbar = tqdm(loader, desc='Validate', leave=False)
+     for imgs, masks, _ in pbar:
+         imgs, masks = imgs.to(device), masks.to(device)
+         with torch.no_grad():
+             logits = model(imgs)
+             loss = criterion(logits, masks)
+             running_loss += loss.item() * imgs.size(0)
+             probs = torch.sigmoid(logits)
+-            dice = dice_coef(probs, masks)
+-            all_dice.append(dice.cpu().numpy())
+-        pbar.set_postfix(loss=loss.item(), dice=float(dice.mean()))
++            dice = dice_coef(probs, masks)
++            batch_dice = float(dice.mean().item())
++            dice_per_batch.append(batch_dice)
++        pbar.set_postfix(loss=loss.item(), dice=batch_dice)
+     avg_loss = running_loss / len(loader.dataset)
+-    dice_matrix = np.stack(all_dice, axis=1)  # shape (batch_count, batch_size) -> (epochs, batches)
+-    return avg_loss, dice_matrix
++    return avg_loss, np.array(dice_per_batch)
+
+
+ def test_model(model, loader, device):
+-    model.eval()
+-    all_dice = []
+-    pbar = tqdm(loader, desc='Test', leave=False)
+-    for imgs, masks, _ in pbar:
+-        imgs, masks = imgs.to(device), masks.to(device)
+-        with torch.no_grad():
+-            logits = model(imgs)
+-            probs = torch.sigmoid(logits)
+-            dice = dice_coef(probs, masks)
+-            all_dice.append(dice.cpu().numpy())
+-        pbar.set_postfix(dice=float(dice.mean()))
+-    dice_matrix = np.stack(all_dice, axis=1)
+-    return dice_matrix
++    model.eval()
++    dice_per_batch = []
++    pbar = tqdm(loader, desc='Test', leave=False)
++    for imgs, masks, _ in pbar:
++        imgs, masks = imgs.to(device), masks.to(device)
++        with torch.no_grad():
++            logits = model(imgs)
++            probs = torch.sigmoid(logits)
++            dice = dice_coef(probs, masks)
++            batch_dice = float(dice.mean().item())
++            dice_per_batch.append(batch_dice)
++        pbar.set_postfix(dice=batch_dice)
++    return np.array(dice_per_batch)
+Then in main.py, when you collect and save:
+
+--- a/main.py
++++ b/main.py
+@@     for epoch in range(1, num_epochs+1):
+-        tr_loss = train_epoch(...)
+-        vl_loss, vl_dice = validate_epoch(...)
++        tr_loss = train_epoch(model, train_loader, criterion, optimizer, device)
++        vl_loss, vl_dice = validate_epoch(model, val_loader, criterion, device)
+
+         train_losses.append(tr_loss)
+-        val_losses.append(vl_loss)
+-        val_dice_all.append(vl_dice.mean(axis=0))  # per-batch dice averaged across epochs for Excel
++        val_losses.append(vl_loss)
++        val_dice_all.append(vl_dice)  # vl_dice is already an array of shape (num_val_batches,)
+
+@@     # Save val dice scores
+-    val_dice_matrix = torch.stack([torch.tensor(row) for row in val_dice_all]).numpy()
+-    save_dice_excel(val_dice_matrix, save_path, 'validation_dice_scores.xlsx')
++    # val_dice_all: list of np.arrays each shape=(num_val_batches,)
++    val_dice_matrix = np.stack(val_dice_all, axis=0)  # shape=(num_epochs, num_val_batches)
++    save_dice_excel(val_dice_matrix, save_path, 'validation_dice_scores.xlsx')
+
+@@     # Testing
+-    test_dice = test_model(model, test_loader, device)
+-    save_dice_excel(test_dice, save_path, 'test_dice_scores.xlsx')
++    test_dice = test_model(model, test_loader, device)  # shape=(num_test_batches,)
++    # We’ll save it as a single-row Excel
++    save_dice_excel(test_dice[np.newaxis, :], save_path, 'test_dice_scores.xlsx')
+With these changes:
+
+Each validate_epoch returns a 1D array of per‐batch mean dice (length = number of validation batches).
+
+Each test_model returns a 1D array of per‐batch mean dice (length = number of test batches).
+
+Stacking across epochs now works because every epoch produces the same‐length array.
+
+The Excel sheets will have rows = epochs (or 1 row for test), columns = batches.
+
+Re-run python main.py and you should get no more “all input arrays must have the same shape” errors.
+
+You said:
+write the whole corrected train.py and main.py
+ChatGPT said:
+
+Thought for a couple of seconds
+Below are the complete corrected train.py and main.py with the per-batch mean-dice fix and all integrations applied.
+
+# train.py
+
+import time
+import torch
+import torch.nn as nn
+import pandas as pd
+import numpy as np
+from tqdm import tqdm
+from torch.utils.data import DataLoader
+import matplotlib.pyplot as plt
+
+def dice_coef(pred: torch.Tensor, target: torch.Tensor, eps=1e-6):
+    """
+    Compute per-sample Dice coefficient.
+    pred: sigmoid’d output, shape [B,1,H,W], values in [0,1]
+    target: binary mask, same shape
+    """
+    pred_bin = (pred > 0.5).float()
+    num = 2 * (pred_bin * target).sum(dim=[1,2,3])
+    den = pred_bin.sum(dim=[1,2,3]) + target.sum(dim=[1,2,3]) + eps
+    return num / den
+
+def train_epoch(model, loader: DataLoader, criterion, optimizer, device):
+    model.train()
+    running_loss = 0.0
+    pbar = tqdm(loader, desc='Train', leave=False)
+    for imgs, masks, _ in pbar:
+        imgs, masks = imgs.to(device), masks.to(device)
+        optimizer.zero_grad()
+        logits = model(imgs)
+        loss = criterion(logits, masks)
+        loss.backward()
+        optimizer.step()
+        running_loss += loss.item() * imgs.size(0)
+        pbar.set_postfix(loss=loss.item())
+    avg_loss = running_loss / len(loader.dataset)
+    return avg_loss
+
+def validate_epoch(model, loader: DataLoader, criterion, device):
+    model.eval()
+    running_loss = 0.0
+    dice_per_batch = []
+    pbar = tqdm(loader, desc='Validate', leave=False)
+    for imgs, masks, _ in pbar:
+        imgs, masks = imgs.to(device), masks.to(device)
+        with torch.no_grad():
+            logits = model(imgs)
+            loss = criterion(logits, masks)
+            running_loss += loss.item() * imgs.size(0)
+            probs = torch.sigmoid(logits)
+            dice = dice_coef(probs, masks)
+            batch_dice = float(dice.mean().item())
+            dice_per_batch.append(batch_dice)
+        pbar.set_postfix(loss=loss.item(), dice=batch_dice)
+    avg_loss = running_loss / len(loader.dataset)
+    # return avg loss and a 1D array (num_batches,)
+    return avg_loss, np.array(dice_per_batch)
+
+def test_model(model, loader: DataLoader, device):
+    model.eval()
+    dice_per_batch = []
+    pbar = tqdm(loader, desc='Test', leave=False)
+    for imgs, masks, _ in pbar:
+        imgs, masks = imgs.to(device), masks.to(device)
+        with torch.no_grad():
+            logits = model(imgs)
+            probs = torch.sigmoid(logits)
+            dice = dice_coef(probs, masks)
+            batch_dice = float(dice.mean().item())
+            dice_per_batch.append(batch_dice)
+        pbar.set_postfix(dice=batch_dice)
+    return np.array(dice_per_batch)
+
+def save_losses_to_excel(losses: list, epochs: list, path: str, filename: str):
+    """
+    losses: list of floats, one per epoch
+    epochs: list of epoch numbers
+    """
+    df = pd.DataFrame([losses], index=['loss'], columns=[f'Epoch_{e}' for e in epochs])
+    df.to_excel(f'{path}/{filename}', index=True)
+
+def save_dice_excel(dice_matrix: np.ndarray, path: str, filename: str):
+    """
+    dice_matrix: 2D array where rows=epochs (or single row for test) and cols=batches
+    """
+    # index labels
+    if dice_matrix.shape[0] == 1:
+        idx = ['Test']
+    else:
+        idx = [f'Epoch_{i+1}' for i in range(dice_matrix.shape[0])]
+    df = pd.DataFrame(dice_matrix, index=idx,
+                      columns=[f'Batch_{j+1}' for j in range(dice_matrix.shape[1])])
+    df.to_excel(f'{path}/{filename}', index=True)
+
+def plot_losses(train_losses, val_losses, path, filename='loss_curve.png'):
+    plt.figure()
+    plt.plot(range(1, len(train_losses)+1), train_losses, label='Train')
+    plt.plot(range(1, len(val_losses)+1), val_losses, label='Val')
+    plt.xlabel('Epoch')
+    plt.ylabel('Loss')
+    plt.legend()
+    plt.savefig(f'{path}/{filename}')
+    plt.close()
+# main.py
+
+import os
+import time
+import numpy as np
+import torch
+import torch.optim as optim
+from torch.utils.data import Subset, DataLoader
+from sklearn.model_selection import train_test_split
+from torchinfo import summary
+
+from dataset import SegmentationDataset
+from model import UNet
+from train import (
+    train_epoch,
+    validate_epoch,
+    test_model,
+    save_losses_to_excel,
+    save_dice_excel,
+    plot_losses
+)
+
+if __name__ == "__main__":
+    # === Paths ===
+    images_dir = '/path/to/images'
+    masks_dir  = '/path/to/masks'      # or same as images_dir
+    save_path  = '/path/to/save/outputs'
+    os.makedirs(save_path, exist_ok=True)
+
+    # === Hyperparameters ===
+    lr = 1e-3
+    batch_size = 8
+    num_epochs = 2   # example
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+    # === Dataset & Splits ===
+    full_ds = SegmentationDataset(
+        images_dir=images_dir,
+        masks_dir=masks_dir,
+        mask_suffix='_m',       # set to your actual mask suffix
+        resize=(256, 256)
+    )
+    idx = list(range(len(full_ds)))
+    train_idx, temp_idx = train_test_split(idx, test_size=0.2, random_state=42, shuffle=True)
+    val_idx, test_idx  = train_test_split(temp_idx, test_size=0.5, random_state=42, shuffle=True)
+
+    print(f"Dataset sizes → Train: {len(train_idx)}, Val: {len(val_idx)}, Test: {len(test_idx)}")
+
+    train_ds = Subset(full_ds, train_idx)
+    val_ds   = Subset(full_ds, val_idx)
+    test_ds  = Subset(full_ds, test_idx)
+
+    train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True,  num_workers=4)
+    val_loader   = DataLoader(val_ds,   batch_size=batch_size, shuffle=False, num_workers=4)
+    test_loader  = DataLoader(test_ds,  batch_size=batch_size, shuffle=False, num_workers=4)
+
+    print(f"Dataloader lengths → Train: {len(train_loader)}, Val: {len(val_loader)}, Test: {len(test_loader)}")
+
+    # === Model, Optimizer, Loss ===
+    model     = UNet(in_channels=1, out_channels=1).to(device)
+    summary(model, input_size=(batch_size,1,256,256))
+
+    optimizer = optim.Adam(model.parameters(), lr=lr)
+    criterion = torch.nn.BCEWithLogitsLoss()
+
+    # === Training Loop ===
+    train_losses = []
+    val_losses   = []
+    val_dice_all = []
+
+    start_time = time.time()
+    for epoch in range(1, num_epochs+1):
+        print(f"\n=== Epoch {epoch}/{num_epochs} ===")
+        tr_loss = train_epoch(model, train_loader, criterion, optimizer, device)
+        vl_loss, vl_dice = validate_epoch(model, val_loader, criterion, device)
+
+        train_losses.append(tr_loss)
+        val_losses.append(vl_loss)
+        val_dice_all.append(vl_dice)
+
+        print(f"Epoch {epoch}: Train Loss={tr_loss:.4f}, Val Loss={vl_loss:.4f}, Val Dice Mean={vl_dice.mean():.4f}")
+
+    total_minutes = (time.time() - start_time) / 60
+    print(f"\nTotal training time: {total_minutes:.2f} minutes")
+
+    # === Save Models ===
+    torch.save(model, f'{save_path}/unet_full.pth')
+    torch.save(model.state_dict(), f'{save_path}/unet_state.pth')
+
+    # === Save Losses & Dice ===
+    epochs = list(range(1, num_epochs+1))
+    save_losses_to_excel(train_losses, epochs, save_path, 'train_losses.xlsx')
+    save_losses_to_excel(val_losses,   epochs, save_path, 'val_losses.xlsx')
+
+    # validation dice: rows=epochs, cols=batches
+    val_dice_matrix = np.stack(val_dice_all, axis=0)
+    save_dice_excel(val_dice_matrix, save_path, 'validation_dice_scores.xlsx')
+
+    # loss curve plot
+    plot_losses(train_losses, val_losses, save_path)
+
+    # === Testing ===
+    test_dice = test_model(model, test_loader, device)
+    # make into 1×N array for Excel
+    save_dice_excel(test_dice[np.newaxis, :], save_path, 'test_dice_scores.xlsx')
+
+    # === Visualization of 5 Random Test Samples ===
+    import random
+    import matplotlib.pyplot as plt
+    from train import dice_coef
+
+    os.makedirs(f'{save_path}/visuals', exist_ok=True)
+    sample_idxs = random.sample(test_idx, min(5, len(test_idx)))
+
+    fig, axes = plt.subplots(len(sample_idxs), 3, figsize=(9, 3*len(sample_idxs)))
+    for i, idx in enumerate(sample_idxs):
+        img, mask, name = full_ds[idx]
+        inp = img.unsqueeze(0).to(device)
+        with torch.no_grad():
+            pred = torch.sigmoid(model(inp)).cpu()[0,0]
+
+        axes[i,0].imshow(img[0], cmap='gray')
+        axes[i,0].set_title(f'Input\n{name}')
+        axes[i,0].axis('off')
+
+        axes[i,1].imshow(mask[0], cmap='gray')
+        axes[i,1].set_title('Ground Truth')
+        axes[i,1].axis('off')
+
+        axes[i,2].imshow((pred>0.5).float(), cmap='gray')
+        axes[i,2].set_title('Prediction')
+        axes[i,2].axis('off')
+
+    plt.tight_layout()
+    plt.savefig(f'{save_path}/visuals/test_predictions.png')
+    plt.close()
+With these two scripts in place, rerun:
+
+python main.py
+and the training, validation, test loops (including Excel exports and plots) should run without any more shape-stacking or missing-mask errors.
+
+You said:
+C:\Users\qy44lyfe\.conda\envs\Swallowenv\python.exe "D:/qy44lyfe/LLM segmentation/github repo/LLM_based_Segmentation/run_to_run variability test/GPT o4 high-4/main.py"
+Train: 799, Val: 100, Test: 100
+Dataloaders -> Train: 100, Val: 13, Test: 13
+===============================================================================================
+Layer (type:depth-idx)                        Output Shape              Param #
+===============================================================================================
+UNet                                          [8, 1, 256, 256]          --
+├─DoubleConv: 1-1                             [8, 64, 256, 256]         --
+│    └─Sequential: 2-1                        [8, 64, 256, 256]         --
+│    │    └─Conv2d: 3-1                       [8, 64, 256, 256]         576
+│    │    └─BatchNorm2d: 3-2                  [8, 64, 256, 256]         128
+│    │    └─ReLU: 3-3                         [8, 64, 256, 256]         --
+│    │    └─Conv2d: 3-4                       [8, 64, 256, 256]         36,864
+│    │    └─BatchNorm2d: 3-5                  [8, 64, 256, 256]         128
+│    │    └─ReLU: 3-6                         [8, 64, 256, 256]         --
+├─Down: 1-2                                   [8, 128, 128, 128]        --
+│    └─Sequential: 2-2                        [8, 128, 128, 128]        --
+│    │    └─MaxPool2d: 3-7                    [8, 64, 128, 128]         --
+│    │    └─DoubleConv: 3-8                   [8, 128, 128, 128]        221,696
+├─Down: 1-3                                   [8, 256, 64, 64]          --
+│    └─Sequential: 2-3                        [8, 256, 64, 64]          --
+│    │    └─MaxPool2d: 3-9                    [8, 128, 64, 64]          --
+│    │    └─DoubleConv: 3-10                  [8, 256, 64, 64]          885,760
+├─Down: 1-4                                   [8, 512, 32, 32]          --
+│    └─Sequential: 2-4                        [8, 512, 32, 32]          --
+│    │    └─MaxPool2d: 3-11                   [8, 256, 32, 32]          --
+│    │    └─DoubleConv: 3-12                  [8, 512, 32, 32]          3,540,992
+├─Down: 1-5                                   [8, 1024, 16, 16]         --
+│    └─Sequential: 2-5                        [8, 1024, 16, 16]         --
+│    │    └─MaxPool2d: 3-13                   [8, 512, 16, 16]          --
+│    │    └─DoubleConv: 3-14                  [8, 1024, 16, 16]         14,159,872
+├─DoubleConv: 1-6                             [8, 2048, 16, 16]         --
+│    └─Sequential: 2-6                        [8, 2048, 16, 16]         --
+│    │    └─Conv2d: 3-15                      [8, 2048, 16, 16]         18,874,368
+│    │    └─BatchNorm2d: 3-16                 [8, 2048, 16, 16]         4,096
+│    │    └─ReLU: 3-17                        [8, 2048, 16, 16]         --
+│    │    └─Conv2d: 3-18                      [8, 2048, 16, 16]         37,748,736
+│    │    └─BatchNorm2d: 3-19                 [8, 2048, 16, 16]         4,096
+│    │    └─ReLU: 3-20                        [8, 2048, 16, 16]         --
+├─Up: 1-7                                     [8, 1024, 16, 16]         --
+│    └─Upsample: 2-7                          [8, 2048, 32, 32]         --
+│    └─DoubleConv: 2-8                        [8, 1024, 16, 16]         --
+│    │    └─Sequential: 3-21                  [8, 1024, 16, 16]         37,752,832
+├─Up: 1-8                                     [8, 512, 32, 32]          --
+│    └─Upsample: 2-9                          [8, 1024, 32, 32]         --
+│    └─DoubleConv: 2-10                       [8, 512, 32, 32]          --
+│    │    └─Sequential: 3-22                  [8, 512, 32, 32]          9,439,232
+├─Up: 1-9                                     [8, 256, 64, 64]          --
+│    └─Upsample: 2-11                         [8, 512, 64, 64]          --
+│    └─DoubleConv: 2-12                       [8, 256, 64, 64]          --
+│    │    └─Sequential: 3-23                  [8, 256, 64, 64]          2,360,320
+├─Up: 1-10                                    [8, 128, 128, 128]        --
+│    └─Upsample: 2-13                         [8, 256, 128, 128]        --
+│    └─DoubleConv: 2-14                       [8, 128, 128, 128]        --
+│    │    └─Sequential: 3-24                  [8, 128, 128, 128]        590,336
+├─Up: 1-11                                    [8, 64, 256, 256]         --
+│    └─Upsample: 2-15                         [8, 128, 256, 256]        --
+│    └─DoubleConv: 2-16                       [8, 64, 256, 256]         --
+│    │    └─Sequential: 3-25                  [8, 64, 256, 256]         147,712
+├─Conv2d: 1-12                                [8, 1, 256, 256]          65
+===============================================================================================
+Total params: 125,767,809
+Trainable params: 125,767,809
+Non-trainable params: 0
+Total mult-adds (G): 638.14
+===============================================================================================
+Input size (MB): 2.10
+Forward/backward pass size (MB): 4299.16
+Params size (MB): 503.07
+Estimated Total Size (MB): 4804.33
+===============================================================================================
+Train:   0%|          | 0/100 [00:00<?, ?it/s]=== Epoch 1/2 ===
+Traceback (most recent call last):
+  File "D:\qy44lyfe\LLM segmentation\github repo\LLM_based_Segmentation\run_to_run variability test\GPT o4 high-4\main.py", line 64, in <module>
+    vl_loss, vl_dice = validate_epoch(model, val_loader, criterion, device)
+  File "D:\qy44lyfe\LLM segmentation\github repo\LLM_based_Segmentation\run_to_run variability test\GPT o4 high-4\train.py", line 49, in validate_epoch
+    dice_matrix = np.stack(all_dice, axis=1)  # shape (batch_count, batch_size) -> (epochs, batches)
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\numpy\core\shape_base.py", line 449, in stack
+    raise ValueError('all input arrays must have the same shape')
+ValueError: all input arrays must have the same shape
+
+Process finished with exit code 1
+ChatGPT said:
+Here are the complete, corrected versions of train.py and main.py. Make sure you overwrite your existing files with these.
+
+# train.py
+
+import time
+import torch
+import torch.nn as nn
+import pandas as pd
+import numpy as np
+from tqdm import tqdm
+from torch.utils.data import DataLoader
+import matplotlib.pyplot as plt
+
+def dice_coef(pred: torch.Tensor, target: torch.Tensor, eps=1e-6):
+    """
+    Compute per-sample Dice coefficient.
+    pred: sigmoid’d output, shape [B,1,H,W], values in [0,1]
+    target: binary mask, same shape
+    """
+    pred_bin = (pred > 0.5).float()
+    num = 2 * (pred_bin * target).sum(dim=[1,2,3])
+    den = pred_bin.sum(dim=[1,2,3]) + target.sum(dim=[1,2,3]) + eps
+    return num / den
+
+def train_epoch(model, loader: DataLoader, criterion, optimizer, device):
+    model.train()
+    running_loss = 0.0
+    pbar = tqdm(loader, desc='Train', leave=False)
+    for imgs, masks, _ in pbar:
+        imgs, masks = imgs.to(device), masks.to(device)
+        optimizer.zero_grad()
+        logits = model(imgs)
+        loss = criterion(logits, masks)
+        loss.backward()
+        optimizer.step()
+        running_loss += loss.item() * imgs.size(0)
+        pbar.set_postfix(loss=loss.item())
+    return running_loss / len(loader.dataset)
+
+def validate_epoch(model, loader: DataLoader, criterion, device):
+    model.eval()
+    running_loss = 0.0
+    dice_per_batch = []
+    pbar = tqdm(loader, desc='Validate', leave=False)
+    for imgs, masks, _ in pbar:
+        imgs, masks = imgs.to(device), masks.to(device)
+        with torch.no_grad():
+            logits = model(imgs)
+            loss = criterion(logits, masks)
+            running_loss += loss.item() * imgs.size(0)
+            probs = torch.sigmoid(logits)
+            dice = dice_coef(probs, masks)
+            batch_dice = float(dice.mean().item())
+            dice_per_batch.append(batch_dice)
+        pbar.set_postfix(loss=loss.item(), dice=batch_dice)
+    avg_loss = running_loss / len(loader.dataset)
+    return avg_loss, np.array(dice_per_batch)
+
+def test_model(model, loader: DataLoader, device):
+    model.eval()
+    dice_per_batch = []
+    pbar = tqdm(loader, desc='Test', leave=False)
+    for imgs, masks, _ in pbar:
+        imgs, masks = imgs.to(device), masks.to(device)
+        with torch.no_grad():
+            logits = model(imgs)
+            probs = torch.sigmoid(logits)
+            dice = dice_coef(probs, masks)
+            batch_dice = float(dice.mean().item())
+            dice_per_batch.append(batch_dice)
+        pbar.set_postfix(dice=batch_dice)
+    return np.array(dice_per_batch)
+
+def save_losses_to_excel(losses: list, epochs: list, path: str, filename: str):
+    df = pd.DataFrame([losses], index=['loss'], columns=[f'Epoch_{e}' for e in epochs])
+    df.to_excel(f'{path}/{filename}', index=True)
+
+def save_dice_excel(dice_matrix: np.ndarray, path: str, filename: str):
+    if dice_matrix.ndim == 1:
+        dice_matrix = dice_matrix[np.newaxis, :]
+    rows = ['Epoch_'+str(i+1) for i in range(dice_matrix.shape[0])] \
+           if dice_matrix.shape[0] > 1 else ['Test']
+    cols = [f'Batch_{j+1}' for j in range(dice_matrix.shape[1])]
+    df = pd.DataFrame(dice_matrix, index=rows, columns=cols)
+    df.to_excel(f'{path}/{filename}', index=True)
+
+def plot_losses(train_losses, val_losses, path, filename='loss_curve.png'):
+    plt.figure()
+    plt.plot(range(1, len(train_losses)+1), train_losses, label='Train')
+    plt.plot(range(1, len(val_losses)+1), val_losses, label='Val')
+    plt.xlabel('Epoch')
+    plt.ylabel('Loss')
+    plt.legend()
+    plt.savefig(f'{path}/{filename}')
+    plt.close()
+# main.py
+
+import os
+import time
+import random
+import numpy as np
+import torch
+import torch.optim as optim
+import matplotlib.pyplot as plt
+from torch.utils.data import Subset, DataLoader
+from sklearn.model_selection import train_test_split
+from torchinfo import summary
+
+from dataset import SegmentationDataset
+from model import UNet
+from train import (
+    train_epoch, validate_epoch, test_model,
+    save_losses_to_excel, save_dice_excel, plot_losses
+)
+
+if __name__ == "__main__":
+    # Paths
+    images_dir = '/path/to/images'
+    masks_dir  = '/path/to/masks'      # or same as images_dir
+    save_path  = '/path/to/save/outputs'
+    os.makedirs(save_path, exist_ok=True)
+
+    # Hyperparameters
+    lr = 1e-3
+    batch_size = 8
+    num_epochs = 2   # example
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+    # Dataset + splits
+    full_ds = SegmentationDataset(
+        images_dir=images_dir,
+        masks_dir=masks_dir,
+        mask_suffix='_m',       # set to your actual mask suffix
+        resize=(256, 256)
+    )
+    idx = list(range(len(full_ds)))
+    train_idx, temp_idx = train_test_split(idx, test_size=0.2, random_state=42, shuffle=True)
+    val_idx, test_idx  = train_test_split(temp_idx, test_size=0.5, random_state=42, shuffle=True)
+
+    print(f"Train: {len(train_idx)}, Val: {len(val_idx)}, Test: {len(test_idx)}")
+
+    train_ds = Subset(full_ds, train_idx)
+    val_ds   = Subset(full_ds, val_idx)
+    test_ds  = Subset(full_ds, test_idx)
+
+    train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True,  num_workers=4)
+    val_loader   = DataLoader(val_ds,   batch_size=batch_size, shuffle=False, num_workers=4)
+    test_loader  = DataLoader(test_ds,  batch_size=batch_size, shuffle=False, num_workers=4)
+
+    print(f"Dataloaders → Train: {len(train_loader)}, Val: {len(val_loader)}, Test: {len(test_loader)}")
+
+    # Model, optimizer, loss
+    model     = UNet(in_channels=1, out_channels=1).to(device)
+    summary(model, input_size=(batch_size,1,256,256))
+
+    optimizer = optim.Adam(model.parameters(), lr=lr)
+    criterion = torch.nn.BCEWithLogitsLoss()
+
+    # Training loop
+    train_losses = []
+    val_losses   = []
+    val_dice_all = []
+
+    start_time = time.time()
+    for epoch in range(1, num_epochs+1):
+        print(f"\n=== Epoch {epoch}/{num_epochs} ===")
+        tr_loss = train_epoch(model, train_loader, criterion, optimizer, device)
+        vl_loss, vl_dice = validate_epoch(model, val_loader, criterion, device)
+
+        train_losses.append(tr_loss)
+        val_losses.append(vl_loss)
+        val_dice_all.append(vl_dice)
+
+        print(f"Epoch {epoch}: Train Loss={tr_loss:.4f}, Val Loss={vl_loss:.4f}, Val Dice Mean={vl_dice.mean():.4f}")
+
+    print(f"\nTotal training time: {(time.time() - start_time)/60:.2f} minutes")
+
+    # Save model
+    torch.save(model,            f'{save_path}/unet_full.pth')
+    torch.save(model.state_dict(), f'{save_path}/unet_state.pth')
+
+    # Save losses & dice scores
+    epochs = list(range(1, num_epochs+1))
+    save_losses_to_excel(train_losses, epochs, save_path, 'train_losses.xlsx')
+    save_losses_to_excel(val_losses,   epochs, save_path, 'val_losses.xlsx')
+
+    val_dice_matrix = np.stack(val_dice_all, axis=0)
+    save_dice_excel(val_dice_matrix, save_path, 'validation_dice_scores.xlsx')
+
+    plot_losses(train_losses, val_losses, save_path)
+
+    # Testing
+    test_dice = test_model(model, test_loader, device)
+    save_dice_excel(test_dice, save_path, 'test_dice_scores.xlsx')
+
+    # Visualize 5 random test predictions
+    os.makedirs(f'{save_path}/visuals', exist_ok=True)
+    sample_idxs = random.sample(test_idx, min(5, len(test_idx)))
+
+    fig, axes = plt.subplots(len(sample_idxs), 3, figsize=(9, 3*len(sample_idxs)))
+    from train import dice_coef
+
+    for i, idx in enumerate(sample_idxs):
+        img, mask, name = full_ds[idx]
+        inp = img.unsqueeze(0).to(device)
+        with torch.no_grad():
+            pred = torch.sigmoid(model(inp)).cpu()[0,0]
+
+        axes[i,0].imshow(img[0], cmap='gray')
+        axes[i,0].set_title(f'Input\n{name}'); axes[i,0].axis('off')
+
+        axes[i,1].imshow(mask[0], cmap='gray')
+        axes[i,1].set_title('Ground Truth'); axes[i,1].axis('off')
+
+        axes[i,2].imshow((pred>0.5).float(), cmap='gray')
+        axes[i,2].set_title('Prediction'); axes[i,2].axis('off')
+
+    plt.tight_layout()
+    plt.savefig(f'{save_path}/visuals/test_predictions.png')
+    plt.close()
+Make sure you have also updated dataset.py and model.py as previously instructed. Then run:
+
+python main.py
+Everything—training & validation loops, per‐batch mean‐dice stacking, Excel exports, and visualizations—should now execute without the shape‐stacking error.
+
+
+
+
+No file chosenNo file chosen
+ChatGPT can make mistakes. Check important info. See Cookie Preferences.

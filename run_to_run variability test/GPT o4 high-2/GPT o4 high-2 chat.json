@@ -1,0 +1,364 @@
+You said:
+ in separate scripts below, provide a complete ready-to-run Python implementation for a U-Net architecture using PyTorch, for binary segmentation of grayscale images. The dataset should consist of grayscale images and corresponding binary masks, which are located in 2 different folders, OR in the same path (the masks have the same name as the images, or with a suffix, like: "number.png" and the masks "number_seg.png", around 5000 samples in total. access and split directly using train_test_split on the index list and Subset, and do NOT duplicate or copy to new directory). It should work and provide correct predictions, and save the losses and dice scores as instructed below. write in separate scripts. The code should be structured into importable scripts with the following: 1. A custom Dataset class for loading the grayscale images and corresponding binary masks. (only the png files, ignore meta files or additional files in the directory) 2. A UNet model class definition using PyTorch, optimized for binary segmentation (with small foreground, mostly background) 3. Functions for the training procedure, validation procedure, and Testing procedure. Considerations for each part: 4. Ensure needed transforms on input image and mask pairs (Re-size images correctly, ensure gray scale and binary…) 5. Avoid overfitting and data leakage (without using augmentations), choose appropriate hyperparameters, learning rate, batch size, etc • For Training and Validation: 6. Compute training and validation losses. 7. Track and save the average training loss for each epoch in a separate Excel file (train_losses.xlsx) in a given save path. The first row should contain the epoch numbers, and the second row should contain the corresponding average training loss for each epoch. 8. Similarly, save the validation loss for each epoch in an Excel file (val_losses.xlsx) with the same structure. 9. At the end of training, save both the entire model and the model's state dictionary (.pth files) in the save path 10. Calculate total training time from start to end, and print at the end of training 11. The progress, phase (train/validation), and all info should be shown epoch by epoch using tqdm progress bars during training, validation, and testing. 12. A function to visualize training losses and validation losses over epochs afterwards, on the same plot. Save plot in a specified save path as png. 13. During Validation: mean Dice scores should be calculated over each batch, for each epoch, and stored in an Excel file (epochs as rows and batches as columns). The Excel file (named “validation_dice_scores” should be saved at the specified save path after validation is done. 14. Do the same for the Testing and store dice the Dice scores the same way and save the excel file as “test_dice_scores” after testing is done. • For Testing: 15. A function to visualize the predicted masks, the input image, and the ground truth, for 5 random samples, after testing is done. (subplots for 5 random samples in one plot, in 5 rows and 3 columns (title at top: Input Image, Ground Truth, Prediction). Also display image file name string above each image and mask. save the plot as .png). • For Main: 16. Shuffle the data, split the dataset into: 80% training, 10% validation, and 10% test sets using train_test_split. Print the sizes of each (how many images), and copy the splitted data (images and their respective masks) 17. DataLoader setup for training, validation, and testing sets. 18. Ensure correct data loading, print data loader sizes. 19. Also usig torchinfo, print model summary, and total number of model parameters (n learnable params) 20. All the above functionalities should be implemented in a modular way so that they can be imported as scripts or classes. 21. All visualizations should just be saved as png. No need to display the plots during running. 22. Ensure that everything can be executed in an if __name__ == "__main__": block with instructions for loading the dataset, configuring hyperparameters, and saving the trained model. The directory structure should only be: unet_segmentation/ ├── dataset.py ├── model.py ├── train.py ├── main.py
+Thought for 8s
+
+I'll focus on creating a complete Python implementation for U-Net binary segmentation as requested. This will include separate scripts (dataset.py, model.py, train.py, main.py) using PyTorch. I'll also incorporate necessary functionalities like dataset class, training and validation procedures, logging in Excel, saving models and plots, and calculating dice score per batch in Excel. No need for browsing, just code! I'll start by structuring the dataset script first.
+
+For the dataset, I'll handle two directories or just one for both images and masks, with masks derived from filenames if not given explicitly. PNG files will be processed. I'll collect the images and their corresponding masks, sorted by filenames.
+
+Next, the model will be a simple U-Net architecture with a single input/output channel, using standard convolutional blocks. The loss function will be BCEWithLogitsLoss, and the final activation will be sigmoid for binary classification.
+
+I'll use train.py to train, validate, and test the model, logging epoch losses and dice scores in Excel. Also, we'll visualize performance using matplotlib. I'll ensure the final output includes visualizations and properly saved loss data.
+
+Done
+
+Below are the four scripts under the unet_segmentation/ folder. You can copy each into its own .py file. Together they implement a full PyTorch U-Net binary‐segmentation pipeline with logging to Excel, dice‐score tracking, plotting, model saving, and a CLI entry‐point.
+# unet_segmentation/dataset.py
+
+import os
+from glob import glob
+from PIL import Image
+import torch
+from torch.utils.data import Dataset
+import torchvision.transforms.functional as TF
+
+class SegmentationDataset(Dataset):
+    """
+    Dataset for loading grayscale images and binary masks (PNG only).
+    Assumes images/ and masks/ in separate dirs with exact same filenames,
+    or masks suffixed with _seg before the .png.
+    """
+    def __init__(self, image_dir, mask_dir, img_size=(256, 256), mask_suffix='_seg'):
+        self.image_dir = image_dir
+        self.mask_dir = mask_dir
+        self.mask_suffix = mask_suffix
+        # gather all png images
+        self.images = sorted([p for p in glob(os.path.join(image_dir, '*.png'))])
+        # map to masks
+        self.masks = []
+        for img_path in self.images:
+            fname = os.path.basename(img_path)
+            base, _ = os.path.splitext(fname)
+            # look for base_seg.png first, else base.png in mask_dir
+            seg_name = f"{base}{mask_suffix}.png"
+            seg_path = os.path.join(mask_dir, seg_name)
+            if os.path.isfile(seg_path):
+                self.masks.append(seg_path)
+            else:
+                alt = os.path.join(mask_dir, fname)
+                if os.path.isfile(alt):
+                    self.masks.append(alt)
+                else:
+                    raise FileNotFoundError(f"Mask for {img_path} not found.")
+        self.img_size = img_size
+
+    def __len__(self):
+        return len(self.images)
+
+    def __getitem__(self, idx):
+        # load
+        img = Image.open(self.images[idx]).convert('L')
+        m  = Image.open(self.masks[idx]).convert('L')  # binary mask
+        # resize
+        img = img.resize(self.img_size)
+        m   = m.resize(self.img_size)
+        # to tensor [0,1]
+        img_t = TF.to_tensor(img)
+        mask_t= TF.to_tensor(m)
+        # binarize mask > 0.5
+        mask_t = (mask_t > 0.5).float()
+        return img_t, mask_t, os.path.basename(self.images[idx])
+
+# unet_segmentation/model.py
+
+import torch
+import torch.nn as nn
+
+class DoubleConv(nn.Module):
+    def __init__(self, in_ch, out_ch):
+        super().__init__()
+        self.double_conv = nn.Sequential(
+            nn.Conv2d(in_ch, out_ch, kernel_size=3, padding=1, bias=False),
+            nn.BatchNorm2d(out_ch),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(out_ch, out_ch, kernel_size=3, padding=1, bias=False),
+            nn.BatchNorm2d(out_ch),
+            nn.ReLU(inplace=True),
+        )
+    def forward(self, x):
+        return self.double_conv(x)
+
+class UNet(nn.Module):
+    def __init__(self, in_channels=1, out_channels=1, features=[64, 128, 256, 512]):
+        super().__init__()
+        self.downs = nn.ModuleList()
+        self.ups   = nn.ModuleList()
+        # Encoder
+        for f in features:
+            self.downs.append(DoubleConv(in_channels, f))
+            in_channels = f
+        # Pool
+        self.pool = nn.MaxPool2d(kernel_size=2, stride=2)
+        # Decoder
+        for f in reversed(features):
+            self.ups.append(
+                nn.ConvTranspose2d(2*f, f, kernel_size=2, stride=2)
+            )
+            self.ups.append(DoubleConv(2*f, f))
+        # Bottleneck
+        self.bottleneck = DoubleConv(features[-1], features[-1]*2)
+        # Final conv
+        self.final = nn.Conv2d(features[0], out_channels, kernel_size=1)
+
+    def forward(self, x):
+        skip_connections = []
+        for down in self.downs:
+            x = down(x)
+            skip_connections.append(x)
+            x = self.pool(x)
+        x = self.bottleneck(x)
+        skip_connections = skip_connections[::-1]
+        for idx in range(0, len(self.ups), 2):
+            trans = self.ups[idx]
+            conv  = self.ups[idx+1]
+            x = trans(x)
+            skip = skip_connections[idx//2]
+            # pad if needed
+            if x.shape != skip.shape:
+                x = nn.functional.interpolate(x, size=skip.shape[2:])
+            x = torch.cat((skip, x), dim=1)
+            x = conv(x)
+        return self.final(x)
+
+# unet_segmentation/train.py
+
+import os
+import time
+import torch
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from tqdm import tqdm
+from torch import nn, optim
+from torch.utils.data import DataLoader, Subset
+from sklearn.model_selection import train_test_split
+from torchvision.transforms import Normalize
+from tqdm import tqdm
+from .dataset import SegmentationDataset
+from .model import UNet
+
+def dice_coeff(pred, target, eps=1e-6):
+    pred = torch.sigmoid(pred)
+    pred = (pred > 0.5).float()
+    inter = (pred * target).sum(dim=(1,2,3))
+    union = pred.sum(dim=(1,2,3)) + target.sum(dim=(1,2,3))
+    dice = (2 * inter + eps) / (union + eps)
+    return dice
+
+def train_epoch(model, loader, criterion, optimizer, device):
+    model.train()
+    losses = []
+    pbar = tqdm(loader, desc="  train", leave=False)
+    for imgs, masks, _ in pbar:
+        imgs, masks = imgs.to(device), masks.to(device)
+        preds = model(imgs)
+        loss = criterion(preds, masks)
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+        losses.append(loss.item())
+        pbar.set_postfix(loss=loss.item())
+    return np.mean(losses)
+
+def validate_epoch(model, loader, criterion, device):
+    model.eval()
+    losses = []
+    all_dice = []
+    pbar = tqdm(loader, desc="  val  ", leave=False)
+    with torch.no_grad():
+        for imgs, masks, _ in pbar:
+            imgs, masks = imgs.to(device), masks.to(device)
+            preds = model(imgs)
+            loss = criterion(preds, masks)
+            losses.append(loss.item())
+            dice = dice_coeff(preds, masks).cpu().numpy()
+            all_dice.append(dice)
+            pbar.set_postfix(loss=loss.item(), dice=dice.mean())
+    return np.mean(losses), all_dice
+
+def test_epoch(model, loader, device):
+    model.eval()
+    all_dice = []
+    filenames = []
+    pbar = tqdm(loader, desc="  test ", leave=False)
+    with torch.no_grad():
+        for imgs, masks, names in pbar:
+            imgs, masks = imgs.to(device), masks.to(device)
+            preds = model(imgs)
+            dice = dice_coeff(preds, masks).cpu().numpy()
+            all_dice.append(dice)
+            filenames.extend(names)
+            pbar.set_postfix(dice=dice.mean())
+    return all_dice, filenames
+
+def save_losses_to_excel(losses, path, name):
+    # losses: list of floats
+    df = pd.DataFrame([losses], columns=list(range(1, len(losses)+1)))
+    df.to_excel(os.path.join(path, name), index=False)
+
+def save_dice_to_excel(dice_list, path, name):
+    # dice_list: list of arrays (batches)
+    df = pd.DataFrame(dice_list,
+                      index=list(range(1, len(dice_list)+1)),
+                      columns=[f"batch_{i+1}" for i in range(len(dice_list[0]))])
+    df.to_excel(os.path.join(path, name))
+
+def plot_losses(train_losses, val_losses, path, name="loss_plot.png"):
+    plt.figure()
+    epochs = list(range(1, len(train_losses)+1))
+    plt.plot(epochs, train_losses, label='train')
+    plt.plot(epochs, val_losses, label='val')
+    plt.xlabel("Epoch")
+    plt.ylabel("Loss")
+    plt.legend()
+    plt.savefig(os.path.join(path, name))
+    plt.close()
+
+def save_model(model, path, name_prefix="unet"):
+    os.makedirs(path, exist_ok=True)
+    torch.save(model, os.path.join(path, f"{name_prefix}_full.pth"))
+    torch.save(model.state_dict(), os.path.join(path, f"{name_prefix}_state.pth"))
+
+def run_training(image_dir, mask_dir, save_dir,
+                 epochs=20, batch_size=8, lr=1e-3,
+                 img_size=(256,256), device='cuda'):
+    device = torch.device(device if torch.cuda.is_available() else 'cpu')
+    # full dataset
+    ds = SegmentationDataset(image_dir, mask_dir, img_size)
+    idx = list(range(len(ds)))
+    # split
+    train_idx, temp_idx = train_test_split(idx, train_size=0.8, random_state=42, shuffle=True)
+    val_idx, test_idx = train_test_split(temp_idx, train_size=0.5, random_state=42, shuffle=True)
+    print(f"Train/Val/Test sizes: {len(train_idx)}/{len(val_idx)}/{len(test_idx)}")
+    # subsets and loaders
+    train_loader = DataLoader(Subset(ds, train_idx), batch_size=batch_size, shuffle=True)
+    val_loader   = DataLoader(Subset(ds, val_idx),   batch_size=batch_size)
+    test_loader  = DataLoader(Subset(ds, test_idx),  batch_size=batch_size)
+    # model, loss, opt
+    model = UNet().to(device)
+    criterion = nn.BCEWithLogitsLoss()
+    optimizer = optim.Adam(model.parameters(), lr=lr)
+    # print model summary
+    from torchinfo import summary
+    summary(model, input_size=(batch_size,1,*img_size))
+    # training loop
+    train_losses, val_losses = [], []
+    val_dice_all = []
+    start = time.time()
+    for ep in range(1, epochs+1):
+        print(f"Epoch {ep}/{epochs}")
+        tr_loss = train_epoch(model, train_loader, criterion, optimizer, device)
+        vl_loss, vl_dice = validate_epoch(model, val_loader, criterion, device)
+        train_losses.append(tr_loss)
+        val_losses.append(vl_loss)
+        val_dice_all.append(vl_dice)
+    total_time = time.time() - start
+    print(f"Total training time: {total_time/60:.2f} minutes")
+    # save
+    os.makedirs(save_dir, exist_ok=True)
+    save_losses_to_excel(train_losses, save_dir, "train_losses.xlsx")
+    save_losses_to_excel(val_losses, save_dir,   "val_losses.xlsx")
+    save_dice_to_excel(val_dice_all, save_dir,   "validation_dice_scores.xlsx")
+    save_model(model, save_dir)
+    plot_losses(train_losses, val_losses, save_dir)
+    # test
+    test_dice, filenames = test_epoch(model, test_loader, device)
+    save_dice_to_excel(test_dice, save_dir, "test_dice_scores.xlsx")
+    # visualize 5 random
+    visualize_predictions(model, test_loader, save_dir)
+    return model
+
+def visualize_predictions(model, loader, save_dir, n_samples=5, device='cuda'):
+    import random
+    import matplotlib.pyplot as plt
+    model.eval()
+    device = torch.device(device if torch.cuda.is_available() else 'cpu')
+    imgs_list, masks_list, preds_list, names = [], [], [], []
+    with torch.no_grad():
+        # collect at least n_samples
+        for imgs, masks, fnames in loader:
+            imgs, masks = imgs.to(device), masks.to(device)
+            out = torch.sigmoid(model(imgs))
+            preds = (out>0.5).float()
+            for i in range(imgs.size(0)):
+                imgs_list.append(imgs[i,0].cpu().numpy())
+                masks_list.append(masks[i,0].cpu().numpy())
+                preds_list.append(preds[i,0].cpu().numpy())
+                names.append(fnames[i])
+            if len(imgs_list) >= n_samples:
+                break
+    fig, axes = plt.subplots(n_samples, 3, figsize=(9, 3*n_samples))
+    for i in range(n_samples):
+        axes[i,0].imshow(imgs_list[i], cmap='gray');   axes[i,0].set_title("Input")
+        axes[i,1].imshow(masks_list[i], cmap='gray');  axes[i,1].set_title("GroundTruth")
+        axes[i,2].imshow(preds_list[i], cmap='gray');  axes[i,2].set_title("Prediction")
+        for j in range(3):
+            axes[i,j].set_xticks([]); axes[i,j].set_yticks([])
+        fig.suptitle("Examples: Input | GT | Pred", y=0.92)
+    plt.tight_layout()
+    plt.savefig(os.path.join(save_dir, "test_predictions.png"))
+    plt.close()
+
+# unet_segmentation/main.py
+
+import argparse
+import os
+from train import run_training
+
+def parse_args():
+    p = argparse.ArgumentParser()
+    p.add_argument('--images',    type=str, required=True, help="Path to images folder")
+    p.add_argument('--masks',     type=str, required=True, help="Path to masks folder")
+    p.add_argument('--save_dir',  type=str, default='./checkpoints', help="Where to save outputs")
+    p.add_argument('--epochs',    type=int, default=20)
+    p.add_argument('--batch_size',type=int, default=8)
+    p.add_argument('--lr',        type=float, default=1e-3)
+    p.add_argument('--img_size',  type=int, nargs=2, default=(256,256))
+    return p.parse_args()
+
+if __name__ == "__main__":
+    args = parse_args()
+    os.makedirs(args.save_dir, exist_ok=True)
+    run_training(
+        image_dir=args.images,
+        mask_dir =args.masks,
+        save_dir =args.save_dir,
+        epochs   =args.epochs,
+        batch_size=args.batch_size,
+        lr=args.lr,
+        img_size=tuple(args.img_size),
+        device='cuda'
+    )
+
+
+Usage (from project root):
+
+python -m unet_segmentation.main \
+    --images /path/to/images \
+    --masks  /path/to/masks \
+    --save_dir ./models \
+    --epochs 30 \
+    --batch_size 16 \
+    --lr 1e-4 \
+    --img_size 256 256
+
+
+This will:
+
+Split 80/10/10 (train/val/test) without copying files.
+
+Train a U-Net, logging per-epoch train/val losses (train_losses.xlsx, val_losses.xlsx) and per-batch Dice scores (validation_dice_scores.xlsx, test_dice_scores.xlsx).
+
+Save model (unet_full.pth & unet_state.pth).
+
+Plot and save loss curves and 5 test‐sample predictions.
