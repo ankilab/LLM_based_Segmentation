@@ -1,4 +1,3 @@
-
 import os
 import glob
 import argparse
@@ -9,11 +8,14 @@ import numpy as np
 from PIL import Image
 import pandas as pd
 from tqdm import tqdm
+from torchvision import transforms
 
-'''
-This code is to import each models model.py and model state dict, and run it on the standardized test sets
-to calculate the dice scores for evaluation, and saving them in excel files
-'''
+"""
+Evaluate arbitrary imported UNet models on a standard test set,
+applying the same Resize+ToTensor preprocessing used during training
+(256×256, grayscale → tensor) for both images and masks.
+"""
+
 def dice_score(pred: np.ndarray, target: np.ndarray, smooth: float = 1e-6) -> float:
     pred_bin   = (pred > 0.5).astype(np.float32)
     target_bin = (target > 0.5).astype(np.float32)
@@ -46,29 +48,34 @@ def find_pairs(img_dir: str, mask_dir: str, suffix: str) -> list:
         pairs.append((img_path, mask_path))
     return pairs
 
+def get_transform():
+    return transforms.Compose([
+        transforms.Resize((256, 256)),
+        transforms.ToTensor(),
+    ])
+
+transform = get_transform()
+
 def load_gray_tensor(img_path: str, device: torch.device):
     img = Image.open(img_path).convert("L")
-    arr = np.array(img, dtype=np.float32) / 255.0
-    h, w = arr.shape
-    tensor = torch.from_numpy(arr).unsqueeze(0).unsqueeze(0).to(device)
+    tensor = transform(img).unsqueeze(0).to(device)  # shape [1,1,256,256]
+    _, _, h, w = tensor.shape
     return tensor, h, w
 
-def load_and_resize_mask(mask_path: str, target_h: int, target_w: int) -> np.ndarray:
+def load_and_resize_mask(mask_path: str) -> np.ndarray:
     m = Image.open(mask_path).convert("L")
-    if m.size != (target_w, target_h):
-        m = m.resize((target_w, target_h), resample=Image.NEAREST)
-    arr = np.array(m, dtype=np.float32) / 255.0
-    return arr
+    mask_t = transform(m)                      # shape [1,256,256], values in [0,1]
+    mask_bin = (mask_t > 0).float().numpy()[0] # binary {0,1}, shape [256,256]
+    return mask_bin
 
 def evaluate(model, pairs: list, device: torch.device) -> list:
     results = []
     for img_path, mask_path in tqdm(pairs, desc="Evaluating"):
-        x, h_in, w_in = load_gray_tensor(img_path, device)
+        x, h, w = load_gray_tensor(img_path, device)
         with torch.no_grad():
-            out = model(x)
+            out = model(x)                       # expect shape [1,1,256,256]
             pred = torch.sigmoid(out).cpu().numpy()[0, 0]
-        h_out, w_out = pred.shape
-        mask_arr = load_and_resize_mask(mask_path, h_out, w_out)
+        mask_arr = load_and_resize_mask(mask_path)
         score = dice_score(pred, mask_arr)
         results.append((os.path.basename(img_path), float(score)))
     return results
@@ -79,7 +86,7 @@ def main():
     parser.add_argument("--weights-pth",  required=True, help="Path to .pth state_dict")
     parser.add_argument("--test-images",  required=True, help="Dir of test images")
     parser.add_argument("--test-masks",   required=True, help="Dir of test masks")
-    parser.add_argument("--mask-suffix",  default="_m", help="Suffix before mask extension")
+    parser.add_argument("--mask-suffix",  default="",   help="Suffix before mask extension")
     parser.add_argument("--output-excel", required=True, help="Output .xlsx file path")
     parser.add_argument(
         "--device",
@@ -107,3 +114,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
