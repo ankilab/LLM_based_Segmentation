@@ -7,20 +7,21 @@ from pathlib import Path
 def find_mask(image_path: Path, masks_dir: Path, suffix: str, exts: list):
     """
     Given an image Path, try to find the corresponding mask in masks_dir.
-    First, try same stem. Then, try stem + suffix.
+    First, try stem + suffix (e.g. '5_seg.png'). Then, try same stem,
+    but never match the image file itself.
     """
     stem = image_path.stem
 
-    # Try same name
-    for ext in exts:
-        candidate = masks_dir / f"{stem}{ext}"
-        if candidate.exists():
-            return candidate
-
-    # Try with suffix
+    # 1) Try with suffix (e.g. 5_seg.png)
     for ext in exts:
         candidate = masks_dir / f"{stem}{suffix}{ext}"
         if candidate.exists():
+            return candidate
+
+    # 2) Fall back to same stem—but avoid returning the image itself
+    for ext in exts:
+        candidate = masks_dir / f"{stem}{ext}"
+        if candidate.exists() and candidate.resolve() != image_path.resolve():
             return candidate
 
     return None
@@ -38,7 +39,7 @@ def main(images_dir, masks_dir, output_dir, test_ratio, suffix, exts, seed):
         # Skip non-image files
         if img_path.suffix.lower() not in exts:
             continue
-        # If images and masks are in the same folder, skip mask files
+        # If images and masks are in the same folder, skip any mask files as "images"
         if images_dir.resolve() == masks_dir.resolve() and img_path.stem.endswith(suffix):
             continue
 
