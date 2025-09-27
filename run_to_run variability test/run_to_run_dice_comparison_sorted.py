@@ -234,3 +234,45 @@ plt.subplots_adjust(wspace=0.7)
 # Save
 save_path = r"D:\qy44lyfe\LLM segmentation\Results\Models Comparison\Models run to run comparison\plots\\"
 plt.savefig(f"{save_path}all_model_runs_dice_scores_combined_BRAIN.png", dpi=600)
+
+# ===============================================================================================================
+# Statistical test: Mann–Whitney U test between GPT-4o (2024) and GPT o4-mini (2025)
+# ===============================================================================================================
+
+# Helper: compute mean per column for a list of models
+# Helper: compute mean per column for a list of models
+def compute_group_mean(models, test_scores):
+    # Build dict of arrays
+    group_dict = {m: test_scores[m] for m in models}
+    # Create DataFrame with unequal lengths → fills missing with NaN
+    df = pd.DataFrame.from_dict(group_dict, orient="index").transpose()
+    # Mean per column, ignoring NaN
+    return df.mean(axis=1, skipna=True).values
+
+
+# Compute mean dice per epoch (column) for each group
+mean_2024 = compute_group_mean(models_2024, test_scores)
+mean_2025 = compute_group_mean(models_2025, test_scores)
+
+# Run Mann–Whitney U test
+u_stat, p_val = mannwhitneyu(mean_2024, mean_2025, alternative='two-sided')
+
+# Print results
+print("=== Mann–Whitney U Test (Test Dice Scores, per-epoch means) ===")
+print(f"U statistic = {u_stat:.3f}")
+print(f"p-value     = {p_val:.6f}")
+
+avg_2024 = np.mean(mean_2024)
+avg_2025 = np.mean(mean_2025)
+
+if p_val < 0.05:
+    print("Result: Significant difference between groups.")
+else:
+    print("Result: No significant difference between groups.")
+
+if avg_2024 > avg_2025:
+    print(f"GPT 4o (2024) has higher mean Dice ({avg_2024:.4f} vs {avg_2025:.4f})")
+elif avg_2025 > avg_2024:
+    print(f"GPT o4 mini (2025) has higher mean Dice ({avg_2025:.4f} vs {avg_2024:.4f})")
+else:
+    print("Both groups have equal mean Dice.")
