@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from collections import OrderedDict
 from scipy.stats import mannwhitneyu
+import matplotlib.patches as mpatches
 
 # ===============================================================================================================
 # Paths for each model's validation and test dice scores
@@ -146,13 +147,14 @@ medians_val  = {m: np.median(validation_scores[m]) for m in validation_scores}
 medians_test = {m: np.median(test_scores[m])       for m in test_scores}
 
 models_2024 = [
-    'Bing Copilot', 'Claude 3.5 Sonnet', 'Copilot', 'Gemini 1.5 Pro',
-    'GPT 4', 'GPT 4o', 'GPT o1 Preview', 'Llama 3.1 405B'
+    'GPT 4o-1', 'GPT 4o-2', 'GPT 4o-3', 'GPT 4o-4',
+    'GPT 4o-5', 'GPT 4o-6', 'GPT 4o-7', 'GPT 4o-8'
+    ,'GPT 4o-9','GPT 4o-10'
 ]
 models_2025 = [
-    'Claude 4 Sonnet', 'DeepSeek R1', 'DeepSeek V3', 'GPT o3',
-    'GPT o4-mini-high', 'Gemini 2.5 pro', 'Grok 3 mini', 'Grok 3',
-    'Llama 4 Maverick', 'Mistral Medium 3', 'Qwen 3_235B'
+    'GPT o4 mini-1', 'GPT o4 mini-2', 'GPT o4 mini-3', 'GPT o4 mini-4',
+    'GPT o4 mini-5', 'GPT o4 mini-6', 'GPT o4 mini-7', 'GPT o4 mini-8'
+    ,'GPT o4 mini-9','GPT o4 mini-10'
 ]
 
 # 2) Compute medians
@@ -174,19 +176,31 @@ color_map = {
 # ===============================================================================================================
 # Plotting
 fig, axes = plt.subplots(1, 2, figsize=(11, 7))
-
+# Define legend handles
+legend_handles = [
+    mpatches.Patch(color='#00BDD6', label='GPT 4o Models'),
+    mpatches.Patch(color='#FF5E69', label='GPT o4-mini Models'),
+    mpatches.Patch(color='#808080', label='nnU-Net')
+]
 # Validation subplot
 val_list = [validation_scores[m] for m in plot_order_val]
 bp = axes[0].boxplot(val_list, patch_artist=True, vert=False,
                      labels=plot_order_val, showfliers=False)
 for patch, model in zip(bp['boxes'], plot_order_val):
     patch.set_facecolor(color_map[model])
-axes[0].set_title('Skin Cancer Dataset', fontsize=16)
+axes[0].set_title('Brain Tumor Dataset', fontsize=16)
 axes[0].set_xlabel('Validation Dice Score', fontsize=14)
 axes[0].invert_yaxis()   # highest-median at top
 axes[0].set_xlim(0, 1)
 axes[0].set_xticks([0, 0.25, 0.5, 0.75, 1])
 axes[0].grid(True)
+
+# After Validation subplot formatting
+for label in axes[0].get_yticklabels():
+    if label.get_text() == "nnU-Net":
+        label.set_fontweight("bold")
+
+axes[0].legend(handles=legend_handles, loc='upper left', fontsize=11, frameon=True)
 
 # Test subplot
 test_list = [test_scores[m] for m in plot_order_test]
@@ -194,17 +208,29 @@ bp = axes[1].boxplot(test_list, patch_artist=True, vert=False,
                      labels=plot_order_test, showfliers=False)
 for patch, model in zip(bp['boxes'], plot_order_test):
     patch.set_facecolor(color_map[model])
-axes[1].set_title('Skin Cancer Dataset', fontsize=16)
+axes[1].set_title('Brain Tumor Dataset', fontsize=16)
 axes[1].set_xlabel('Dice Score', fontsize=14)
 axes[1].invert_yaxis()
 axes[1].set_xlim(0, 1)
 axes[1].set_xticks([0, 0.25, 0.5, 0.75, 1])
 axes[1].grid(True)
 
-fig.suptitle('Model Dice Scores Comparison (Skin Cancer Dataset)', fontsize=22)
+# After Test subplot formatting
+for label in axes[1].get_yticklabels():
+    if label.get_text() == "nnU-Net":
+        label.set_fontweight("bold")
+
+axes[1].legend(handles=legend_handles, loc='upper left', fontsize=11, frameon=True)
+
+for ax in axes:
+    ax.tick_params(axis="both", which="major", labelsize=12)
+    ax.xaxis.label.set_size(12)
+    ax.yaxis.label.set_size(12)
+
+fig.suptitle('Model Dice Scores Comparison (Brain Tumor Dataset)', fontsize=22)
 plt.tight_layout(rect=[0,0,1,0.96])
 plt.subplots_adjust(wspace=0.7)
 
 # Save
-save_path = r"D:\qy44lyfe\LLM segmentation\Results\Models Comparison\new plots\combined\sorted\\"
-plt.savefig(f"{save_path}all_model_dice_scores_combined_SKIN.png", dpi=600)
+save_path = r"D:\qy44lyfe\LLM segmentation\Results\Models Comparison\Models run to run comparison\plots\\"
+plt.savefig(f"{save_path}all_model_runs_dice_scores_combined_BRAIN.png", dpi=600)
