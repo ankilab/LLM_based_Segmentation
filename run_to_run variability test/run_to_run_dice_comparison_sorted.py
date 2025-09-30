@@ -249,10 +249,26 @@ def compute_group_mean(models, test_scores):
     # Mean per column, ignoring NaN
     return df.mean(axis=1, skipna=True).values
 
+def describe_group(name, values):
+    median = np.median(values)
+    q1 = np.percentile(values, 25)
+    q3 = np.percentile(values, 75)
+    iqr = q3 - q1
+    vmin = np.min(values)
+    vmax = np.max(values)
+
+    print(f"\n=== {name} ===")
+    print(f"Median : {median:.4f}")
+    print(f"IQR    : {iqr:.4f} (Q1={q1:.4f}, Q3={q3:.4f})")
+    print(f"Min    : {vmin:.4f}")
+    print(f"Max    : {vmax:.4f}")
 
 # Compute mean dice per epoch (column) for each group
 mean_2024 = compute_group_mean(models_2024, test_scores)
 mean_2025 = compute_group_mean(models_2025, test_scores)
+# Describe both groups using the per-epoch mean dice
+describe_group("GPT 4o (2024)", mean_2024)
+describe_group("GPT o4 mini (2025)", mean_2025)
 
 # Run Mann–Whitney U test
 u_stat, p_val = mannwhitneyu(mean_2024, mean_2025, alternative='two-sided')
