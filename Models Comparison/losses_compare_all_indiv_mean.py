@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 import matplotlib.lines as mlines
+from scipy.ndimage import gaussian_filter1d
 
 # ─── File paths ───────────────────────────────────────────────────────────────
 train_2024_path = r"D:\qy44lyfe\LLM segmentation\Results\Models Comparison\models 2024\all_train_losses_myoma.xlsx"
@@ -10,7 +11,7 @@ val_2024_path = r"D:\qy44lyfe\LLM segmentation\Results\Models Comparison\models 
 train_2025_path = r"D:\qy44lyfe\LLM segmentation\Results\Models Comparison\models 2025\all_train_losses_myoma.xlsx"
 val_2025_path = r"D:\qy44lyfe\LLM segmentation\Results\Models Comparison\models 2025\all_validation_losses_myoma.xlsx"
 
-save_path = r"D:\qy44lyfe\LLM segmentation\Results\Models Comparison\new plots\models 2025\mean shaded\sem"
+save_path = r"D:\qy44lyfe\LLM segmentation\Results\Models Comparison\new plots\models 2025\mean shaded\median"
 os.makedirs(save_path, exist_ok=True)
 
 
@@ -23,13 +24,35 @@ def prepare_loss_data(path):
 
 
 # ─── Compute mean, std, and min loss per epoch ────────────────────────────────
-def compute_mean_std(models, losses):
+# def compute_mean_std(models, losses):
+#     mask = models != "nnU-Net"
+#     df = losses.loc[mask].astype(float)
+#     mean = df.mean(axis=0, skipna=True)
+#     std = df.std(axis=0, skipna=True)
+#     min_losses = df.min(axis=0, skipna=True)  # per-epoch min loss across models
+#     return mean, std, min_losses
+
+# use median instead of mean
+# def compute_mean_std(models, losses):
+#     mask = models != "nnU-Net"
+#     df = losses.loc[mask].astype(float)
+#     median = df.median(axis=0, skipna=True)
+#     std = df.std(axis=0, skipna=True)
+#     min_losses = df.min(axis=0, skipna=True)
+#     return median, std, min_losses
+
+# smooth median
+def compute_mean_std(models, losses, smooth_sigma=2):
     mask = models != "nnU-Net"
     df = losses.loc[mask].astype(float)
-    mean = df.mean(axis=0, skipna=True)
+    median = df.median(axis=0, skipna=True)
     std = df.std(axis=0, skipna=True)
-    min_losses = df.min(axis=0, skipna=True)  # per-epoch min loss across models
-    return mean, std, min_losses
+    min_losses = df.min(axis=0, skipna=True)
+
+    # Smooth the median curve (optional)
+    median = gaussian_filter1d(median, sigma=smooth_sigma)
+
+    return median, std, min_losses
 
 
 # ─── Clipping function ────────────────────────────────────────────────────────
@@ -51,7 +74,7 @@ def plot_models(train_path, val_path, year, save_dir):
     col_nnunet = "gray"
 
     model_line = mlines.Line2D([], [], color=col_model, linewidth=1, label=f"{year} Models")
-    mean_line = mlines.Line2D([], [], color=col_model, linewidth=2.5, linestyle="--", label=f"{year} Mean ± Std")
+    mean_line = mlines.Line2D([], [], color=col_model, linewidth=2.5, linestyle="--", label=f"{year} Median ± Std")
     nnunet_line = mlines.Line2D([], [], color=col_nnunet, linewidth=2, label="nnU-Net")
 
     mean_train, std_train, min_train = compute_mean_std(train_models, train_losses)
@@ -248,9 +271,9 @@ def plot_combined(train_2024, val_2024, train_2025, val_2025, save_dir, log=Fals
     # Shared legend handles
     handles = [
         mlines.Line2D([], [], color=c24, linewidth=1, label="2024 Models"),
-        mlines.Line2D([], [], color=c24, linewidth=2.5, linestyle="--", label="2024 Mean ± Std"),
+        mlines.Line2D([], [], color=c24, linewidth=2.5, linestyle="--", label="2024 Median ± Std"),
         mlines.Line2D([], [], color=c25, linewidth=1, label="2025 Models"),
-        mlines.Line2D([], [], color=c25, linewidth=2.5, linestyle="--", label="2025 Mean ± Std"),
+        mlines.Line2D([], [], color=c25, linewidth=2.5, linestyle="--", label="2025 Median ± Std"),
         mlines.Line2D([], [], color=cN, linewidth=2, label="nnU-Net"),
     ]
     axes[0].legend(handles=handles, fontsize=12)
