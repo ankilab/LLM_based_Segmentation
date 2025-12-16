@@ -13,13 +13,13 @@ model_paths = OrderedDict({
         'validation': r"D:\qy44lyfe\LLM segmentation\Results\Bing Microsoft Copilot\out of the box\utrine myoma output\validation_dice_scores.xlsx",
         'test':       r"D:\qy44lyfe\LLM segmentation\Results\Bing Microsoft Copilot\out of the box\utrine myoma output\test_dice_scores.xlsx"
     },
-    'Claude 3.5 Sonnet': {
-        'validation': r"D:\qy44lyfe\LLM segmentation\Results\Claude 3.5 Sonnet\out of the box\utrine myoma output\validation_dice_scores.xlsx",
-        'test':       r"D:\qy44lyfe\LLM segmentation\Results\Claude 3.5 Sonnet\out of the box\utrine myoma output\test_dice_scores.xlsx"
-    },
     'Copilot': {
         'validation': r"D:\qy44lyfe\LLM segmentation\Results\Copilot\out of the box\utrine myoma output\validation_dice_scores.xlsx",
         'test':       r"D:\qy44lyfe\LLM segmentation\Results\Copilot\out of the box\utrine myoma output\test_dice_scores.xlsx"
+    },
+    'Llama 3.1 405B': {
+        'validation': r"D:\qy44lyfe\LLM segmentation\Results\LLAMA 3.1 405B\out of the box\utrine myoma output\validation_dice_scores.xlsx",
+        'test': r"D:\qy44lyfe\LLM segmentation\Results\LLAMA 3.1 405B\out of the box\utrine myoma output\test_dice_scores.xlsx"
     },
     'Gemini 1.5 Pro': {
         'validation': r"D:\qy44lyfe\LLM segmentation\Results\Gemini 1.5 pro\out of the box\utrine myoma output\validation_dice_scores.xlsx",
@@ -37,9 +37,9 @@ model_paths = OrderedDict({
         'validation': r"D:\qy44lyfe\LLM segmentation\Results\GPT o1 preview\out of the box\utrine myoma output\validation_dice_scores.xlsx",
         'test':       r"D:\qy44lyfe\LLM segmentation\Results\GPT o1 preview\out of the box\utrine myoma output\test_dice_scores.xlsx"
     },
-    'Llama 3.1 405B': {
-        'validation': r"D:\qy44lyfe\LLM segmentation\Results\LLAMA 3.1 405B\out of the box\utrine myoma output\validation_dice_scores.xlsx",
-        'test':       r"D:\qy44lyfe\LLM segmentation\Results\LLAMA 3.1 405B\out of the box\utrine myoma output\test_dice_scores.xlsx"
+    'Claude 3.5 Sonnet': {
+        'validation': r"D:\qy44lyfe\LLM segmentation\Results\Claude 3.5 Sonnet\out of the box\utrine myoma output\validation_dice_scores.xlsx",
+        'test': r"D:\qy44lyfe\LLM segmentation\Results\Claude 3.5 Sonnet\out of the box\utrine myoma output\test_dice_scores.xlsx"
     },
     'nnU-Net': {
         'validation': r"D:\qy44lyfe\LLM segmentation\Results\nnUnet Baseline\validation_dice_scores_nnUnet_Myoma.xlsx",
@@ -49,30 +49,6 @@ model_paths = OrderedDict({
 
 # 2025 Models
 model_paths.update({
-    'Claude 4 Sonnet': {
-        'validation': r"D:\qy44lyfe\LLM segmentation\Results\2025\Claude 4 Sonnet\out of the box\Myoma output\validation_dice_scores.xlsx",
-        'test':       r"D:\qy44lyfe\LLM segmentation\Results\2025\Claude 4 Sonnet\out of the box\Myoma output\test_dice_scores.xlsx"
-    },
-    'DeepSeek R1': {
-        'validation': r"D:\qy44lyfe\LLM segmentation\Results\2025\DeepSeek R1\out of the box\Myoma output\validation_dice_scores.xlsx",
-        'test':       r"D:\qy44lyfe\LLM segmentation\Results\2025\DeepSeek R1\out of the box\Myoma output\test_dice_scores.xlsx"
-    },
-    'DeepSeek V3': {
-        'validation': r"D:\qy44lyfe\LLM segmentation\Results\2025\DeepSeek V3\out of the box\Myoma output\validation_dice_scores.xlsx",
-        'test':       r"D:\qy44lyfe\LLM segmentation\Results\2025\DeepSeek V3\out of the box\Myoma output\test_dice_scores.xlsx"
-    },
-    'GPT o3': {
-        'validation': r"D:\qy44lyfe\LLM segmentation\Results\2025\GPT o3\out of the box\Myoma output\validation_dice_scores.xlsx",
-        'test':       r"D:\qy44lyfe\LLM segmentation\Results\2025\GPT o3\out of the box\Myoma output\test_dice_scores.xlsx"
-    },
-    'GPT o4-mini-high': {
-        'validation': r"D:\qy44lyfe\LLM segmentation\Results\2025\GPT o4-mini-high\out of the box\Myoma output\validation_dice_scores.xlsx",
-        'test':       r"D:\qy44lyfe\LLM segmentation\Results\2025\GPT o4-mini-high\out of the box\Myoma output\test_dice_scores.xlsx"
-    },
-    'Gemini 2.5 pro': {
-        'validation': r"D:\qy44lyfe\LLM segmentation\Results\2025\Gemini 2.5 Pro\out of the box\Myoma output\validation_dice_scores.xlsx",
-        'test':       r"D:\qy44lyfe\LLM segmentation\Results\2025\Gemini 2.5 Pro\out of the box\Myoma output\test_dice_scores.xlsx"
-    },
     'Grok 3 mini': {
         'validation': r"D:\qy44lyfe\LLM segmentation\Results\2025\Grok 3 mini Reasoning\out of the box\Myoma output\validation_dice_scores.xlsx",
         'test':       r"D:\qy44lyfe\LLM segmentation\Results\2025\Grok 3 mini Reasoning\out of the box\Myoma output\test_dice_scores.xlsx"
@@ -85,13 +61,38 @@ model_paths.update({
         'validation': r"D:\qy44lyfe\LLM segmentation\Results\2025\Llama 4 Maverick\out of the box\Myoma output\validation_dice_scores.xlsx",
         'test':       r"D:\qy44lyfe\LLM segmentation\Results\2025\Llama 4 Maverick\out of the box\Myoma output\test_dice_scores.xlsx"
     },
-    'Mistral Medium 3': {
-        'validation': r"D:\qy44lyfe\LLM segmentation\Results\2025\Mistral Medium 3\out of the box\Myoma output\mask fix\validation_dice_scores.xlsx",
-        'test':       r"D:\qy44lyfe\LLM segmentation\Results\2025\Mistral Medium 3\out of the box\Myoma output\mask fix\test_dice_scores.xlsx"
-    },
     'Qwen 3_235B': {
         'validation': r"D:\qy44lyfe\LLM segmentation\Results\2025\Qwen 3_235B\out of the box\Myoma output\validation_dice_scores.xlsx",
         'test':       r"D:\qy44lyfe\LLM segmentation\Results\2025\Qwen 3_235B\out of the box\Myoma output\test_dice_scores.xlsx"
+    },
+    'Mistral Medium 3': {
+        'validation': r"D:\qy44lyfe\LLM segmentation\Results\2025\Mistral Medium 3\out of the box\Myoma output\mask fix\validation_dice_scores.xlsx",
+        'test': r"D:\qy44lyfe\LLM segmentation\Results\2025\Mistral Medium 3\out of the box\Myoma output\mask fix\test_dice_scores.xlsx"
+    },
+    'DeepSeek V3': {
+        'validation': r"D:\qy44lyfe\LLM segmentation\Results\2025\DeepSeek V3\out of the box\Myoma output\validation_dice_scores.xlsx",
+        'test': r"D:\qy44lyfe\LLM segmentation\Results\2025\DeepSeek V3\out of the box\Myoma output\test_dice_scores.xlsx"
+    },
+
+    'DeepSeek R1': {
+        'validation': r"D:\qy44lyfe\LLM segmentation\Results\2025\DeepSeek R1\out of the box\Myoma output\validation_dice_scores.xlsx",
+        'test': r"D:\qy44lyfe\LLM segmentation\Results\2025\DeepSeek R1\out of the box\Myoma output\test_dice_scores.xlsx"
+    },
+    'Gemini 2.5 pro': {
+        'validation': r"D:\qy44lyfe\LLM segmentation\Results\2025\Gemini 2.5 Pro\out of the box\Myoma output\validation_dice_scores.xlsx",
+        'test': r"D:\qy44lyfe\LLM segmentation\Results\2025\Gemini 2.5 Pro\out of the box\Myoma output\test_dice_scores.xlsx"
+    },
+    'GPT o3': {
+        'validation': r"D:\qy44lyfe\LLM segmentation\Results\2025\GPT o3\out of the box\Myoma output\validation_dice_scores.xlsx",
+        'test': r"D:\qy44lyfe\LLM segmentation\Results\2025\GPT o3\out of the box\Myoma output\test_dice_scores.xlsx"
+    },
+    'GPT o4-mini-high': {
+        'validation': r"D:\qy44lyfe\LLM segmentation\Results\2025\GPT o4-mini-high\out of the box\Myoma output\validation_dice_scores.xlsx",
+        'test': r"D:\qy44lyfe\LLM segmentation\Results\2025\GPT o4-mini-high\out of the box\Myoma output\test_dice_scores.xlsx"
+    },
+    'Claude 4 Sonnet': {
+        'validation': r"D:\qy44lyfe\LLM segmentation\Results\2025\Claude 4 Sonnet\out of the box\Myoma output\validation_dice_scores.xlsx",
+        'test': r"D:\qy44lyfe\LLM segmentation\Results\2025\Claude 4 Sonnet\out of the box\Myoma output\test_dice_scores.xlsx"
     },
     'nnU-Net': {
         'validation': r"D:\qy44lyfe\LLM segmentation\Results\nnUnet Baseline\validation_dice_scores_nnUnet_Myoma.xlsx",
@@ -173,21 +174,50 @@ print(f"  U = {u_test:.1f}, p = {p_test:.4f} → "
 
 
 # ===============================================================================================================
-# Color map for all models
-color_map = {
-    'Bing Copilot':   '#66c2a5', 'Claude 3.5 Sonnet': '#fc8d62',
-    'Copilot':        '#8da0cb', 'Gemini 1.5 Pro':   '#e78ac3',
-    'GPT 4':          '#a6d854', 'GPT 4o':            '#ffd92f',
-    'GPT o1 Preview': '#e5c494', 'Llama 3.1 405B':    '#b3b3b3',
-    'nnU-Net':        '#1f78b4',
-    'Claude 4 Sonnet':  '#66c2a5', 'DeepSeek R1':      '#fc8d62',
-    'DeepSeek V3':      '#8da0cb', 'GPT o3':           '#e78ac3',
-    'GPT o4-mini-high': '#a6d854', 'Gemini 2.5 pro':   '#ffd92f',
-    'Grok 3 mini':      '#e5c494', 'Grok 3':           '#b3b3b3',
-    'Llama 4 Maverick': '#e41a1c', 'Mistral Medium 3': '#d95f02',
-    'Qwen 3_235B':      '#7570b3',
-}
+# Color map for all models : Pick
+# color_map = {
+#     'Bing Copilot':   '#66c2a5', 'Claude 3.5 Sonnet': '#fc8d62',
+#     'Copilot':        '#8da0cb', 'Gemini 1.5 Pro':   '#e78ac3',
+#     'GPT 4':          '#a6d854', 'GPT 4o':            '#ffd92f',
+#     'GPT o1 Preview': '#e5c494', 'Llama 3.1 405B':    '#b3b3b3',
+#     'nnU-Net':        '#1f78b4',
+#     'Claude 4 Sonnet':  '#66c2a5', 'DeepSeek R1':      '#fc8d62',
+#     'DeepSeek V3':      '#8da0cb', 'GPT o3':           '#e78ac3',
+#     'GPT o4-mini-high': '#a6d854', 'Gemini 2.5 pro':   '#ffd92f',
+#     'Grok 3 mini':      '#e5c494', 'Grok 3':           '#b3b3b3',
+#     'Llama 4 Maverick': '#e41a1c', 'Mistral Medium 3': '#d95f02',
+#     'Qwen 3_235B':      '#7570b3',
+# }
 
+#############################################################################
+# color map for 2025 (red), and 2024 (blue), unsorted:
+color_map = {
+    # 2024 models
+    'Bing Copilot':        '#00BDD6',
+    'Claude 3.5 Sonnet':   '#00BDD6',
+    'Copilot':             '#00BDD6',
+    'Gemini 1.5 Pro':      '#00BDD6',
+    'GPT 4':               '#00BDD6',
+    'GPT 4o':              '#00BDD6',
+    'GPT o1 Preview':      '#00BDD6',
+    'Llama 3.1 405B':      '#00BDD6',
+
+    # keep nnU-Net distinct (appears in both years in your dict anyway)
+    'nnU-Net':             '#808080',
+
+    # 2025 models
+    'Claude 4 Sonnet':     '#FF5E69',
+    'DeepSeek R1':         '#FF5E69',
+    'DeepSeek V3':         '#FF5E69',
+    'GPT o3':              '#FF5E69',
+    'GPT o4-mini-high':    '#FF5E69',
+    'Gemini 2.5 pro':      '#FF5E69',
+    'Grok 3 mini':         '#FF5E69',
+    'Grok 3':              '#FF5E69',
+    'Llama 4 Maverick':    '#FF5E69',
+    'Mistral Medium 3':    '#FF5E69',
+    'Qwen 3_235B':         '#FF5E69',
+}
 # ===============================================================================================================
 # Plotting
 fig, axes = plt.subplots(1, 2, figsize=(11, 7))
@@ -227,7 +257,7 @@ plt.tight_layout(rect=[0,0,1,0.96])
 plt.subplots_adjust(wspace=0.7)
 
 # Save
-save_path = r"D:\qy44lyfe\LLM segmentation\Results\Models Comparison\new plots\combined\\"
+save_path = r"D:\qy44lyfe\LLM segmentation\Results\Models Comparison\new plots\combined\\color coded unsorted\\"
 plt.savefig(f"{save_path}all_model_dice_scores_combined_MYOMA.png", dpi=600)
 # plt.show()
 
