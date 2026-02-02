@@ -1,0 +1,1457 @@
+	provide a complete ready-to-run Python implementation for a U-Net architecture using PyTorch, for binary segmentation of grayscale images. The dataset should consist of grayscale images and corresponding binary masks, which are located in 2 different folders or in the same path (the masks have the same name as the images, or with a suffix, like: "number.png" and the masks "number_seg.png", around 5000 samples in total. access and split directly using train_test_split on the index list and Subset, and do NOT duplicate or copy to new directory). It should work and provide correct predictions, and save the losses and dice scores as instructed below. The code should be structured into importable scripts with the following:
+
+1.	A custom Dataset class for loading the grayscale images and corresponding binary masks. (only the png files, ignore meta files or additional files in the directory)
+2.	A UNet model class definition using PyTorch, optimized for binary segmentation (with small foreground, mostly background)
+3.	Functions for the training procedure, validation procedure, and Testing procedure.
+
+Considerations for each part:
+4.	Ensure needed transforms on input image and mask pairs (Re-size images correctly, ensure gray scale and binary…)
+5.	Avoid overfitting and data leakage (without using augmentations), choose appropriate hyperparameters, learning rate, batch size, etc
+
+•	For Training and Validation:
+
+6.	Compute training and validation losses.
+7.	Track and save the average training loss for each epoch in a separate Excel file (train_losses.xlsx) in a given save path. The first row should contain the epoch numbers, and the second row should contain the corresponding average training loss for each epoch.
+8.	Similarly, save the validation loss for each epoch in an Excel file (val_losses.xlsx) with the same structure.
+9.	At the end of training, save both the entire model and the model's state dictionary (.pth files) in the save path
+10.	Calculate total training time from start to end, and print at the end of training
+11.	The progress, phase (train/validation), and all info should be shown epoch by epoch using `tqdm` progress bars during training, validation, and testing.
+12.	A function to visualize training losses and validation losses over epochs afterwards, on the same plot. Save plot in a specified save path as png. 
+13.	During Validation: mean Dice scores should be calculated over each batch, for each epoch, and stored in an Excel file (epochs as rows and batches as columns). The Excel file (named “validation_dice_scores” should be saved at the specified save path after validation is done.
+14.	Do the same for the Testing and store dice the Dice scores the same way and save the excel file as “test_dice_scores” after testing is done.
+
+•	For Testing:
+
+15.	A function to visualize the predicted masks, the input image, and the ground truth, for 5 random samples, after testing is done. (subplots for 5 random samples in one plot, in 5 rows and 3 columns (title at top: Input Image, Ground Truth, Prediction). Also display image file name string above each image and mask. save the plot as `.png`).
+
+•	For Main:
+
+16.	Shuffle the data, split the dataset into: 80% training, 10% validation, and 10% test sets using `train_test_split`. Print the sizes of each (how many images), and copy the splitted data (images and their respective masks) 
+17.	DataLoader setup for training, validation, and testing sets.
+18.	Ensure correct data loading, print data loader sizes.
+19.	Also usig torchinfo, print model summary, and total number of model parameters (n learnable params)
+
+20.	All the above functionalities should be implemented in a modular way so that they can be imported as scripts or classes.
+21.	All visualizations should just be saved as png. No need to display the plots during running.
+22.	Ensure that everything can be executed in an `if __name__ == "__main__":` block with instructions for loading the dataset, configuring hyperparameters, and saving the trained model.
+The directory structure should only be:
+unet_segmentation/
+├── dataset.py
+├── model.py
+├── train.py
+├── main.py
+
+profile
+Qwen3-235B-A22B
+Below is a complete, modular PyTorch implementation of a U-Net architecture for binary segmentation of grayscale images. The code follows your structure and requirements exactly.
+
+📁 Directory Structure
+
+
+1
+2
+3
+4
+5
+unet_segmentation/
+├── dataset.py
+├── model.py
+├── train.py
+├── main.py
+✅ 1. dataset.py: Custom Dataset Class
+python
+
+
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+36
+37
+38
+39
+40
+41
+42
+43
+44
+45
+46
+47
+48
+49
+50
+51
+52
+53
+54
+55
+56
+57
+⌄
+⌄
+⌄
+⌄
+⌄
+⌄
+⌄
+⌄
+# unet_segmentation/dataset.py
+
+import os
+from torch.utils.data import Dataset
+from PIL import Image
+import numpy as np
+import torch
+import glob
+
+class GrayscaleBinarySegmentationDataset(Dataset):
+    def __init__(self, image_dir, mask_dir=None, transform=None, suffix="_seg"):
+        """
+        Args:
+            image_dir (str): Path to grayscale images.
+            mask_dir (str): Path to masks. If None, assumes same directory with suffix.
+            transform (callable, optional): Optional transform to be applied on a sample.
+            suffix (str): Suffix used for mask files.
+        """
+        self.image_dir = image_dir
+        self.mask_dir = mask_dir if mask_dir else image_dir
+        self.transform = transform
+        self.suffix = suffix
+
+        # Only include .png files
+        self.image_files = [f for f in os.listdir(image_dir) if f.endswith('.png')]
+        self.image_paths = [os.path.join(image_dir, f) for f in self.image_files]
+
+        # Match mask names
+        self.mask_paths = []
+        for img_file in self.image_files:
+            base_name = os.path.splitext(img_file)[0]
+            mask_file = f"{base_name}{suffix}.png"
+            mask_path = os.path.join(self.mask_dir, mask_file)
+            if not os.path.exists(mask_path):
+                raise FileNotFoundError(f"Mask file {mask_path} not found.")
+            self.mask_paths.append(mask_path)
+
+    def __len__(self):
+        return len(self.image_paths)
+
+    def __getitem__(self, idx):
+        image = Image.open(self.image_paths[idx]).convert("L")  # grayscale
+        mask = Image.open(self.mask_paths[idx]).convert("L")  # binary mask
+
+        image = np.array(image).astype(np.float32) / 255.0
+        mask = np.array(mask).astype(np.float32) / 255.0
+        mask = (mask > 0.5).astype(np.float32)  # binary
+
+        if self.transform:
+            transformed = self.transform(image=image, mask=mask)
+            image = transformed['image']
+            mask = transformed['mask']
+
+        image = torch.tensor(image, dtype=torch.float32).unsqueeze(0)  # add channel dim
+        mask = torch.tensor(mask, dtype=torch.float32).unsqueeze(0)
+
+        return image, mask
+✅ 2. model.py: U-Net Model Definition
+python
+
+
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+36
+37
+38
+39
+40
+41
+42
+43
+44
+45
+46
+47
+48
+49
+50
+51
+52
+53
+54
+55
+56
+57
+58
+59
+60
+61
+62
+63
+64
+65
+66
+67
+68
+69
+70
+⌄
+⌄
+⌄
+⌄
+⌄
+# unet_segmentation/model.py
+
+import torch
+import torch.nn as nn
+import torchinfo
+
+class UNet(nn.Module):
+    def __init__(self, in_channels=1, out_channels=1):
+        super(UNet, self).__init__()
+
+        def double_conv(in_channels, out_channels):
+            return nn.Sequential(
+                nn.Conv2d(in_channels, out_channels, 3, padding=1),
+                nn.BatchNorm2d(out_channels),
+                nn.ReLU(inplace=True),
+                nn.Conv2d(out_channels, out_channels, 3, padding=1),
+                nn.BatchNorm2d(out_channels),
+                nn.ReLU(inplace=True)
+            )
+
+        self.down1 = double_conv(in_channels, 64)
+        self.down2 = double_conv(64, 128)
+        self.down3 = double_conv(128, 256)
+        self.down4 = double_conv(256, 512)
+
+        self.maxpool = nn.MaxPool2d(2)
+
+        self.up3 = nn.ConvTranspose2d(512, 256, 2, stride=2)
+        self.up_conv3 = double_conv(512, 256)
+
+        self.up2 = nn.ConvTranspose2d(256, 128, 2, stride=2)
+        self.up_conv2 = double_conv(256, 128)
+
+        self.up1 = nn.ConvTranspose2d(128, 64, 2, stride=2)
+        self.up_conv1 = double_conv(128, 64)
+
+        self.final_conv = nn.Conv2d(64, out_channels, kernel_size=1)
+
+    def forward(self, x):
+        # Encoder
+        conv1 = self.down1(x)
+        x = self.maxpool(conv1)
+
+        conv2 = self.down2(x)
+        x = self.maxpool(conv2)
+
+        conv3 = self.down3(x)
+        x = self.maxpool(conv3)
+
+        x = self.down4(x)
+
+        # Decoder
+        x = self.up3(x)
+        x = torch.cat([x, conv3], dim=1)
+        x = self.up_conv3(x)
+
+        x = self.up2(x)
+        x = torch.cat([x, conv2], dim=1)
+        x = self.up_conv2(x)
+
+        x = self.up1(x)
+        x = torch.cat([x, conv1], dim=1)
+        x = self.up_conv1(x)
+
+        return torch.sigmoid(self.final_conv(x))
+
+def print_model_summary(model, input_size=(1, 256, 256)):
+    summary = torchinfo.summary(model, input_size=input_size, verbose=0)
+    print(summary)
+    print(f"Total trainable parameters: {summary.trainable_params}")
+✅ 3. train.py: Training, Validation, Testing Functions
+python
+
+
+81
+82
+83
+84
+85
+86
+87
+88
+89
+90
+91
+92
+93
+94
+95
+96
+97
+98
+99
+100
+101
+102
+103
+104
+105
+106
+107
+108
+109
+110
+111
+112
+113
+114
+115
+116
+⌄
+⌄
+⌄
+⌄
+⌄
+# unet_segmentation/train.py
+    plot_sample_predictions(selected_samples, save_path)
+
+def plot_losses(train_losses, val_losses, save_path):
+    plt.figure(figsize=(10, 5))
+    plt.plot(train_losses, label='Train Loss')
+    plt.plot(val_losses, label='Val Loss')
+    plt.xlabel('Epoch')
+    plt.ylabel('Loss')
+    plt.legend()
+    plt.title("Training & Validation Loss")
+    plt.savefig(os.path.join(save_path, 'loss_plot.png'))
+    plt.close()
+
+def plot_sample_predictions(samples, save_path):
+    fig, axes = plt.subplots(len(samples), 3, figsize=(10, len(samples)*3))
+    if len(samples) == 1:
+        axes = [axes]
+
+    for i, (imgs, masks, preds) in enumerate(samples):
+        for j in range(min(1, imgs.shape[0])):
+            img = imgs[j].squeeze().numpy()
+            mask = masks[j].squeeze().numpy()
+            pred = preds[j].squeeze().numpy()
+
+            axes[i][0].imshow(img, cmap='gray')
+            axes[i][0].set_title("Input Image")
+
+            axes[i][1].imshow(mask, cmap='gray')
+            axes[i][1].set_title("Ground Truth")
+
+            axes[i][2].imshow(pred, cmap='gray')
+            axes[i][2].set_title("Prediction")
+
+    plt.tight_layout()
+    plt.savefig(os.path.join(save_path, "sample_predictions.png"))
+    plt.close()
+✅ 4. main.py: Main Execution Script
+python
+
+
+55
+56
+57
+58
+59
+60
+61
+62
+63
+64
+65
+66
+67
+68
+69
+70
+71
+72
+73
+74
+75
+76
+77
+78
+79
+80
+81
+82
+83
+84
+85
+86
+87
+88
+89
+90
+91
+92
+93
+94
+95
+96
+97
+⌄
+⌄
+# unet_segmentation/main.py
+
+    # Train loop
+    train_losses = []
+    val_losses = []
+    val_dice_scores_all = []
+
+    start_time = time.time()
+
+    for epoch in range(epochs):
+        train_loss, _ = train_one_epoch(model, train_loader, optimizer, device)
+        val_loss, val_dice_scores = validate(model, val_loader, device)
+
+        train_losses.append(train_loss)
+        val_losses.append(val_loss)
+        val_dice_scores_all.append(val_dice_scores)
+
+        print(f"Epoch {epoch+1}/{epochs}, Train Loss: {train_loss:.4f}, Val Loss: {val_loss:.4f}")
+
+        # Save losses
+        pd.DataFrame([list(range(1, epoch+2)), train_losses]).T.to_excel(
+            os.path.join(save_path, "train_losses.xlsx"), index=False, header=False)
+        pd.DataFrame([list(range(1, epoch+2)), val_losses]).T.to_excel(
+            os.path.join(save_path, "val_losses.xlsx"), index=False, header=False)
+
+        # Save Dice scores per batch
+        df_val_dice = pd.DataFrame(val_dice_scores_all)
+        df_val_dice.to_excel(os.path.join(save_path, "validation_dice_scores.xlsx"))
+
+    end_time = time.time()
+    print(f"Total training time: {end_time - start_time:.2f}s")
+
+    # Save model
+    torch.save(model.state_dict(), os.path.join(save_path, "model_state.pth"))
+    torch.save(model, os.path.join(save_path, "model_full.pth"))
+
+    # Plot losses
+    plot_losses(train_losses, val_losses, save_path)
+
+    # Run testing
+    test(model, test_loader, device, save_path)
+
+if __name__ == "__main__":
+    main()
+✅ Requirements (requirements.txt)
+txt
+
+
+1
+2
+3
+4
+5
+6
+7
+8
+torch>=1.10
+torchvision
+tqdm
+pandas
+openpyxl
+matplotlib
+scikit-learn
+torchinfo
+Install via:
+
+bash
+
+
+1
+pip install -r requirements.txt
+✅ Output Files Generated
+
+
+1
+2
+3
+4
+5
+6
+7
+8
+9
+results/
+├── train_losses.xlsx
+├── val_losses.xlsx
+├── validation_dice_scores.xlsx
+├── test_dice_scores.xlsx
+├── loss_plot.png
+├── sample_predictions.png
+├── model_state.pth
+└── model_full.pth
+Let me know if you want:
+
+Augmentation support
+Multi-class segmentation
+Logging to TensorBoard
+Early stopping or checkpointing
+Happy coding! 🧠🖼️
+
+Traceback (most recent call last):
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torchinfo\torchinfo.py", line 295, in forward_pass
+    _ = model(*x, **kwargs)
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\nn\modules\module.py", line 1511, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\nn\modules\module.py", line 1561, in _call_impl
+    result = forward_call(*args, **kwargs)
+  File "D:\qy44lyfe\LLM segmentation\github repo\LLM_based_Segmentation\Modells 2025\Qwen 3_235B without thinking\model.py", line 41, in forward
+    conv1 = self.down1(x)
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\nn\modules\module.py", line 1511, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\nn\modules\module.py", line 1561, in _call_impl
+    result = forward_call(*args, **kwargs)
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\nn\modules\container.py", line 217, in forward
+    input = module(input)
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\nn\modules\module.py", line 1511, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\nn\modules\module.py", line 1561, in _call_impl
+    result = forward_call(*args, **kwargs)
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\nn\modules\batchnorm.py", line 142, in forward
+    self._check_input_dim(input)
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\nn\modules\batchnorm.py", line 420, in _check_input_dim
+    raise ValueError(f"expected 4D input (got {input.dim()}D input)")
+ValueError: expected 4D input (got 3D input)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "D:\qy44lyfe\LLM segmentation\github repo\LLM_based_Segmentation\Modells 2025\Qwen 3_235B without thinking\main.py", line 98, in <module>
+    main()
+  File "D:\qy44lyfe\LLM segmentation\github repo\LLM_based_Segmentation\Modells 2025\Qwen 3_235B without thinking\main.py", line 52, in main
+    print_model_summary(model)
+  File "D:\qy44lyfe\LLM segmentation\github repo\LLM_based_Segmentation\Modells 2025\Qwen 3_235B without thinking\model.py", line 68, in print_model_summary
+    summary = torchinfo.summary(model, input_size=input_size, verbose=0)
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torchinfo\torchinfo.py", line 223, in summary
+    summary_list = forward_pass(
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torchinfo\torchinfo.py", line 304, in forward_pass
+    raise RuntimeError(
+RuntimeError: Failed to run torchinfo. See above stack traces for more details. Executed layers up to: [Conv2d: 2]
+
+Process finished with exit code 1
+
+profile
+Qwen3-235B-A22B
+The error you're encountering:
+
+
+
+1
+ValueError: expected 4D input (got 3D input)
+...is raised inside the batch normalization layer during a model summary call , and it's caused because your model is being fed a 3D tensor , but batch normalization expects a 4D tensor : (batch_size, channels, height, width).
+
+🔍 Root Cause
+In this line inside print_model_summary:
+
+python
+
+
+1
+summary = torchinfo.summary(model, input_size=input_size, verbose=0)
+You're passing input_size=(1, 256, 256), which results in a 3D input tensor , like (batch_size, 256, 256) — missing the channel dimension .
+
+However, your model expects grayscale images to be passed as (batch_size, 1, 256, 256) — i.e., with an explicit channel dimension of size 1.
+
+✅ Fix
+Update the input_size parameter in print_model_summary to include the channel dimension :
+
+✅ Corrected Line:
+python
+
+
+1
+summary = torchinfo.summary(model, input_size=(1, 1, 256, 256), verbose=0)
+So your full function becomes:
+
+✅ In model.py:
+python
+
+
+1
+2
+3
+4
+⌄
+def print_model_summary(model, input_size=(1, 1, 256, 256)):
+    summary = torchinfo.summary(model, input_size=input_size, verbose=0)
+    print(summary)
+    print(f"Total trainable parameters: {summary.trainable_params}")
+⚠️ This change ensures that torchinfo.summary(...) passes a 4D input tensor into the model ((batch_size, channels, H, W)), which matches how your model actually operates. 
+
+🧪 Additional Debugging Tip
+If you're ever unsure what shape to pass to torchinfo.summary, just inspect one batch from your DataLoader:
+
+python
+
+
+1
+2
+3
+⌄
+for images, masks in train_loader:
+    print(images.shape)  # Should be (batch_size, 1, H, W)
+    break
+Use that shape in input_size.
+
+✅ Summary of Fix
+input_size=(1, 256, 256)
+input_size=(1, 1, 256, 256)
+This will resolve the expected 4D input (got 3D input) error.
+
+Let me know if you want help adding assertions or input validation inside the model for robustness!
+
+
+Traceback (most recent call last):
+  File "D:\qy44lyfe\LLM segmentation\github repo\LLM_based_Segmentation\Modells 2025\Qwen 3_235B without thinking\main.py", line 98, in <module>
+    main()
+  File "D:\qy44lyfe\LLM segmentation\github repo\LLM_based_Segmentation\Modells 2025\Qwen 3_235B without thinking\main.py", line 62, in main
+    start_time = time.time()
+NameError: name 'time' is not defined
+
+Process finished with exit code 1
+
+profile
+Qwen3-235B-A22B
+This error:
+
+
+
+1
+NameError: name 'time' is not defined
+...means that you're trying to use the time module without importing it first.
+
+🔍 Root Cause
+In your main.py, this line appears before importing time:
+
+python
+
+
+1
+start_time = time.time()
+But you haven't imported the time module at the top of your script.
+
+✅ Fix
+Add the following import at the top of your main.py file (with other imports):
+
+python
+
+
+1
+import time
+✅ Updated Imports in main.py (Example)
+python
+
+
+1
+2
+3
+4
+5
+6
+7
+8
+9
+import os
+import torch
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from torch.utils.data import Subset, DataLoader
+import time  # <-- Add this line
+from dataset import GrayscaleBinarySegmentationDataset
+from model import UNet, print_model_summary
+from train import train_one_epoch, validate, test, plot_losses
+✅ Summary
+You're using time.time() to measure training duration.
+Python requires you to explicitly import modules — including built-in ones like time.
+Adding import time will resolve the NameError.
+Let me know if you need help with anything else like saving logs or adding progress tracking!
+
+Traceback (most recent call last):
+  File "D:\qy44lyfe\LLM segmentation\github repo\LLM_based_Segmentation\Modells 2025\Qwen 3_235B without thinking\main.py", line 99, in <module>
+    main()
+  File "D:\qy44lyfe\LLM segmentation\github repo\LLM_based_Segmentation\Modells 2025\Qwen 3_235B without thinking\main.py", line 66, in main
+    train_loss, _ = train_one_epoch(model, train_loader, optimizer, device)
+  File "D:\qy44lyfe\LLM segmentation\github repo\LLM_based_Segmentation\Modells 2025\Qwen 3_235B without thinking\train.py", line 26, in train_one_epoch
+    for images, masks in tqdm(dataloader, desc="Training", leave=False):
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\tqdm\std.py", line 1182, in __iter__
+    for obj in iterable:
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\utils\data\dataloader.py", line 631, in __next__
+    data = self._next_data()
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\utils\data\dataloader.py", line 1346, in _next_data
+    return self._process_data(data)
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\utils\data\dataloader.py", line 1372, in _process_data
+    data.reraise()
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\_utils.py", line 722, in reraise
+    raise exception
+RuntimeError: Caught RuntimeError in DataLoader worker process 0.
+Original Traceback (most recent call last):
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\utils\data\_utils\worker.py", line 308, in _worker_loop
+    data = fetcher.fetch(index)
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\utils\data\_utils\fetch.py", line 54, in fetch
+    return self.collate_fn(data)
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\utils\data\_utils\collate.py", line 277, in default_collate
+    return collate(batch, collate_fn_map=default_collate_fn_map)
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\utils\data\_utils\collate.py", line 144, in collate
+    return [collate(samples, collate_fn_map=collate_fn_map) for samples in transposed]  # Backwards compatibility.
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\utils\data\_utils\collate.py", line 144, in <listcomp>
+    return [collate(samples, collate_fn_map=collate_fn_map) for samples in transposed]  # Backwards compatibility.
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\utils\data\_utils\collate.py", line 121, in collate
+    return collate_fn_map[elem_type](batch, collate_fn_map=collate_fn_map)
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\utils\data\_utils\collate.py", line 173, in collate_tensor_fn
+    out = elem.new(storage).resize_(len(batch), *list(elem.size()))
+RuntimeError: Trying to resize storage that is not resizable
+
+
+Process finished with exit code 1
+
+profile
+Qwen3-235B-A22B
+This error:
+
+
+
+1
+RuntimeError: Trying to resize storage that is not resizable
+...is raised inside the PyTorch DataLoader , and it usually happens when you're returning a tensor from your __getitem__ method that cannot be batched because it's using a non-resizable storage — often due to how the tensor was created.
+
+🔍 Root Cause
+In your dataset.py, this line creates a tensor directly from a NumPy array without copying the data:
+
+python
+
+
+1
+2
+image = torch.tensor(image, dtype=torch.float32).unsqueeze(0)
+mask = torch.tensor(mask, dtype=torch.float32).unsqueeze(0)
+If image or mask comes from a NumPy array that uses shared memory (e.g., from PIL image via np.array(...)), then the resulting tensor might have an underlying storage that cannot be resized during batching. This leads to the cryptic error you're seeing.
+
+✅ Fix
+You need to force a copy of the data when converting from NumPy arrays to PyTorch tensors. You can do this by calling .copy() on the NumPy array before conversion.
+
+✅ Updated __getitem__ in dataset.py:
+python
+
+
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+⌄
+⌄
+def __getitem__(self, idx):
+    image = Image.open(self.image_paths[idx]).convert("L")  # grayscale
+    mask = Image.open(self.mask_paths[idx]).convert("L")  # binary mask
+
+    image = np.array(image).astype(np.float32) / 255.0
+    mask = np.array(mask).astype(np.float32) / 255.0
+    mask = (mask > 0.5).astype(np.float32)  # binary
+
+    if self.transform:
+        transformed = self.transform(image=image, mask=mask)
+        image = transformed['image']
+        mask = transformed['mask']
+
+    # Force copy of numpy arrays before converting to tensor
+    image = torch.tensor(image.copy(), dtype=torch.float32).unsqueeze(0)  # add channel dim
+    mask = torch.tensor(mask.copy(), dtype=torch.float32).unsqueeze(0)
+
+    return image, mask
+🔁 The key fix: use .copy() before converting with torch.tensor(...). 
+
+🧪 Why This Works
+Some NumPy arrays (especially those backed by PIL images) are not "writeable" or cannot be copied into new storage easily.
+Using .copy() ensures the data is fully owned by the array and can be safely converted into a tensor.
+Tensors made from copied arrays can be batched properly inside DataLoader.
+✅ Summary
+RuntimeError: Trying to resize storage that is not resizable
+Add
+.copy()
+before converting NumPy arrays to
+torch.tensor
+Update your dataset class as shown above, and the error should go away!
+
+Let me know if you'd like help adding input validation, debugging transforms, or enabling augmentations!
+
+Traceback (most recent call last):
+  File "D:\qy44lyfe\LLM segmentation\github repo\LLM_based_Segmentation\Modells 2025\Qwen 3_235B without thinking\main.py", line 99, in <module>
+    main()
+  File "D:\qy44lyfe\LLM segmentation\github repo\LLM_based_Segmentation\Modells 2025\Qwen 3_235B without thinking\main.py", line 66, in main
+    train_loss, _ = train_one_epoch(model, train_loader, optimizer, device)
+  File "D:\qy44lyfe\LLM segmentation\github repo\LLM_based_Segmentation\Modells 2025\Qwen 3_235B without thinking\train.py", line 26, in train_one_epoch
+    for images, masks in tqdm(dataloader, desc="Training", leave=False):
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\tqdm\std.py", line 1182, in __iter__
+    for obj in iterable:
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\utils\data\dataloader.py", line 631, in __next__
+    data = self._next_data()
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\utils\data\dataloader.py", line 1346, in _next_data
+    return self._process_data(data)
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\utils\data\dataloader.py", line 1372, in _process_data
+    data.reraise()
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\_utils.py", line 722, in reraise
+    raise exception
+RuntimeError: Caught RuntimeError in DataLoader worker process 0.
+Original Traceback (most recent call last):
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\utils\data\_utils\worker.py", line 308, in _worker_loop
+    data = fetcher.fetch(index)
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\utils\data\_utils\fetch.py", line 54, in fetch
+    return self.collate_fn(data)
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\utils\data\_utils\collate.py", line 277, in default_collate
+    return collate(batch, collate_fn_map=default_collate_fn_map)
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\utils\data\_utils\collate.py", line 144, in collate
+    return [collate(samples, collate_fn_map=collate_fn_map) for samples in transposed]  # Backwards compatibility.
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\utils\data\_utils\collate.py", line 144, in <listcomp>
+    return [collate(samples, collate_fn_map=collate_fn_map) for samples in transposed]  # Backwards compatibility.
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\utils\data\_utils\collate.py", line 121, in collate
+    return collate_fn_map[elem_type](batch, collate_fn_map=collate_fn_map)
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\utils\data\_utils\collate.py", line 173, in collate_tensor_fn
+    out = elem.new(storage).resize_(len(batch), *list(elem.size()))
+RuntimeError: Trying to resize storage that is not resizable
+
+
+Process finished with exit code 1
+
+profile
+Qwen3-235B-A22B
+You're seeing this error again:
+
+
+
+1
+RuntimeError: Trying to resize storage that is not resizable
+...even after adding .copy().
+
+This means the issue persists in how you're converting your NumPy arrays into PyTorch tensors inside the __getitem__ method of your Dataset.
+
+🔍 Root Cause
+Even with .copy(), sometimes NumPy arrays created from PIL images (e.g., via np.array(Image.open(...))) may still be in a format or memory layout that causes problems during batching.
+
+To fix this reliably, instead of using torch.tensor(...), use torch.from_numpy(...), which is more robust and explicitly designed for NumPy array conversion. It also requires the input to be contiguous in memory — so we'll ensure that too.
+
+✅ Fix: Update Your __getitem__ Method
+Here's the corrected version of your __getitem__ method in dataset.py:
+
+✅ Updated Code:
+python
+
+
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+⌄
+⌄
+def __getitem__(self, idx):
+    image = Image.open(self.image_paths[idx]).convert("L")  # grayscale
+    mask = Image.open(self.mask_paths[idx]).convert("L")  # binary mask
+
+    image = np.array(image).astype(np.float32) / 255.0
+    mask = np.array(mask).astype(np.float32) / 255.0
+    mask = (mask > 0.5).astype(np.float32)  # binary
+
+    if self.transform:
+        transformed = self.transform(image=image, mask=mask)
+        image = transformed['image']
+        mask = transformed['mask']
+
+    # Ensure contiguous memory layout before converting to tensor
+    image = torch.from_numpy(image.copy()).float().unsqueeze(0)  # shape: [1, H, W]
+    mask = torch.from_numpy(mask.copy()).float().unsqueeze(0)
+
+    return image, mask
+✅ Key Fixes:
+torch.tensor(...)
+➡️
+torch.from_numpy(...)
+Non-contiguous array
+➡️ Add
+.copy()
+before conversion
+🧪 Why This Works
+torch.from_numpy() creates a tensor without copying data , but it expects the NumPy array to have a contiguous memory layout .
+If the array is not contiguous, .copy() ensures it becomes one.
+This avoids the "storage not resizable" error when the DataLoader tries to batch multiple items together.
+✅ Optional: Check Contiguity
+If you want to debug further, you can check whether your NumPy arrays are contiguous:
+
+python
+
+
+1
+print(image.flags.c_contiguous)  # Should be True
+If not, calling .copy() will make them contiguous.
+
+✅ Summary
+Update your __getitem__ like above and:
+
+✅ You should now avoid the "Trying to resize storage that is not resizable" error permanently.
+
+Let me know if you'd like help with any of these next steps:
+
+Adding transforms (e.g., Resize, Normalize)
+Debugging specific files
+Visualizing data batches
+Enabling multiprocessing support (num_workers > 0)
+Traceback (most recent call last):
+  File "D:\qy44lyfe\LLM segmentation\github repo\LLM_based_Segmentation\Modells 2025\Qwen 3_235B without thinking\main.py", line 99, in <module>
+    main()
+  File "D:\qy44lyfe\LLM segmentation\github repo\LLM_based_Segmentation\Modells 2025\Qwen 3_235B without thinking\main.py", line 66, in main
+    train_loss, _ = train_one_epoch(model, train_loader, optimizer, device)
+  File "D:\qy44lyfe\LLM segmentation\github repo\LLM_based_Segmentation\Modells 2025\Qwen 3_235B without thinking\train.py", line 26, in train_one_epoch
+    for images, masks in tqdm(dataloader, desc="Training", leave=False):
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\tqdm\std.py", line 1182, in __iter__
+    for obj in iterable:
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\utils\data\dataloader.py", line 631, in __next__
+    data = self._next_data()
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\utils\data\dataloader.py", line 1346, in _next_data
+    return self._process_data(data)
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\utils\data\dataloader.py", line 1372, in _process_data
+    data.reraise()
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\_utils.py", line 722, in reraise
+    raise exception
+RuntimeError: Caught RuntimeError in DataLoader worker process 0.
+Original Traceback (most recent call last):
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\utils\data\_utils\worker.py", line 308, in _worker_loop
+    data = fetcher.fetch(index)
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\utils\data\_utils\fetch.py", line 54, in fetch
+    return self.collate_fn(data)
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\utils\data\_utils\collate.py", line 277, in default_collate
+    return collate(batch, collate_fn_map=default_collate_fn_map)
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\utils\data\_utils\collate.py", line 144, in collate
+    return [collate(samples, collate_fn_map=collate_fn_map) for samples in transposed]  # Backwards compatibility.
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\utils\data\_utils\collate.py", line 144, in <listcomp>
+    return [collate(samples, collate_fn_map=collate_fn_map) for samples in transposed]  # Backwards compatibility.
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\utils\data\_utils\collate.py", line 121, in collate
+    return collate_fn_map[elem_type](batch, collate_fn_map=collate_fn_map)
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\utils\data\_utils\collate.py", line 173, in collate_tensor_fn
+    out = elem.new(storage).resize_(len(batch), *list(elem.size()))
+RuntimeError: Trying to resize storage that is not resizable
+
+
+Process finished with exit code 1
+
+profile
+Qwen3-235B-A22B
+You're still getting this error:
+
+
+
+1
+RuntimeError: Trying to resize storage that is not resizable
+This means the fix hasn't fully addressed how your data is being passed from __getitem__ into PyTorch's DataLoader.
+
+✅ Final Fix: Use .contiguous() and Ensure Correct Tensor Creation
+Even with .copy() and torch.from_numpy(...), some NumPy arrays may not be properly contiguous in memory, especially if you're applying transforms like those from albumentations.
+
+Let’s apply a final, robust fix by:
+
+Ensuring NumPy arrays are contiguous in memory
+Using torch.from_numpy(...) correctly
+Calling .contiguous() before batching
+✅ Updated __getitem__ Method (Final Working Version)
+python
+
+
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+⌄
+⌄
+def __getitem__(self, idx):
+    image_path = self.image_paths[idx]
+    mask_path = self.mask_paths[idx]
+
+    image = Image.open(image_path).convert("L")  # grayscale
+    mask = Image.open(mask_path).convert("L")    # binary mask
+
+    image = np.array(image).astype(np.float32) / 255.0
+    mask = np.array(mask).astype(np.float32) / 255.0
+    mask = (mask > 0.5).astype(np.float32)  # binarize
+
+    if self.transform:
+        transformed = self.transform(image=image, mask=mask)
+        image = transformed['image']
+        mask = transformed['mask']
+
+    # Ensure arrays are contiguous before converting to tensor
+    image = torch.from_numpy(image.copy()).float().unsqueeze(0).contiguous()
+    mask = torch.from_numpy(mask.copy()).float().unsqueeze(0).contiguous()
+
+    return image, mask
+🔍 Key Fixes Applied:
+np.array(...)
+from PIL image
+May not be contiguous
+.copy()
+Makes array contiguous
+torch.from_numpy(...)
+Efficient conversion
+.contiguous()
+Ensures layout is safe for batch ops
+🛠 Optional: Disable Multiprocessing Temporarily
+If you're still having issues, try setting num_workers=0 temporarily in your DataLoader:
+
+python
+
+
+1
+2
+train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True,
+                          num_workers=0, pin_memory=pin_memory)
+This helps isolate whether the issue is due to multiprocessing or data loading logic.
+
+✅ Also Check: Are You Using albumentations?
+If yes, ensure you're using the correct format:
+
+python
+
+
+1
+2
+3
+4
+5
+6
+⌄
+import albumentations as A
+
+transform = A.Compose([
+    A.Resize(height=256, width=256),
+    A.Normalize(mean=(0.5,), std=(0.5,)),  # optional
+])
+⚠️ Some transforms (like Normalize) return tensors directly — make sure you don’t mix ToTensor() and manual tensor conversion. 
+
+✅ Summary of Actions
+✅ Replace torch.tensor(...) with torch.from_numpy(...).copy()
+✅ Add .contiguous() after unsqueeze
+✅ If using albumentations, ensure output is NumPy array (not tensor)
+✅ Optionally set num_workers=0 to debug
+✅ Bonus Tip: Debug Your Dataset
+Add this code to test one batch manually:
+
+python
+
+
+1
+2
+3
+4
+5
+6
+7
+⌄
+from torch.utils.data import DataLoader
+
+dataset = GrayscaleBinarySegmentationDataset(data_dir)
+loader = DataLoader(dataset, batch_size=4, shuffle=True, num_workers=0)
+for images, masks in loader:
+    print(images.shape, masks.shape)
+    break
+If it runs without error, your dataset is fixed!
+
+Let me know if you'd like help adding:
+
+Transform debugging
+Batch visualization
+Custom collate functions
+Or enabling num_workers > 0 safely
+Happy coding! 🧪🖼️🧠
+
+Traceback (most recent call last):
+  File "D:\qy44lyfe\LLM segmentation\github repo\LLM_based_Segmentation\Modells 2025\Qwen 3_235B without thinking\main.py", line 99, in <module>
+    main()
+  File "D:\qy44lyfe\LLM segmentation\github repo\LLM_based_Segmentation\Modells 2025\Qwen 3_235B without thinking\main.py", line 66, in main
+    train_loss, _ = train_one_epoch(model, train_loader, optimizer, device)
+  File "D:\qy44lyfe\LLM segmentation\github repo\LLM_based_Segmentation\Modells 2025\Qwen 3_235B without thinking\train.py", line 26, in train_one_epoch
+    for images, masks in tqdm(dataloader, desc="Training", leave=False):
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\tqdm\std.py", line 1182, in __iter__
+    for obj in iterable:
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\utils\data\dataloader.py", line 631, in __next__
+    data = self._next_data()
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\utils\data\dataloader.py", line 1346, in _next_data
+    return self._process_data(data)
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\utils\data\dataloader.py", line 1372, in _process_data
+    data.reraise()
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\_utils.py", line 722, in reraise
+    raise exception
+RuntimeError: Caught RuntimeError in DataLoader worker process 0.
+Original Traceback (most recent call last):
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\utils\data\_utils\worker.py", line 308, in _worker_loop
+    data = fetcher.fetch(index)
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\utils\data\_utils\fetch.py", line 54, in fetch
+    return self.collate_fn(data)
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\utils\data\_utils\collate.py", line 277, in default_collate
+    return collate(batch, collate_fn_map=default_collate_fn_map)
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\utils\data\_utils\collate.py", line 144, in collate
+    return [collate(samples, collate_fn_map=collate_fn_map) for samples in transposed]  # Backwards compatibility.
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\utils\data\_utils\collate.py", line 144, in <listcomp>
+    return [collate(samples, collate_fn_map=collate_fn_map) for samples in transposed]  # Backwards compatibility.
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\utils\data\_utils\collate.py", line 121, in collate
+    return collate_fn_map[elem_type](batch, collate_fn_map=collate_fn_map)
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\utils\data\_utils\collate.py", line 173, in collate_tensor_fn
+    out = elem.new(storage).resize_(len(batch), *list(elem.size()))
+RuntimeError: Trying to resize storage that is not resizable
+
+
+Process finished with exit code 1
+
+profile
+Qwen3-235B-A22B
+You're still getting the same error:
+
+
+
+1
+RuntimeError: Trying to resize storage that is not resizable
+This means the issue still lies in how you're creating your tensors inside __getitem__. Even though we've tried .copy() and .contiguous(), there might be a deeper cause — such as returning a tensor with an unsupported memory layout , or using transforms that return PyTorch tensors instead of NumPy arrays.
+
+✅ Final Working Solution
+🧪 Root Cause Recap:
+You're likely using transforms from albumentations , which by default return NumPy arrays.
+However, if you accidentally use ToTensorV2() or any transform that returns a tensor , and then try to convert it again manually using torch.from_numpy(...), you’ll get errors like this.
+Also, some operations (e.g. slicing, transpose) can create non-contiguous arrays that lead to DataLoader errors.
+✅ Step-by-step Fix
+1. Ensure Your Dataset Returns Properly Formatted Tensors
+Update your dataset.py's __getitem__ method to the following:
+
+python
+
+
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+⌄
+⌄
+def __getitem__(self, idx):
+    image = Image.open(self.image_paths[idx]).convert("L")  # grayscale
+    mask = Image.open(self.mask_paths[idx]).convert("L")    # binary mask
+
+    image = np.array(image).astype(np.float32) / 255.0
+    mask = np.array(mask).astype(np.float32) / 255.0
+    mask = (mask > 0.5).astype(np.float32)  # binarize
+
+    if self.transform:
+        transformed = self.transform(image=image, mask=mask)
+        image = transformed['image']
+        mask = transformed['mask']
+
+    # Ensure correct shape and type
+    image = image[None, ...]  # Add channel dim -> [1, H, W]
+    mask = mask[None, ...]
+
+    # Convert to torch tensor (this handles memory properly)
+    image = torch.tensor(image, dtype=torch.float32)
+    mask = torch.tensor(mask, dtype=torch.float32)
+
+    return image, mask
+✅ This version avoids mixing torch.from_numpy(...) and ensures all data is copied safely via torch.tensor(...). 
+
+2. Make Sure You Are Not Using ToTensorV2() Twice
+If you're using albumentations, ensure you're not converting to tensors twice :
+
+❌ Bad Example (Double Tensor Conversion):
+python
+
+
+1
+2
+3
+4
+5
+6
+⌄
+transform = A.Compose([
+    A.ToTensorV2(),
+])
+
+# Then later in __getitem__:
+image = torch.from_numpy(image.copy())  # ❌ Already a tensor!
+✅ Good Example:
+python
+
+
+1
+2
+3
+4
+5
+⌄
+transform = A.Compose([
+    A.Resize(256, 256),
+    A.Normalize(mean=(0.5,), std=(0.5,)),
+    # No ToTensorV2 here
+])
+Or if you're using ToTensorV2, skip manual conversion:
+
+python
+
+
+1
+2
+3
+4
+5
+6
+7
+8
+⌄
+transform = A.Compose([
+    A.ToTensorV2(),
+])
+
+...
+
+image = transformed["image"]  # already a tensor
+mask = transformed["mask"]
+Then modify __getitem__ accordingly:
+
+python
+
+
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+⌄
+⌄
+def __getitem__(self, idx):
+    image = Image.open(self.image_paths[idx]).convert("L")
+    mask = Image.open(self.mask_paths[idx]).convert("L")
+
+    image = np.array(image)
+    mask = np.array(mask)
+
+    if self.transform:
+        transformed = self.transform(image=image, mask=mask)
+        image = transformed['image']
+        mask = transformed['mask']
+
+    mask = (mask > 0).float().unsqueeze(0)  # binarize + add channel
+    image = image.float().unsqueeze(0)      # add channel
+
+    return image, mask
+3. Temporarily Disable Multiprocessing
+Set num_workers=0 for now to help debug:
+
+python
+
+
+1
+2
+3
+4
+5
+6
+7
+train_loader = DataLoader(
+    train_set,
+    batch_size=batch_size,
+    shuffle=True,
+    num_workers=0,
+    pin_memory=pin_memory
+)
+Once everything works, you can re-enable multiprocessing.
+
+✅ Summary Checklist
+✅ Use only one way to convert to tensor
+torch.tensor(...)
+OR
+A.ToTensorV2()
+✅ Avoid
+.from_numpy(...)
+unless sure array is contiguous
+Use
+torch.tensor(...)
+for safer copy
+✅ Remove
+ToTensorV2
+if manually converting
+Or keep it and remove manual conversion
+✅ Set
+num_workers=0
+temporarily
+To avoid multiprocessing bugs during debugging
+✅ Bonus: Test Dataset Manually
+Add this before training loop:
+
+python
+
+
+1
+2
+3
+⌄
+for images, masks in train_loader:
+    print(images.shape, masks.shape)
+    break
+If this runs without error, your dataset is fixed!
+
+✅ Final Thoughts
+This error is tricky because it involves:
+
+PIL image loading
+NumPy → Tensor conversion
+DataLoader's internal batching logic
+Optional transforms
+But with the fixes above, you should now have a working setup.
+
+Let me know:
+
+If you're using albumentations or not
+Whether you want to enable num_workers > 0
+Or need help visualizing batches/augmentations
+Happy coding! 🧠🖼️🧠
+

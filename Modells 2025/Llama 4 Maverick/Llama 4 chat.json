@@ -1,0 +1,616 @@
+
+Llama-4-Maverick
+By
+
+@fireworksai
+577 followers
+·
+50 points
+History
+
+Rates
+
+Share app
+Llama 4 Maverick delivers SOTA intelligence and blazing-fast performance across languages, optimized for speed and quality in real-world applications. Supports 1.05M tokens of input context.
+Powered by a server managed by @fireworksai. Learn more
+
+OFFICIAL
+Saturday
+
+ provide a complete ready-to-run Python implementation for a U-Net architecture using PyTorch, for binary segmentation of grayscale images. The dataset should consist of grayscale images and corresponding binary masks, which are located in 2 different folders, or in the same path, (the masks have the same name as the images, or with a suffix, like: "number.png" and the masks "number_seg.png", around 5000 samples in total. access and split directly using train_test_split on the index list and Subset, and do NOT duplicate or copy to new directory). It should work and provide correct predictions, and save the losses and dice scores as instructed below. The code should be structured into importable scripts with the following:
+
+A custom Dataset class for loading the grayscale images and corresponding binary masks. (only the png files, ignore meta files or additional files in the directory)
+A UNet model class definition using PyTorch, optimized for binary segmentation (with small foreground, mostly background)
+Functions for the training procedure, validation procedure, and Testing procedure.
+Considerations for each part:
+4. Ensure needed transforms on input image and mask pairs (Re-size images correctly, ensure gray scale and binary…)
+5. Avoid overfitting and data leakage (without using augmentations), choose appropriate hyperparameters, learning rate, batch size, etc
+
+• For Training and Validation:
+
+Compute training and validation losses.
+Track and save the average training loss for each epoch in a separate Excel file (train_losses.xlsx) in a given save path. The first row should contain the epoch numbers, and the second row should contain the corresponding average training loss for each epoch.
+Similarly, save the validation loss for each epoch in an Excel file (val_losses.xlsx) with the same structure.
+At the end of training, save both the entire model and the model's state dictionary (.pth files) in the save path
+Calculate total training time from start to end, and print at the end of training
+The progress, phase (train/validation), and all info should be shown epoch by epoch using tqdm progress bars during training, validation, and testing.
+A function to visualize training losses and validation losses over epochs afterwards, on the same plot. Save plot in a specified save path as png.
+During Validation: mean Dice scores should be calculated over each batch, for each epoch, and stored in an Excel file (epochs as rows and batches as columns). The Excel file (named “validation_dice_scores” should be saved at the specified save path after validation is done.
+Do the same for the Testing and store dice the Dice scores the same way and save the excel file as “test_dice_scores” after testing is done.
+• For Testing:
+
+A function to visualize the predicted masks, the input image, and the ground truth, for 5 random samples, after testing is done. (subplots for 5 random samples in one plot, in 5 rows and 3 columns (title at top: Input Image, Ground Truth, Prediction). Also display image file name string above each image and mask. save the plot as .png).
+• For Main:
+
+Shuffle the data, split the dataset into: 80% training, 10% validation, and 10% test sets using train_test_split. Print the sizes of each (how many images), and copy the splitted data (images and their respective masks)
+
+DataLoader setup for training, validation, and testing sets.
+
+Ensure correct data loading, print data loader sizes.
+
+Also usig torchinfo, print model summary, and total number of model parameters (n learnable params)
+
+All the above functionalities should be implemented in a modular way so that they can be imported as scripts or classes.
+
+All visualizations should just be saved as png. No need to display the plots during running.
+
+Ensure that everything can be executed in an if __name__ == "__main__": block with instructions for loading the dataset, configuring hyperparameters, and saving the trained model.
+The directory structure should only be:
+unet_segmentation/
+├── dataset.py
+├── model.py
+├── train.py
+├── main.py
+
+
+View more
+1:29 PM
+
+Llama-4-Maverick
+
+Here's the implementation of the U-Net architecture using PyTorch for binary segmentation of grayscale images.
+
+Directory Structure
+markdown
+
+Copy
+unet_segmentation/
+├── dataset.py
+├── model.py
+├── train.py
+├── main.py
+dataset.py
+python
+
+Run
+
+Copy
+import os
+import torch
+from torch.utils.data import Dataset, Subset
+from torchvision import transforms
+from PIL import Image
+import numpy as np
+
+class GrayscaleDataset(Dataset):
+    def __init__(self, image_dir, mask_dir, mask_suffix='_seg'):
+        self.image_dir = image_dir
+        self.mask_dir = mask_dir
+        self.mask_suffix = mask_suffix
+        self.image_files = [f for f in os.listdir(image_dir) if f.endswith('.png')]
+        self.transform = transforms.Compose([
+            transforms.Resize((256, 256)),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.5], std=[0.5])
+        ])
+        self.mask_transform = transforms.Compose([
+            transforms.Resize((256, 256)),
+            transforms.ToTensor()
+        ])
+
+    def __len__(self):
+        return len(self.image_files)
+
+    def __getitem__(self, idx):
+        image_file = self.image_files[idx]
+        mask_file = image_file.replace('.png', self.mask_suffix + '.png')
+        image_path = os.path.join(self.image_dir, image_file)
+        mask_path = os.path.join(self.mask_dir, mask_file)
+        image = Image.open(image_path).convert('L')
+        mask = Image.open(mask_path).convert('L')
+        image = self.transform(image)
+        mask = self.mask_transform(mask)
+        mask = (mask > 0.5).float()  # Binarize the mask
+        return image, mask
+model.py
+python
+
+Run
+
+Copy
+import torch
+import torch.nn as nn
+
+class DoubleConv(nn.Module):
+    def __init__(self, in_channels, out_channels):
+        super(DoubleConv, self).__init__()
+        self.conv = nn.Sequential(
+            nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1),
+            nn.BatchNorm2d(out_channels),
+            nn.ReLU(),
+            nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1),
+            nn.BatchNorm2d(out_channels),
+            nn.ReLU()
+        )
+
+    def forward(self, x):
+        return self.conv(x)
+
+class Down(nn.Module):
+    def __init__(self, in_channels, out_channels):
+        super(Down, self).__init__()
+        self.maxpool_conv = nn.Sequential(
+            nn.MaxPool2d(2),
+            DoubleConv(in_channels, out_channels)
+        )
+
+    def forward(self, x):
+        return self.maxpool_conv(x)
+
+class Up(nn.Module):
+    def __init__(self, in_channels, out_channels):
+        super(Up, self).__init__()
+        self.up = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
+        self.conv = DoubleConv(in_channels, out_channels)
+
+    def forward(self, x1, x2):
+        x1 = self.up(x1)
+        diff_x = x2.size()[2] - x1.size()[2]
+        diff_y = x2.size()[3] - x1.size()[3]
+        x1 = torch.nn.functional.pad(x1, (diff_y // 2, diff_y - diff_y // 2, diff_x // 2, diff_x - diff_x // 2))
+        x = torch.cat([x2, x1], dim=1)
+        return self.conv(x)
+
+class OutConv(nn.Module):
+    def __init__(self, in_channels, out_channels):
+        super(OutConv, self).__init__()
+        self.conv = nn.Conv2d(in_channels, out_channels, kernel_size=1)
+
+    def forward(self, x):
+        return self.conv(x)
+
+class UNet(nn.Module):
+    def __init__(self, n_channels=1, n_classes=1):
+        super(UNet, self).__init__()
+        self.n_channels = n_channels
+        self.n_classes = n_classes
+
+        self.inc = DoubleConv(n_channels, 64)
+        self.down1 = Down(64, 128)
+        self.down2 = Down(128, 256)
+        self.down3 = Down(256, 512)
+        self.down4 = Down(512, 512)
+        self.up1 = Up(1024, 256)
+        self.up2 = Up(512, 128)
+        self.up3 = Up(256, 64)
+        self.up4 = Up(128, 64)
+        self.outc = OutConv(64, n_classes)
+
+    def forward(self, x):
+        x1 = self.inc(x)
+        x2 = self.down1(x1)
+        x3 = self.down2(x2)
+        x4 = self.down3(x3)
+        x5 = self.down4(x4)
+        x = self.up1(x5, x4)
+        x = self.up2(x, x3)
+        x = self.up3(x, x2)
+        x = self.up4(x, x1)
+        logits = self.outc(x)
+        return torch.sigmoid(logits)
+train.py
+python
+
+Run
+
+Copy
+import torch
+import torch.nn as nn
+from torch.utils.data import DataLoader
+import torch.optim as optim
+from tqdm import tqdm
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import time
+
+def train(model, device, loader, optimizer, criterion):
+    model.train()
+    total_loss = 0
+    with tqdm(loader, desc='Training') as pbar:
+        for batch_idx, (data, target) in enumerate(pbar):
+            data, target = data.to(device), target.to(device)
+            optimizer.zero_grad()
+            output = model(data)
+            loss = criterion(output, target)
+            loss.backward()
+            optimizer.step()
+            total_loss += loss.item()
+            pbar.set_postfix({'loss': loss.item()})
+    return total_loss / len(loader)
+
+def validate(model, device, loader, criterion):
+    model.eval()
+    total_loss = 0
+    dice_scores = []
+    with torch.no_grad():
+        with tqdm(loader, desc='Validation') as pbar:
+            for batch_idx, (data, target) in enumerate(pbar):
+                data, target = data.to(device), target.to(device)
+                output = model(data)
+                loss = criterion(output, target)
+                total_loss += loss.item()
+                dice_score = dice_coefficient(output, target)
+                dice_scores.append(dice_score.item())
+                pbar.set_postfix({'loss': loss.item(), 'dice': dice_score.item()})
+    return total_loss / len(loader), dice_scores
+
+def test(model, device, loader, criterion):
+    model.eval()
+    total_loss = 0
+    dice_scores = []
+    with torch.no_grad():
+        with tqdm(loader, desc='Testing') as pbar:
+            for batch_idx, (data, target) in enumerate(pbar):
+                data, target = data.to(device), target.to(device)
+                output = model(data)
+                loss = criterion(output, target)
+                total_loss += loss.item()
+                dice_score = dice_coefficient(output, target)
+                dice_scores.append(dice_score.item())
+                pbar.set_postfix({'loss': loss.item(), 'dice': dice_score.item()})
+    return total_loss / len(loader), dice_scores
+
+def dice_coefficient(output, target):
+    smooth = 1e-5
+    output = (output > 0.5).float()
+    intersection = (output * target).sum((1, 2, 3))
+    union = output.sum((1, 2, 3)) + target.sum((1, 2, 3))
+    dice = (2. * intersection + smooth) / (union + smooth)
+    return dice.mean()
+
+def save_losses(train_losses, val_losses, save_path):
+    epochs = np.arange(1, len(train_losses) + 1)
+    df_train = pd.DataFrame({'Epoch': epochs, 'Loss': train_losses})
+    df_val = pd.DataFrame({'Epoch': epochs, 'Loss': val_losses})
+    df_train.to_excel(os.path.join(save_path, 'train_losses.xlsx'), index=False)
+    df_val.to_excel(os.path.join(save_path, 'val_losses.xlsx'), index=False)
+
+def save_dice_scores(dice_scores, save_path, filename):
+    df = pd.DataFrame(dice_scores)
+    df.to_excel(os.path.join(save_path, filename), index=False)
+
+def plot_losses(train_losses, val_losses, save_path):
+    epochs = np.arange(1, len(train_losses) + 1)
+    plt.plot(epochs, train_losses, label='Training Loss')
+    plt.plot(epochs, val_losses, label='Validation Loss')
+    plt.xlabel('Epochs')
+    plt.ylabel('Loss')
+    plt.legend()
+    plt.savefig(os.path.join(save_path, 'losses.png'))
+
+def visualize_predictions(model, device, loader, save_path):
+    model.eval()
+    with torch.no_grad():
+        indices = np.random.choice(len(loader.dataset), 5, replace=False)
+        fig, axs = plt.subplots(5, 3, figsize=(15, 20))
+        for i, idx in enumerate(indices):
+            data, target = loader.dataset[idx]
+            data = data.unsqueeze(0).to(device)
+            output = model(data)
+            output = (output > 0.5).float()
+            data = data.squeeze(0).cpu().numpy()
+            target = target.cpu().numpy()
+            output = output.squeeze(0).cpu().numpy()
+            axs[i, 0].imshow(data[0], cmap='gray')
+            axs[i, 0].set_title(loader.dataset.image_files[idx])
+            axs[i, 1].imshow(target[0], cmap='gray')
+            axs[i, 1].set_title('Ground Truth')
+            axs[i, 2].imshow(output[0], cmap='gray')
+            axs[i, 2].set_title('Prediction')
+        plt.savefig(os.path.join(save_path, 'predictions.png'))
+main.py
+python
+
+Run
+
+Copy
+import os
+import torch
+from torch.utils.data import DataLoader, Subset
+from sklearn.model_selection import train_test_split
+from dataset import GrayscaleDataset
+from model import UNet
+from train import train, validate, test, save_losses, save_dice_scores, plot_losses, visualize_predictions
+import torchinfo
+
+def main():
+    # Hyperparameters
+    batch_size = 32
+    epochs = 10
+    lr = 0.001
+    save_path = 'results'
+
+    # Load dataset
+    dataset = GrayscaleDataset('path_to_images', 'path_to_masks')
+    indices = np.arange(len(dataset))
+    train_idx, val_test_idx = train_test_split(indices, test_size=0.2, random_state=42)
+    val_idx, test_idx = train_test_split(val_test_idx, test_size=0.5, random_state=42)
+    train_dataset = Subset(dataset, train_idx)
+    val_dataset = Subset(dataset, val_idx)
+    test_dataset = Subset(dataset, test_idx)
+
+    # DataLoaders
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
+    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
+
+    print(f'Training samples: {len(train_dataset)}')
+    print(f'Validation samples: {len(val_dataset)}')
+    print(f'Testing samples: {len(test_dataset)}')
+
+    # Model
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    model = UNet().to(device)
+    torchinfo.summary(model, input_size=(batch_size, 1, 256, 256))
+
+    # Training
+    criterion = torch.nn.BCELoss()
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+    train_losses = []
+    val_losses = []
+    val_dice_scores = []
+    start_time = time.time()
+    for epoch in range(epochs):
+        train_loss = train(model, device, train_loader, optimizer, criterion)
+        val_loss, dice_scores = validate(model, device, val_loader, criterion)
+        train_losses.append(train_loss)
+        val_losses.append(val_loss)
+        val_dice_scores.append(dice_scores)
+        print(f'Epoch {epoch+1}, Train Loss: {train_loss:.4f}, Val Loss: {val_loss:.4f}')
+    end_time = time.time()
+    print(f'Training time: {end_time - start_time:.2f} seconds')
+
+    # Save model and losses
+    torch.save(model.state_dict(), os.path.join(save_path, 'model.pth'))
+    torch.save(model, os.path.join(save_path, 'model_full.pth'))
+    save_losses(train_losses, val_losses, save_path)
+    save_dice_scores(val_dice_scores, save_path, 'validation_dice_scores.xlsx')
+    plot_losses(train_losses, val_losses, save_path)
+
+    # Testing
+    test_loss, test_dice_scores = test(model, device, test_loader, criterion)
+    save_dice_scores([test_dice_scores], save_path, 'test_dice_scores.xlsx')
+    visualize_predictions(model, device, test_loader, save_path)
+
+if __name__ == '__main__':
+    main()
+Make sure to replace 'path_to_images' and 'path_to_masks' with the actual paths to your image and mask directories.
+
+This implementation should provide a complete U-Net architecture for binary segmentation of grayscale images using PyTorch. The code is structured into importable scripts with a custom Dataset class, a UNet model class definition, and functions for training, validation, and testing procedures. The training and validation losses are saved to Excel files, and the Dice scores are calculated and saved during validation and testing. The predicted masks, input images, and ground truth are visualized for 5 random samples after testing.
+
+1:29 PM
+Yesterday
+
+Traceback (most recent call last):
+File "D:\qy44lyfe\LLM segmentation\github repo\LLM_based_Segmentation\Modells 2025\Llama 4 Maverick\main.py", line 72, in <module>
+main()
+File "D:\qy44lyfe\LLM segmentation\github repo\LLM_based_Segmentation\Modells 2025\Llama 4 Maverick\main.py", line 21, in main
+indices = np.arange(len(dataset))
+NameError: name 'np' is not defined
+
+Process finished with exit code 1
+
+1:53 AM
+
+Llama-4-Maverick
+
+The error is due to the fact that the np module is not imported. np is a common alias for the NumPy library.
+
+To fix the issue, add the following line at the top of your main.py file:
+
+python
+
+Run
+
+Copy
+import numpy as np
+This imports the NumPy library and assigns it the alias np, which is used in the code.
+
+Additionally, you might want to consider importing other necessary modules that are not explicitly imported in the main.py file, such as os. If you haven't already, add:
+
+python
+
+Run
+
+Copy
+import os
+at the top of your main.py file.
+
+Here's how the top of your main.py file should look:
+
+python
+
+Run
+
+Copy
+import os
+import torch
+from torch.utils.data import DataLoader, Subset
+from sklearn.model_selection import train_test_split
+import numpy as np
+from dataset import GrayscaleDataset
+from model import UNet
+from train import train, validate, test, save_losses, save_dice_scores, plot_losses, visualize_predictions
+import torchinfo
+1:53 AM
+Traceback (most recent call last):
+File "D:\qy44lyfe\LLM segmentation\github repo\LLM_based_Segmentation\Modells 2025\Llama 4 Maverick\main.py", line 73, in <module>
+main()
+File "D:\qy44lyfe\LLM segmentation\github repo\LLM_based_Segmentation\Modells 2025\Llama 4 Maverick\main.py", line 49, in main
+start_time = time.time()
+NameError: name 'time' is not defined
+
+Process finished with exit code 1
+
+1:54 AM
+
+Llama-4-Maverick
+
+The error is due to the fact that the time module is not imported.
+
+To fix the issue, add the following line at the top of your main.py file:
+
+python
+
+Run
+
+Copy
+import time
+This imports the time module, which is used to measure the training time.
+
+Here's how the top of your main.py file should look:
+
+python
+
+Run
+
+Copy
+import os
+import torch
+from torch.utils.data import DataLoader, Subset
+from sklearn.model_selection import train_test_split
+import numpy as np
+from dataset import GrayscaleDataset
+from model import UNet
+from train import train, validate, test, save_losses, save_dice_scores, plot_losses, visualize_predictions
+import torchinfo
+import time
+1:54 AM
+Traceback (most recent call last):
+File "D:\qy44lyfe\LLM segmentation\github repo\LLM_based_Segmentation\Modells 2025\Llama 4 Maverick\main.py", line 75, in <module>
+main()
+File "D:\qy44lyfe\LLM segmentation\github repo\LLM_based_Segmentation\Modells 2025\Llama 4 Maverick\main.py", line 65, in main
+save_losses(train_losses, val_losses, save_path)
+File "D:\qy44lyfe\LLM segmentation\github repo\LLM_based_Segmentation\Modells 2025\Llama 4 Maverick\train.py", line 70, in save_losses
+df_train.to_excel(os.path.join(save_path, 'train_losses.xlsx'), index=False)
+NameError: name 'os' is not defined
+
+1:59 AM
+
+Llama-4-Maverick
+
+The error is due to the fact that the os module is not imported in the train.py file.
+
+To fix the issue, add the following line at the top of your train.py file:
+
+python
+
+Run
+
+Copy
+import os
+This imports the os module, which is used to join the save path with the filename.
+
+Additionally, you might also want to import matplotlib.pyplot as plt and pandas as pd if you haven't already, as they are used in the train.py file.
+
+Here's how the top of your train.py file should look:
+
+python
+
+Run
+
+Copy
+import torch
+import torch.nn as nn
+from torch.utils.data import DataLoader
+import torch.optim as optim
+from tqdm import tqdm
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import os
+import time
+However, time is not used in train.py, so you can omit that import.
+
+Here's the corrected import section:
+
+python
+
+Run
+
+Copy
+import torch
+import torch.nn as nn
+from torch.utils.data import DataLoader
+import torch.optim as optim
+from tqdm import tqdm
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import os
+1:59 AM
+Training time: 183.36 seconds
+Testing: 100%|██████████| 16/16 [00:08<00:00, 1.97it/s, loss=0.0235, dice=0.661]
+Traceback (most recent call last):
+File "D:\qy44lyfe\LLM segmentation\github repo\LLM_based_Segmentation\Modells 2025\Llama 4 Maverick\main.py", line 75, in <module>
+main()
+File "D:\qy44lyfe\LLM segmentation\github repo\LLM_based_Segmentation\Modells 2025\Llama 4 Maverick\main.py", line 72, in main
+visualize_predictions(model, device, test_loader, save_path)
+File "D:\qy44lyfe\LLM segmentation\github repo\LLM_based_Segmentation\Modells 2025\Llama 4 Maverick\train.py", line 101, in visualize_predictions
+axs[i, 0].set_title(loader.dataset.image_files[idx])
+AttributeError: 'Subset' object has no attribute 'image_files'
+
+Process finished with exit code 1
+
+2:05 AM
+
+Llama-4-Maverick
+
+
+The error occurs because test_loader.dataset is a Subset object, which does not have an image_files attribute. The image_files attribute is actually part of the original GrayscaleDataset object.
+
+To fix the issue, you need to access the original GrayscaleDataset object from the Subset object. You can do this by accessing the dataset attribute of the Subset object.
+
+Here's how you can modify the visualize_predictions function in train.py to fix the issue:
+
+python
+
+Run
+
+Copy
+def visualize_predictions(model, device, loader, save_path):
+    model.eval()
+    with torch.no_grad():
+        indices = np.random.choice(len(loader.dataset), 5, replace=False)
+        fig, axs = plt.subplots(5, 3, figsize=(15, 20))
+        for i, idx in enumerate(indices):
+            data, target = loader.dataset[idx]
+            original_idx = loader.dataset.indices[idx]
+            data = data.unsqueeze(0).to(device)
+            output = model(data)
+            output = (output > 0.5).float()
+            data = data.squeeze(0).cpu().numpy()
+            target = target.cpu().numpy()
+            output = output.squeeze(0).cpu().numpy()
+            axs[i, 0].imshow(data[0], cmap='gray')
+            axs[i, 0].set_title(loader.dataset.dataset.image_files[original_idx])
+            axs[i, 1].imshow(target[0], cmap='gray')
+            axs[i, 1].set_title('Ground Truth')
+            axs[i, 2].imshow(output[0], cmap='gray')
+            axs[i, 2].set_title('Prediction')
+        plt.tight_layout()
+        plt.savefig(os.path.join(save_path, 'predictions.png'))
+In this modified version, loader.dataset.dataset.image_files[original_idx] is used to access the image_files attribute of the original GrayscaleDataset object.
+
+Also, I added plt.tight_layout() to ensure that the titles and images fit within the figure area.

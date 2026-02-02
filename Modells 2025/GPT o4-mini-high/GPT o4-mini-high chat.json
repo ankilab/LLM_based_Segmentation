@@ -1,0 +1,851 @@
+	provide a complete ready-to-run Python implementation for a U-Net architecture using PyTorch, for binary segmentation of grayscale images. The dataset should consist of grayscale images and corresponding binary masks, which are located in 2 different folders in the same path (the masks have the same name as the images, with a suffix, like: "number.png" and the masks "number_seg.png", around 5000 samples in total. access and split directly using train_test_split on the index list and Subset, and do NOT duplicate or copy to new directory). It should work and provide correct predictions, and save the losses and dice scores as instructed below. The code should be structured into importable scripts with the following:
+
+1.	A custom Dataset class for loading the grayscale images and corresponding binary masks. (only the png files, ignore meta files or additional files in the directory)
+2.	A UNet model class definition using PyTorch, optimized for binary segmentation (with small foreground, mostly background)
+3.	Functions for the training procedure, validation procedure, and Testing procedure.
+
+Considerations for each part:
+4.	Ensure needed transforms on input image and mask pairs (Re-size images correctly, ensure gray scale and binary…)
+5.	Avoid overfitting and data leakage (without using augmentations), choose appropriate hyperparameters, learning rate, batch size, etc
+
+•	For Training and Validation:
+
+6.	Compute training and validation losses.
+7.	Track and save the average training loss for each epoch in a separate Excel file (train_losses.xlsx) in a given save path. The first row should contain the epoch numbers, and the second row should contain the corresponding average training loss for each epoch.
+8.	Similarly, save the validation loss for each epoch in an Excel file (val_losses.xlsx) with the same structure.
+9.	At the end of training, save both the entire model and the model's state dictionary (.pth files) in the save path
+10.	Calculate total training time from start to end, and print at the end of training
+11.	The progress, phase (train/validation), and all info should be shown epoch by epoch using tqdm progress bars during training, validation, and testing.
+12.	A function to visualize training losses and validation losses over epochs afterwards, on the same plot. Save plot in a specified save path as png. 
+13.	During Validation: mean Dice scores should be calculated over each batch, for each epoch, and stored in an Excel file (epochs as rows and batches as columns). The Excel file (named “validation_dice_scores” should be saved at the specified save path after validation is done.
+14.	Do the same for the Testing and store dice the Dice scores the same way and save the excel file as “test_dice_scores” after testing is done.
+
+•	For Testing:
+
+15.	A function to visualize the predicted masks, the input image, and the ground truth, for 5 random samples, after testing is done. (subplots for 5 random samples in one plot, in 5 rows and 3 columns (title at top: Input Image, Ground Truth, Prediction). Also display image file name string above each image and mask. save the plot as .png).
+
+•	For Main:
+
+16.	Shuffle the data, split the dataset into: 80% training, 10% validation, and 10% test sets using train_test_split. Print the sizes of each (how many images), and copy the splitted data (images and their respective masks) 
+17.	DataLoader setup for training, validation, and testing sets.
+18.	Ensure correct data loading, print data loader sizes.
+19.	Also usig torchinfo, print model summary, and total number of model parameters (n learnable params)
+
+20.	All the above functionalities should be implemented in a modular way so that they can be imported as scripts or classes.
+21.	All visualizations should just be saved as png. No need to display the plots during running.
+22.	Ensure that everything can be executed in an if __name__ == "__main__": block with instructions for loading the dataset, configuring hyperparameters, and saving the trained model.
+The directory structure should only be:
+unet_segmentation/
+├── dataset.py
+├── model.py
+├── train.py
+├── main.py
+
+
+ChatGPT said:
+
+Thought for 1m 24s
+Below is a complete, modular U-Net implementation in PyTorch for binary segmentation of grayscale images. The repository layout is:
+
+css
+Copy
+Edit
+unet_segmentation/
+├── dataset.py
+├── model.py
+├── train.py
+├── main.py
+Each file is shown in turn. Simply place them in a folder called unet_segmentation and run main.py.
+
+dataset.py
+python
+Copy
+Edit
+import os
+from PIL import Image
+import torch
+from torch.utils.data import Dataset
+
+
+class GrayscaleDataset(Dataset):
+    """
+    Custom Dataset for loading grayscale images and their binary masks.
+    Assumes:
+      - `image_dir` contains only grayscale PNG files (e.g. "1.png", "2.png", …).
+      - `mask_dir` contains corresponding binary masks named "<basename>_seg.png"
+        (e.g. for "1.png" → mask "1_seg.png").
+      - Both directories may contain other non-PNG files, which are ignored.
+    """
+
+    def __init__(self, image_dir, mask_dir, image_size=256):
+        """
+        Args:
+            image_dir (str): Path to the folder containing input images.
+            mask_dir (str): Path to the folder containing binary masks.
+            image_size (int): Square size (width = height) to which images and masks are resized.
+        """
+        self.image_dir = image_dir
+        self.mask_dir = mask_dir
+        self.image_size = image_size
+
+        # Gather all valid image filenames (PNG only).
+        all_files = sorted(os.listdir(self.image_dir))
+        self.samples = []
+        for fname in all_files:
+            if not fname.lower().endswith('.png'):
+                continue
+            # We expect masks named "<basename>_seg.png"
+            base, _ = os.path.splitext(fname)
+            mask_name = f"{base}_seg.png"
+            mask_path = os.path.join(self.mask_dir, mask_name)
+            image_path = os.path.join(self.image_dir, fname)
+            if os.path.isfile(mask_path):
+                self.samples.append((image_path, mask_path, base))
+            # else: skip images with no corresponding mask
+
+    def __len__(self):
+        return len(self.samples)
+
+    def __getitem__(self, idx):
+        """
+        Returns:
+            image_tensor (torch.FloatTensor): shape [1, H, W], values in [0,1]
+            mask_tensor  (torch.FloatTensor): shape [1, H, W], values 0.0 or 1.0
+            base_name    (str): filename without extension (e.g. "1", "2", …)
+        """
+        image_path, mask_path, base_name = self.samples[idx]
+
+        # Load image and mask in PIL
+        image = Image.open(image_path).convert('L')
+        mask = Image.open(mask_path).convert('L')
+
+        # Resize
+        image = image.resize((self.image_size, self.image_size), resample=Image.BILINEAR)
+        mask = mask.resize((self.image_size, self.image_size), resample=Image.NEAREST)
+
+        # Convert to tensors
+        image_tensor = torch.from_numpy(
+            (torch.ByteTensor(torch.ByteStorage.from_buffer(image.tobytes()))
+             .float()
+             .view(self.image_size, self.image_size) / 255.0)
+        ).unsqueeze(0)  # shape [1, H, W]
+
+        mask_tensor = torch.from_numpy(
+            (torch.ByteTensor(torch.ByteStorage.from_buffer(mask.tobytes()))
+             .float()
+             .view(self.image_size, self.image_size) / 255.0)
+        ).unsqueeze(0)
+        # Binarize mask
+        mask_tensor = (mask_tensor > 0.5).float()
+
+        return image_tensor, mask_tensor, base_name
+model.py
+python
+Copy
+Edit
+import torch
+import torch.nn as nn
+
+
+class DoubleConv(nn.Module):
+    """
+    A sequence of two convolutional layers each followed by BatchNorm and ReLU.
+    """
+
+    def __init__(self, in_channels, out_channels):
+        super(DoubleConv, self).__init__()
+        self.double_conv = nn.Sequential(
+            nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1, bias=False),
+            nn.BatchNorm2d(out_channels),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1, bias=False),
+            nn.BatchNorm2d(out_channels),
+            nn.ReLU(inplace=True)
+        )
+
+    def forward(self, x):
+        return self.double_conv(x)
+
+
+class UNet(nn.Module):
+    """
+    U-Net architecture for binary segmentation (in_channels=1, out_channels=1).
+    """
+
+    def __init__(self, in_channels=1, out_channels=1, features=[64, 128, 256, 512]):
+        super(UNet, self).__init__()
+        self.encoder_layers = nn.ModuleList()
+        self.pool = nn.MaxPool2d(kernel_size=2, stride=2)
+
+        # Encoder: double conv → pool
+        for feature in features:
+            self.encoder_layers.append(DoubleConv(in_channels, feature))
+            in_channels = feature
+
+        # Bottleneck
+        self.bottleneck = DoubleConv(features[-1], features[-1] * 2)
+
+        # Decoder: upconv → double conv
+        self.upconvs = nn.ModuleList()
+        self.decoder_layers = nn.ModuleList()
+        reversed_features = features[::-1]
+        for feature in reversed_features:
+            self.upconvs.append(
+                nn.ConvTranspose2d(feature * 2, feature, kernel_size=2, stride=2)
+            )
+            self.decoder_layers.append(DoubleConv(feature * 2, feature))
+
+        # Final 1x1 conv to get to out_channels
+        self.final_conv = nn.Conv2d(features[0], out_channels, kernel_size=1)
+
+    def forward(self, x):
+        skip_connections = []
+
+        # Encoder path
+        for enc in self.encoder_layers:
+            x = enc(x)
+            skip_connections.append(x)
+            x = self.pool(x)
+
+        # Bottleneck
+        x = self.bottleneck(x)
+        skip_connections = skip_connections[::-1]  # reverse for decoder
+
+        # Decoder path
+        for idx in range(len(self.upconvs)):
+            x = self.upconvs[idx](x)
+            skip_connection = skip_connections[idx]
+            # In case input sizes are not perfectly divisible, crop
+            if x.shape != skip_connection.shape:
+                x = self._crop_to(x, skip_connection.shape[2], skip_connection.shape[3])
+            x = torch.cat((skip_connection, x), dim=1)
+            x = self.decoder_layers[idx](x)
+
+        return self.final_conv(x)
+
+    @staticmethod
+    def _crop_to(tensor, target_h, target_w):
+        """
+        Center-crop `tensor` to (target_h, target_w).
+        """
+        _, _, h, w = tensor.size()
+        dh = (h - target_h) // 2
+        dw = (w - target_w) // 2
+        return tensor[:, :, dh:dh + target_h, dw:dw + target_w]
+train.py
+python
+Copy
+Edit
+import os
+import time
+import random
+import pandas as pd
+import torch
+import torch.nn as nn
+from torch.utils.data import DataLoader
+from tqdm import tqdm
+import matplotlib.pyplot as plt
+
+
+def dice_coef_per_sample(preds, targets, eps=1e-6):
+    """
+    Compute Dice coefficient for each sample in the batch.
+    Inputs:
+      preds: tensor of shape [B, 1, H, W], values 0 or 1 (after threshold)
+      targets: tensor of shape [B, 1, H, W], values 0 or 1
+    Returns:
+      list of length B with dice value for each sample
+    """
+    batch_size = preds.size(0)
+    dice_scores = []
+    for i in range(batch_size):
+        pred_flat = preds[i].view(-1)
+        target_flat = targets[i].view(-1)
+        intersection = (pred_flat * target_flat).sum()
+        union = pred_flat.sum() + target_flat.sum()
+        dice = (2.0 * intersection + eps) / (union + eps)
+        dice_scores.append(dice.item())
+    return dice_scores
+
+
+def train_one_epoch(model, dataloader, optimizer, criterion, device, epoch):
+    model.train()
+    running_loss = 0.0
+    loop = tqdm(dataloader, desc=f"Train Epoch {epoch}", leave=False)
+    for images, masks, _ in loop:
+        images = images.to(device, dtype=torch.float32)
+        masks = masks.to(device, dtype=torch.float32)
+
+        optimizer.zero_grad()
+        outputs = model(images)
+        loss = criterion(outputs, masks)
+        loss.backward()
+        optimizer.step()
+
+        running_loss += loss.item()
+        loop.set_postfix(loss=loss.item())
+
+    avg_loss = running_loss / len(dataloader)
+    return avg_loss
+
+
+def validate(model, dataloader, criterion, device, epoch):
+    model.eval()
+    running_loss = 0.0
+    all_batch_dice = []  # one dice per batch (averaged over samples in batch)
+
+    loop = tqdm(dataloader, desc=f"Validate Epoch {epoch}", leave=False)
+    with torch.no_grad():
+        for images, masks, _ in loop:
+            images = images.to(device, dtype=torch.float32)
+            masks = masks.to(device, dtype=torch.float32)
+
+            outputs = model(images)
+            loss = criterion(outputs, masks)
+            running_loss += loss.item()
+
+            # Compute dice: apply sigmoid, threshold
+            probs = torch.sigmoid(outputs)
+            preds = (probs > 0.5).float()
+            batch_dice_list = dice_coef_per_sample(preds, masks)
+            batch_dice = sum(batch_dice_list) / len(batch_dice_list)
+            all_batch_dice.append(batch_dice)
+
+            loop.set_postfix(loss=loss.item(), dice=batch_dice)
+
+    avg_loss = running_loss / len(dataloader)
+    return avg_loss, all_batch_dice
+
+
+def test(model, dataloader, device):
+    """
+    Similar to validate but without updating weights and without cross-validation.
+    Returns:
+      test_loss_list: average loss per batch
+      test_dice_list: dice score per batch
+    """
+    model.eval()
+    criterion = nn.BCEWithLogitsLoss()
+    all_batch_dice = []
+    running_loss = 0.0
+    loop = tqdm(dataloader, desc="Testing", leave=False)
+    with torch.no_grad():
+        for images, masks, _ in loop:
+            images = images.to(device, dtype=torch.float32)
+            masks = masks.to(device, dtype=torch.float32)
+
+            outputs = model(images)
+            loss = criterion(outputs, masks)
+            running_loss += loss.item()
+
+            probs = torch.sigmoid(outputs)
+            preds = (probs > 0.5).float()
+            batch_dice_list = dice_coef_per_sample(preds, masks)
+            batch_dice = sum(batch_dice_list) / len(batch_dice_list)
+            all_batch_dice.append(batch_dice)
+
+            loop.set_postfix(loss=loss.item(), dice=batch_dice)
+
+    avg_loss = running_loss / len(dataloader)
+    return avg_loss, all_batch_dice
+
+
+def save_losses_to_excel(loss_list, filepath):
+    """
+    Save a list of per-epoch losses into an Excel file:
+      Row 1: epoch numbers (1..n)
+      Row 2: corresponding loss values
+    """
+    epochs = list(range(1, len(loss_list) + 1))
+    data = [epochs, loss_list]
+    df = pd.DataFrame(data)
+    df.to_excel(filepath, index=False, header=False)
+
+
+def save_dice_scores_to_excel(dice_scores_matrix, filepath):
+    """
+    Save a 2D list or array: rows = epochs, columns = batches.
+    Adds row and column labels (epochs and batch indices) automatically.
+    """
+    df = pd.DataFrame(dice_scores_matrix)
+    # Label rows as Epoch 1, 2, ... and columns as Batch 1, 2, ...
+    df.index = [f"Epoch {i+1}" for i in range(df.shape[0])]
+    df.columns = [f"Batch {j+1}" for j in range(df.shape[1])]
+    df.to_excel(filepath)
+
+
+def plot_losses(train_losses, val_losses, save_path):
+    """
+    Plot training and validation losses over epochs and save as PNG.
+    """
+    plt.figure(figsize=(8, 6))
+    epochs = list(range(1, len(train_losses) + 1))
+    plt.plot(epochs, train_losses, label='Train Loss')
+    plt.plot(epochs, val_losses, label='Validation Loss')
+    plt.xlabel('Epoch')
+    plt.ylabel('Loss')
+    plt.title('Training vs Validation Loss')
+    plt.legend()
+    plt.grid(True)
+    plt.tight_layout()
+    plt.savefig(save_path)
+    plt.close()
+
+
+def visualize_predictions(model, dataset, device, save_path, num_samples=5):
+    """
+    Visualize `num_samples` random samples from `dataset`:
+      For each sample: input image, ground truth mask, model prediction.
+      Arrange in a figure with `num_samples` rows and 3 columns.
+      Save as PNG to `save_path`.
+    """
+    model.eval()
+    indices = list(range(len(dataset)))
+    selected = random.sample(indices, k=num_samples)
+
+    # Prepare figure
+    fig, axes = plt.subplots(num_samples, 3, figsize=(12, 4 * num_samples))
+    plt.subplots_adjust(top=0.93)
+
+    # Column titles
+    col_titles = ['Input Image', 'Ground Truth', 'Prediction']
+    for col_idx, title in enumerate(col_titles):
+        fig.text((col_idx + 0.5) / 3, 0.97, title, ha='center', va='bottom', fontsize=14)
+
+    with torch.no_grad():
+        for row_idx, idx in enumerate(selected):
+            image_tensor, mask_tensor, base_name = dataset[idx]
+            img = image_tensor.unsqueeze(0).to(device, dtype=torch.float32)  # [1,1,H,W]
+            gt_mask = mask_tensor.squeeze(0).cpu().numpy()  # [H,W]
+
+            output = model(img)
+            prob = torch.sigmoid(output)
+            pred_mask = (prob > 0.5).float().squeeze(0).squeeze(0).cpu().numpy()  # [H,W]
+
+            # Move original image to numpy for plotting
+            img_np = image_tensor.squeeze(0).cpu().numpy()  # [H,W]
+
+            for col in range(3):
+                ax = axes[row_idx, col]
+                ax.axis('off')
+                if col == 0:
+                    ax.imshow(img_np, cmap='gray')
+                elif col == 1:
+                    ax.imshow(gt_mask, cmap='gray')
+                else:
+                    ax.imshow(pred_mask, cmap='gray')
+                # Filename above each subplot
+                ax.set_title(base_name, fontsize=10, pad=4)
+
+    plt.tight_layout(rect=[0, 0, 1, 0.95])
+    plt.savefig(save_path)
+    plt.close()
+main.py
+python
+Copy
+Edit
+import os
+import time
+import argparse
+from sklearn.model_selection import train_test_split
+import torch
+from torch.utils.data import DataLoader, Subset
+from torchinfo import summary
+
+from dataset import GrayscaleDataset
+from model import UNet
+from train import (
+    train_one_epoch,
+    validate,
+    test,
+    save_losses_to_excel,
+    save_dice_scores_to_excel,
+    plot_losses,
+    visualize_predictions,
+)
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="Train U-Net for binary segmentation (grayscale).")
+    parser.add_argument('--image_dir', type=str, required=True,
+                        help="Path to folder with input grayscale images (PNG).")
+    parser.add_argument('--mask_dir', type=str, required=True,
+                        help="Path to folder with binary mask PNGs (named <basename>_seg.png).")
+    parser.add_argument('--save_dir', type=str, required=True,
+                        help="Directory where models, logs, and plots will be saved.")
+    parser.add_argument('--image_size', type=int, default=256,
+                        help="Resize images and masks to this size (square).")
+    parser.add_argument('--batch_size', type=int, default=8)
+    parser.add_argument('--lr', type=float, default=1e-4)
+    parser.add_argument('--num_epochs', type=int, default=50)
+    parser.add_argument('--num_workers', type=int, default=4)
+    parser.add_argument('--device', type=str, default='cuda' if torch.cuda.is_available() else 'cpu')
+    return parser.parse_args()
+
+
+if __name__ == "__main__":
+    args = parse_args()
+
+    # Create save directory if it does not exist
+    os.makedirs(args.save_dir, exist_ok=True)
+
+    # 1) Prepare dataset (do not copy files; split via indices)
+    full_dataset = GrayscaleDataset(
+        image_dir=args.image_dir,
+        mask_dir=args.mask_dir,
+        image_size=args.image_size
+    )
+
+    n_total = len(full_dataset)
+    indices = list(range(n_total))
+    train_idx, temp_idx = train_test_split(indices, test_size=0.2, random_state=42, shuffle=True)
+    val_idx, test_idx = train_test_split(temp_idx, test_size=0.5, random_state=42, shuffle=True)
+
+    print(f"Total samples: {n_total}")
+    print(f"Training samples: {len(train_idx)}")
+    print(f"Validation samples: {len(val_idx)}")
+    print(f"Testing samples: {len(test_idx)}")
+
+    train_subset = Subset(full_dataset, train_idx)
+    val_subset = Subset(full_dataset, val_idx)
+    test_subset = Subset(full_dataset, test_idx)
+
+    # 2) DataLoaders
+    train_loader = DataLoader(train_subset,
+                              batch_size=args.batch_size,
+                              shuffle=True,
+                              num_workers=args.num_workers,
+                              pin_memory=True)
+    val_loader = DataLoader(val_subset,
+                            batch_size=args.batch_size,
+                            shuffle=False,
+                            num_workers=args.num_workers,
+                            pin_memory=True)
+    test_loader = DataLoader(test_subset,
+                             batch_size=args.batch_size,
+                             shuffle=False,
+                             num_workers=args.num_workers,
+                             pin_memory=True)
+
+    print(f"Train loader batches: {len(train_loader)}")
+    print(f"Val loader batches: {len(val_loader)}")
+    print(f"Test loader batches: {len(test_loader)}")
+
+    # 3) Initialize model, optimizer, loss
+    device = torch.device(args.device)
+    model = UNet(in_channels=1, out_channels=1).to(device)
+
+    # Print model summary and total parameters
+    print("\nModel Summary:")
+    summary(model, input_size=(args.batch_size, 1, args.image_size, args.image_size))
+    total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    print(f"Total trainable parameters: {total_params}\n")
+
+    optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
+    criterion = torch.nn.BCEWithLogitsLoss()
+
+    # 4) Training loop
+    train_losses = []
+    val_losses = []
+    all_val_dice = []  # list of lists (epochs × batches)
+
+    start_time = time.time()
+    for epoch in range(1, args.num_epochs + 1):
+        # Training
+        train_loss = train_one_epoch(model, train_loader, optimizer, criterion, device, epoch)
+        train_losses.append(train_loss)
+
+        # Validation
+        val_loss, val_batch_dice = validate(model, val_loader, criterion, device, epoch)
+        val_losses.append(val_loss)
+        all_val_dice.append(val_batch_dice)
+
+        print(f"Epoch {epoch}/{args.num_epochs} → Train Loss: {train_loss:.4f}, Val Loss: {val_loss:.4f}, "
+              f"Val Dice (last batch): {val_batch_dice[-1]:.4f}")
+
+    end_time = time.time()
+    elapsed = end_time - start_time
+    hrs, rem = divmod(elapsed, 3600)
+    mins, secs = divmod(rem, 60)
+    print(f"\nTotal training time: {int(hrs)}h {int(mins)}m {int(secs)}s")
+
+    # 5) Save training/validation losses to Excel
+    train_losses_path = os.path.join(args.save_dir, 'train_losses.xlsx')
+    val_losses_path = os.path.join(args.save_dir, 'val_losses.xlsx')
+    save_losses_to_excel(train_losses, train_losses_path)
+    save_losses_to_excel(val_losses, val_losses_path)
+
+    # 6) Save validation dice scores to Excel (epochs × batches)
+    val_dice_path = os.path.join(args.save_dir, 'validation_dice_scores.xlsx')
+    save_dice_scores_to_excel(all_val_dice, val_dice_path)
+
+    # 7) Save model (entire and state_dict)
+    model_full_path = os.path.join(args.save_dir, 'unet_model.pth')
+    model_state_dict_path = os.path.join(args.save_dir, 'unet_model_state_dict.pth')
+    torch.save(model, model_full_path)
+    torch.save(model.state_dict(), model_state_dict_path)
+
+    # 8) Plot training vs validation loss
+    loss_plot_path = os.path.join(args.save_dir, 'loss_curves.png')
+    plot_losses(train_losses, val_losses, loss_plot_path)
+    print(f"Saved loss curves to {loss_plot_path}")
+
+    # 9) Testing
+    test_loss, test_batch_dice = test(model, test_loader, device)
+    print(f"Test Loss: {test_loss:.4f}")
+    # Save test dice scores (only one "epoch" so one row, multiple batches)
+    test_dice_path = os.path.join(args.save_dir, 'test_dice_scores.xlsx')
+    # Reshape to 1 × num_batches
+    save_dice_scores_to_excel([test_batch_dice], test_dice_path)
+
+    # 10) Visualize 5 random samples from test set
+    vis_path = os.path.join(args.save_dir, 'test_predictions.png')
+    visualize_predictions(model, test_subset.dataset, device, vis_path, num_samples=5)
+    print(f"Saved sample predictions to {vis_path}")
+How to run
+Put all four files (dataset.py, model.py, train.py, main.py) into a folder named unet_segmentation/.
+
+From a terminal, navigate to unet_segmentation/ and run:
+
+bash
+Copy
+Edit
+python main.py \
+  --image_dir /path/to/your/images \
+  --mask_dir /path/to/your/masks \
+  --save_dir /path/to/save/results \
+  --image_size 256 \
+  --batch_size 8 \
+  --lr 1e-4 \
+  --num_epochs 50 \
+  --num_workers 4
+Adjust arguments as needed. By default, all intermediate results (Excel files, PNGs, model checkpoints) will be saved under --save_dir.
+
+Everything is written so that no data copying or directory duplication is needed—splitting is done by index via Subset. Once training completes, you will have:
+
+train_losses.xlsx and val_losses.xlsx (each with two rows: epochs and losses)
+
+validation_dice_scores.xlsx (epochs × batches)
+
+test_dice_scores.xlsx (1 row × number of test batches)
+
+loss_curves.png
+
+test_predictions.png
+
+unet_model.pth (entire model)
+
+unet_model_state_dict.pth (state dict only)
+
+These can be opened directly without further modification.
+
+
+
+
+
+
+
+You said:
+C:\Users\qy44lyfe\.conda\envs\Swallowenv\python.exe "D:/qy44lyfe/LLM segmentation/github repo/LLM_based_Segmentation/Modells 2025/GPT o4-mini-high/main.py" --image_dir "D:/qy44lyfe/LLM segmentation/Data sets/BAGLS/subset" --mask_dir "D:/qy44lyfe/LLM segmentation/Data sets/BAGLS/subset" --save_dir "D://qy44lyfe//LLM segmentation//Results//2025//GPT o4-mini-high//out of the box//BAGLS output" --image_size 256 --batch_size 8 --lr 1e-4 --num_epochs 50 --num_workers 4
+Total samples: 5002
+Training samples: 4001
+Validation samples: 500
+Testing samples: 501
+Train loader batches: 501
+Val loader batches: 63
+Test loader batches: 63
+
+Model Summary:
+==========================================================================================
+Layer (type:depth-idx)                   Output Shape              Param #
+==========================================================================================
+UNet                                     [8, 1, 256, 256]          --
+├─ModuleList: 1-7                        --                        (recursive)
+│    └─DoubleConv: 2-1                   [8, 64, 256, 256]         --
+│    │    └─Sequential: 3-1              [8, 64, 256, 256]         37,696
+├─MaxPool2d: 1-2                         [8, 64, 128, 128]         --
+├─ModuleList: 1-7                        --                        (recursive)
+│    └─DoubleConv: 2-2                   [8, 128, 128, 128]        --
+│    │    └─Sequential: 3-2              [8, 128, 128, 128]        221,696
+├─MaxPool2d: 1-4                         [8, 128, 64, 64]          --
+├─ModuleList: 1-7                        --                        (recursive)
+│    └─DoubleConv: 2-3                   [8, 256, 64, 64]          --
+│    │    └─Sequential: 3-3              [8, 256, 64, 64]          885,760
+├─MaxPool2d: 1-6                         [8, 256, 32, 32]          --
+├─ModuleList: 1-7                        --                        (recursive)
+│    └─DoubleConv: 2-4                   [8, 512, 32, 32]          --
+│    │    └─Sequential: 3-4              [8, 512, 32, 32]          3,540,992
+├─MaxPool2d: 1-8                         [8, 512, 16, 16]          --
+├─DoubleConv: 1-9                        [8, 1024, 16, 16]         --
+│    └─Sequential: 2-5                   [8, 1024, 16, 16]         --
+│    │    └─Conv2d: 3-5                  [8, 1024, 16, 16]         4,718,592
+│    │    └─BatchNorm2d: 3-6             [8, 1024, 16, 16]         2,048
+│    │    └─ReLU: 3-7                    [8, 1024, 16, 16]         --
+│    │    └─Conv2d: 3-8                  [8, 1024, 16, 16]         9,437,184
+│    │    └─BatchNorm2d: 3-9             [8, 1024, 16, 16]         2,048
+│    │    └─ReLU: 3-10                   [8, 1024, 16, 16]         --
+├─ModuleList: 1-16                       --                        (recursive)
+│    └─ConvTranspose2d: 2-6              [8, 512, 32, 32]          2,097,664
+├─ModuleList: 1-17                       --                        (recursive)
+│    └─DoubleConv: 2-7                   [8, 512, 32, 32]          --
+│    │    └─Sequential: 3-11             [8, 512, 32, 32]          7,079,936
+├─ModuleList: 1-16                       --                        (recursive)
+│    └─ConvTranspose2d: 2-8              [8, 256, 64, 64]          524,544
+├─ModuleList: 1-17                       --                        (recursive)
+│    └─DoubleConv: 2-9                   [8, 256, 64, 64]          --
+│    │    └─Sequential: 3-12             [8, 256, 64, 64]          1,770,496
+├─ModuleList: 1-16                       --                        (recursive)
+│    └─ConvTranspose2d: 2-10             [8, 128, 128, 128]        131,200
+├─ModuleList: 1-17                       --                        (recursive)
+│    └─DoubleConv: 2-11                  [8, 128, 128, 128]        --
+│    │    └─Sequential: 3-13             [8, 128, 128, 128]        442,880
+├─ModuleList: 1-16                       --                        (recursive)
+│    └─ConvTranspose2d: 2-12             [8, 64, 256, 256]         32,832
+├─ModuleList: 1-17                       --                        (recursive)
+│    └─DoubleConv: 2-13                  [8, 64, 256, 256]         --
+│    │    └─Sequential: 3-14             [8, 64, 256, 256]         110,848
+├─Conv2d: 1-18                           [8, 1, 256, 256]          65
+==========================================================================================
+Total params: 31,036,481
+Trainable params: 31,036,481
+Non-trainable params: 0
+Total mult-adds (G): 436.34
+==========================================================================================
+Input size (MB): 2.10
+Forward/backward pass size (MB): 4601.15
+Params size (MB): 124.15
+Estimated Total Size (MB): 4727.39
+==========================================================================================
+Total trainable parameters: 31036481
+
+Train Epoch 1:   0%|          | 0/501 [00:00<?, ?it/s]D:\qy44lyfe\LLM segmentation\github repo\LLM_based_Segmentation\Modells 2025\GPT o4-mini-high\dataset.py:65: UserWarning: TypedStorage is deprecated. It will be removed in the future and UntypedStorage will be the only storage class. This should only matter to you if you are using storages directly.  To access UntypedStorage directly, use tensor.untyped_storage() instead of tensor.storage()
+  (torch.ByteTensor(torch.ByteStorage.from_buffer(image.tobytes()))
+D:\qy44lyfe\LLM segmentation\github repo\LLM_based_Segmentation\Modells 2025\GPT o4-mini-high\dataset.py:65: UserWarning: TypedStorage is deprecated. It will be removed in the future and UntypedStorage will be the only storage class. This should only matter to you if you are using storages directly.  To access UntypedStorage directly, use tensor.untyped_storage() instead of tensor.storage()
+  (torch.ByteTensor(torch.ByteStorage.from_buffer(image.tobytes()))
+D:\qy44lyfe\LLM segmentation\github repo\LLM_based_Segmentation\Modells 2025\GPT o4-mini-high\dataset.py:65: UserWarning: TypedStorage is deprecated. It will be removed in the future and UntypedStorage will be the only storage class. This should only matter to you if you are using storages directly.  To access UntypedStorage directly, use tensor.untyped_storage() instead of tensor.storage()
+  (torch.ByteTensor(torch.ByteStorage.from_buffer(image.tobytes()))
+D:\qy44lyfe\LLM segmentation\github repo\LLM_based_Segmentation\Modells 2025\GPT o4-mini-high\dataset.py:65: UserWarning: TypedStorage is deprecated. It will be removed in the future and UntypedStorage will be the only storage class. This should only matter to you if you are using storages directly.  To access UntypedStorage directly, use tensor.untyped_storage() instead of tensor.storage()
+  (torch.ByteTensor(torch.ByteStorage.from_buffer(image.tobytes()))
+Traceback (most recent call last):
+  File "D:\qy44lyfe\LLM segmentation\github repo\LLM_based_Segmentation\Modells 2025\GPT o4-mini-high\main.py", line 109, in <module>
+    train_loss = train_one_epoch(model, train_loader, optimizer, criterion, device, epoch)
+  File "D:\qy44lyfe\LLM segmentation\github repo\LLM_based_Segmentation\Modells 2025\GPT o4-mini-high\train.py", line 37, in train_one_epoch
+    for images, masks, _ in loop:
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\tqdm\std.py", line 1182, in __iter__
+    for obj in iterable:
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\utils\data\dataloader.py", line 631, in __next__
+    data = self._next_data()
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\utils\data\dataloader.py", line 1346, in _next_data
+    return self._process_data(data)
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\utils\data\dataloader.py", line 1372, in _process_data
+    data.reraise()
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\_utils.py", line 722, in reraise
+    raise exception
+TypeError: Caught TypeError in DataLoader worker process 0.
+Original Traceback (most recent call last):
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\utils\data\_utils\worker.py", line 308, in _worker_loop
+    data = fetcher.fetch(index)
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\utils\data\_utils\fetch.py", line 49, in fetch
+    data = self.dataset.__getitems__(possibly_batched_index)
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\utils\data\dataset.py", line 399, in __getitems__
+    return [self.dataset[self.indices[idx]] for idx in indices]
+  File "C:\Users\qy44lyfe\.conda\envs\Swallowenv\lib\site-packages\torch\utils\data\dataset.py", line 399, in <listcomp>
+    return [self.dataset[self.indices[idx]] for idx in indices]
+  File "D:\qy44lyfe\LLM segmentation\github repo\LLM_based_Segmentation\Modells 2025\GPT o4-mini-high\dataset.py", line 64, in __getitem__
+    image_tensor = torch.from_numpy(
+TypeError: expected np.ndarray (got Tensor)
+
+
+Process finished with exit code 1
+
+
+ChatGPT said:
+
+Thought for 4 seconds
+It turns out the way we were building tensors in __getitem__ was feeding a PyTorch tensor into torch.from_numpy, which expects a NumPy array. Let’s switch to using NumPy arrays directly from the PIL image and then convert those to tensors. Replace your entire dataset.py with this corrected version:
+
+python
+Copy
+Edit
+import os
+from PIL import Image
+import numpy as np
+import torch
+from torch.utils.data import Dataset
+
+
+class GrayscaleDataset(Dataset):
+    """
+    Custom Dataset for loading grayscale images and their binary masks.
+    Assumes:
+      - `image_dir` contains only grayscale PNG files (e.g. "1.png", "2.png", …).
+      - `mask_dir` contains corresponding binary masks named "<basename>_seg.png"
+        (e.g. for "1.png" → mask "1_seg.png").
+      - Both directories may contain other non-PNG files, which are ignored.
+    """
+
+    def __init__(self, image_dir, mask_dir, image_size=256):
+        """
+        Args:
+            image_dir (str): Path to the folder containing input images.
+            mask_dir (str): Path to the folder containing binary masks.
+            image_size (int): Square size (width = height) to which images and masks are resized.
+        """
+        self.image_dir = image_dir
+        self.mask_dir = mask_dir
+        self.image_size = image_size
+
+        # Gather all valid image filenames (PNG only).
+        all_files = sorted(os.listdir(self.image_dir))
+        self.samples = []
+        for fname in all_files:
+            if not fname.lower().endswith('.png'):
+                continue
+            base, _ = os.path.splitext(fname)
+            mask_name = f"{base}_seg.png"
+            img_path = os.path.join(self.image_dir, fname)
+            mask_path = os.path.join(self.mask_dir, mask_name)
+            if os.path.isfile(mask_path):
+                self.samples.append((img_path, mask_path, base))
+
+    def __len__(self):
+        return len(self.samples)
+
+    def __getitem__(self, idx):
+        """
+        Returns:
+            image_tensor (torch.FloatTensor): shape [1, H, W], values in [0,1]
+            mask_tensor  (torch.FloatTensor): shape [1, H, W], values 0.0 or 1.0
+            base_name    (str): filename without extension (e.g. "1", "2", …)
+        """
+        image_path, mask_path, base_name = self.samples[idx]
+
+        # Load image and mask in PIL
+        image = Image.open(image_path).convert('L')
+        mask = Image.open(mask_path).convert('L')
+
+        # Resize
+        image = image.resize((self.image_size, self.image_size), resample=Image.BILINEAR)
+        mask = mask.resize((self.image_size, self.image_size), resample=Image.NEAREST)
+
+        # Convert to NumPy arrays
+        image_np = np.array(image, dtype=np.float32) / 255.0   # shape (H, W), [0,1]
+        mask_np = np.array(mask, dtype=np.float32) / 255.0     # shape (H, W), [0,1]
+        mask_np = (mask_np > 0.5).astype(np.float32)           # binarize
+
+        # To torch tensors, add channel dim
+        image_tensor = torch.from_numpy(image_np).unsqueeze(0)  # [1, H, W]
+        mask_tensor = torch.from_numpy(mask_np).unsqueeze(0)    # [1, H, W]
+
+        return image_tensor, mask_tensor, base_name
+Key changes:
+
+Use np.array(...) on the resized PIL image to get a NumPy array.
+
+Normalize to [0,1] and binarize the mask.
+
+Convert with torch.from_numpy(...) directly on the NumPy arrays.
+
+Drop the old ByteStorage approach entirely.
+
+With this in place, rerun your main.py and the TypeError should be resolved. If you hit any other snags, let me know!
